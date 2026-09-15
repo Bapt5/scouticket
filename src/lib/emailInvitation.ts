@@ -13,7 +13,7 @@ export async function envoyerEmailInvitation(parametres: {
   await envoyerMail({
     to: parametres.destinataire,
     subject: `Invitation à rejoindre ${parametres.nomGroupe} sur Scouticket`,
-    text: `Bonjour,\n\n${parametres.nomInvitant} vous invite à rejoindre le groupe ${parametres.nomGroupe} sur Scouticket. Connectez-vous avec l’adresse invitée, puis acceptez l’invitation :\n${url}\n\nCe lien expire dans 48 heures. Si cette invitation ne vous concerne pas, ignorez cet e-mail.`,
+    text: `Bonjour,\n\n${parametres.nomInvitant} vous invite à rejoindre le groupe ${parametres.nomGroupe} sur Scouticket. Connectez-vous avec l’adresse invitée, puis acceptez l’invitation :\n${url}\n\nCe lien expire dans 15 jours. Si cette invitation ne vous concerne pas, ignorez cet e-mail.`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background-color: #1E3A8A; color: #ffffff; padding: 20px; text-align: center;">
@@ -28,7 +28,7 @@ export async function envoyerEmailInvitation(parametres: {
             <p style="color: #374151; line-height: 1.5; margin: 0 0 18px;">Connectez-vous avec l’adresse invitée, puis acceptez cette invitation.</p>
             <a href="${echapperHtml(url.toString())}" style="display: inline-block; background-color: #1E3A8A; color: #ffffff; padding: 12px 20px; border-radius: 6px; font-weight: bold; text-decoration: none;">Accepter l’invitation</a>
           </div>
-          <div style="background-color: #FBB042; color: #1E3A8A; padding: 15px; border-radius: 8px; margin: 20px 0; line-height: 1.5;"><strong>⏱️ Ce lien expire dans 48 heures.</strong></div>
+          <div style="background-color: #FBB042; color: #1E3A8A; padding: 15px; border-radius: 8px; margin: 20px 0; line-height: 1.5;"><strong>⏱️ Ce lien expire dans 15 jours.</strong></div>
           <p style="color: #6B7280; font-size: 14px; line-height: 1.5; margin: 30px 0 0;">Si cette invitation ne vous concerne pas, vous pouvez simplement ignorer cet e-mail.</p>
           <p style="color: #6B7280; font-size: 14px; margin: 20px 0 0;">E-mail envoyé automatiquement par Scouticket.</p>
         </div>

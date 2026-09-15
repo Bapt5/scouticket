@@ -108,6 +108,7 @@ export const auth = betterAuth({
   },
   plugins: [
     organization({
+      invitationExpiresIn: 15 * 24 * 60 * 60,
       async sendInvitationEmail(data) {
         await envoyerEmailInvitation({
           destinataire: data.email,
