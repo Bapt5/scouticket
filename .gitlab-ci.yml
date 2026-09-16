@@ -1,0 +1,4 @@
+include:
+  - component: $CI_SERVER_FQDN/dev/lts-cicd/container@main
+    inputs:
+      image_name: scouticket
