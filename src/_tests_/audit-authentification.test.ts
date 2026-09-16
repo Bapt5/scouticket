@@ -121,13 +121,14 @@ describe("audit Better Auth", () => {
     );
   });
 
-  it("journalise le code fonctionnel d’une erreur Better Auth", () => {
+  it("journalise le code et le message d’une erreur Better Auth", () => {
     const espion = vi.spyOn(console, "warn").mockImplementation(() => {});
     journaliserAuditAuthentification({
       chemin: "/organization/invite-member",
       resultat: "echec",
       contexte: {},
       codeErreur: "USER_IS_ALREADY_A_MEMBER_OF_THIS_ORGANIZATION",
+      messageErreur: "Cet utilisateur appartient déjà à ce groupe.",
     });
 
     const entree = JSON.parse(espion.mock.calls[0][0] as string) as {
@@ -135,6 +136,9 @@ describe("audit Better Auth", () => {
     };
     expect(entree.contexte.codeErreur).toBe(
       "USER_IS_ALREADY_A_MEMBER_OF_THIS_ORGANIZATION",
+    );
+    expect(entree.contexte.messageErreur).toBe(
+      "Cet utilisateur appartient déjà à ce groupe.",
     );
   });
 

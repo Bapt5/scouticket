@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { journal } from "@/lib/logger";
 import { recupererSession } from "@/lib/sessionServeur";
 
-type GestionnaireRoute = () => Response | Promise<Response>;
+type TraitementRoute = () => Response | Promise<Response>;
 
 function cheminSansParametres(requete: Request) {
   try {
@@ -12,10 +12,16 @@ function cheminSansParametres(requete: Request) {
   }
 }
 
+/**
+ * Exécute une route API en loggant les erreurs et les requêtes invalides.
+ * @params requete - La requête HTTP entrante.
+ * @params traitementRoute - La fonction de traitement de la route.
+ */
 export async function executerRouteAvecLogs(
   requete: Request,
-  gestionnaire: GestionnaireRoute,
+  traitementRoute: TraitementRoute,
 ): Promise<Response> {
+  // Sert à corréler la réponse envoyée au client avec les journaux serveur.
   const identifiantRequete = crypto.randomUUID();
   const contexte: {
     identifiantRequete: string;
@@ -32,17 +38,25 @@ export async function executerRouteAvecLogs(
   try {
     const session = await recupererSession();
     contexte.identifiantUtilisateur = session?.user.id ?? null;
-    const reponse = await gestionnaire();
+    const reponse = await traitementRoute();
+
+    // Ajout de l'identifiant de requête aux entêtes client
     const entetes = new Headers(reponse.headers);
     entetes.set("X-Request-Id", identifiantRequete);
 
     if (reponse.status >= 500) {
+      // Les erreurs serveur et les requêtes invalides sont distinguées dans les logs.
       journal.erreur("api.reponse_serveur_en_erreur", {
         ...contexte,
         statut: reponse.status,
       });
     } else if (reponse.status >= 400) {
       journal.avertissement("api.requete_rejetee", {
+        ...contexte,
+        statut: reponse.status,
+      });
+    } else {
+      journal.info("api.reponse_ok", {
         ...contexte,
         statut: reponse.status,
       });
@@ -54,7 +68,14 @@ export async function executerRouteAvecLogs(
       headers: entetes,
     });
   } catch (erreur) {
-    journal.erreur("api.exception_non_interceptee", { ...contexte, erreur });
+    // Ajouter le message d'erreur au contexte du log.
+    const messageErreur = erreur instanceof Error ? erreur.message : "";
+    journal.erreur("api.exception_non_interceptee", {
+      ...contexte,
+      messageErreur,
+      erreur,
+    });
+    // Ne jamais exposer le détail d'une exception au client.
     return NextResponse.json(
       { error: "Erreur interne" },
       {

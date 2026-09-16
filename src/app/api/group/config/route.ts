@@ -6,7 +6,7 @@ import { recupererContexteGroupe } from "@/lib/sessionServeur";
 import { pool } from "@/lib/baseDeDonnees";
 import {
   creerUrlVerificationTresorerie,
-  creerValidationTresorerie,
+  construireValidationTresorerie,
 } from "@/lib/treasuryVerification";
 import { envoyerEmailValidationTresorerie } from "@/lib/treasuryEmail";
 import { verifierOrigineRequete } from "@/lib/api/securiteRequetes";
@@ -18,9 +18,11 @@ const bodySchema = z.object({
 });
 
 function isAdmin(role: string | null) {
+  // Seuls les propriétaires et administrateurs peuvent modifier la configuration.
   return role === "admin" || role === "owner";
 }
 
+/** Récupère la configuration et les droits de l'utilisateur pour son groupe actif. */
 export async function GET(requete: Request) {
   return executerRouteAvecLogs(requete, async () => {
     const { identifiantOrganisation, identifiantUtilisateur } =
@@ -36,6 +38,7 @@ export async function GET(requete: Request) {
       identifiantOrganisation,
     );
     const preference = await pool.query<{ unit_id: string }>(
+      // Cette préférence est propre à l'utilisateur, contrairement aux unités du groupe.
       `SELECT unit_id FROM scouticket_user_unit_preference
         WHERE user_id = $1 AND organization_id = $2`,
       [identifiantUtilisateur, identifiantOrganisation],
@@ -51,6 +54,7 @@ export async function GET(requete: Request) {
   });
 }
 
+/** Enregistre la configuration du groupe et demande une nouvelle validation de trésorerie. */
 export async function POST(req: Request) {
   return executerRouteAvecLogs(req, async () => {
     const { identifiantOrganisation, identifiantUtilisateur } =
@@ -67,8 +71,11 @@ export async function POST(req: Request) {
         { error: "Accès réservé aux responsables du groupe" },
         { status: 403 },
       );
+    // Empêche qu'un autre site déclenche cette modification au nom d'un administrateur.
     const originError = verifierOrigineRequete(req);
     if (originError) return originError;
+
+    // Récupération des paramètres de la requête.
     const parsed = bodySchema.safeParse(await req.json().catch(() => null));
     const units = parsed.success ? validerUnites(parsed.data.units) : null;
     if (!parsed.success || !units)
@@ -78,7 +85,8 @@ export async function POST(req: Request) {
       );
 
     const group = await recupererGroupeActif(identifiantOrganisation);
-    const { token, verification } = creerValidationTresorerie();
+    // Une modification génère un nouveau jeton : l'ancienne validation ne reste pas valable.
+    const { token, verification } = construireValidationTresorerie();
     await pool.query(
       `INSERT INTO scouticket_group_data
         (organization_id, units, treasury_email, treasury_verification)
@@ -93,6 +101,7 @@ export async function POST(req: Request) {
         JSON.stringify(verification),
       ],
     );
+    // La validation est enregistrée avant l'envoi pour que le lien reçu soit utilisable.
     const url = creerUrlVerificationTresorerie(identifiantOrganisation, token);
     await envoyerEmailValidationTresorerie({
       destinataire: parsed.data.treasuryEmail,

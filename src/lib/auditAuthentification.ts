@@ -95,6 +95,7 @@ export function journaliserAuditAuthentification({
   corps,
   retour,
   codeErreur,
+  messageErreur,
 }: {
   chemin: string | undefined;
   resultat: "succes" | "echec";
@@ -102,6 +103,7 @@ export function journaliserAuditAuthentification({
   corps?: unknown;
   retour?: unknown;
   codeErreur?: unknown;
+  messageErreur?: unknown;
 }) {
   const action = actionAuditAuthentification(chemin, corps);
   if (!action) return;
@@ -112,5 +114,6 @@ export function journaliserAuditAuthentification({
     resultat,
     ...identifiants,
     ...(typeof codeErreur === "string" ? { codeErreur } : {}),
+    ...(typeof messageErreur === "string" ? { messageErreur } : {}),
   });
 }

@@ -73,8 +73,8 @@ describe("journal technique", () => {
 
     expect(reponse.status).toBe(500);
     expect(reponse.headers.get("X-Request-Id")).toBeTruthy();
-    expect(JSON.parse(espion.mock.calls[0][0] as string).evenement).toBe(
-      "api.exception_non_interceptee",
-    );
+    const entree = JSON.parse(espion.mock.calls[0][0] as string);
+    expect(entree.evenement).toBe("api.exception_non_interceptee");
+    expect(entree.contexte.messageErreur).toBe("Erreur inattendue");
   });
 });

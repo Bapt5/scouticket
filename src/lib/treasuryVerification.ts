@@ -7,14 +7,15 @@ export interface ValidationTresorerie {
   verifiedAt?: number;
 }
 
-export function creerValidationTresorerie() {
+/** Crée une validation de trésorerie avec un jeton unique et une durée d'expiration de 72 heures. */
+export function construireValidationTresorerie() {
   const token = crypto.randomBytes(32).toString("base64url");
   return {
     token,
     verification: {
       status: "pending" as const,
       tokenHash: crypto.createHash("sha256").update(token).digest("hex"),
-      expiresAt: Date.now() + 48 * 60 * 60 * 1000,
+      expiresAt: Date.now() + 72 * 60 * 60 * 1000,
     },
   };
 }

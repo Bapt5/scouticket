@@ -115,8 +115,6 @@ docker compose logs -f app
 docker compose down
 ```
 
-Le point de santé valide `SMTP_HOST`, `SMTP_USER`, `SMTP_PASSWORD` et `APP_URL`, sans envoyer d'e-mail. Pour un test strictement local, définissez `APP_URL=http://localhost:3000` ; une URL publique reste nécessaire pour les liens envoyés par e-mail en conditions réelles.
-
 ## Audit Better Auth et OpenObserve
 
 Définissez `AUDIT_LOG_SECRET` avec une valeur aléatoire distincte de `BETTER_AUTH_SECRET`. Scouticket écrit alors les opérations Better Auth importantes (connexion, inscription, mots de passe, vérification e-mail, organisations et invitations) au format JSON sur stdout. Configurez votre collecteur OpenObserve pour ingérer les logs du conteneur `app`; les champs `utilisateur` et `organisation` sont chiffrés en AES-256-GCM, sans e-mail ni identifiant brut. Ils peuvent être déchiffrés avec la même valeur de `AUDIT_LOG_SECRET`.
