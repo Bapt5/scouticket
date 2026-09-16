@@ -7,6 +7,7 @@ stages:
   - deploy
 
 include:
+  - component: $CI_SERVER_FQDN/dev/lts-cicd/semantic-release@main
   - component: $CI_SERVER_FQDN/dev/lts-cicd/container@main
     inputs:
       image_name: scouticket
