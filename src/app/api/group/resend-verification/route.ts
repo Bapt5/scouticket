@@ -4,7 +4,7 @@ import { recupererContexteGroupe } from "@/lib/sessionServeur";
 import { pool } from "@/lib/baseDeDonnees";
 import {
   creerUrlVerificationTresorerie,
-  creerValidationTresorerie,
+  construireValidationTresorerie,
 } from "@/lib/treasuryVerification";
 import { envoyerEmailValidationTresorerie } from "@/lib/treasuryEmail";
 import {
@@ -57,7 +57,7 @@ export async function POST(req: Request) {
     if (!limiteLongue.autorise)
       return reponseRateLimit(limiteLongue.attenteSecondes);
 
-    const { token, verification } = creerValidationTresorerie();
+    const { token, verification } = construireValidationTresorerie();
     await pool.query(
       `UPDATE scouticket_group_data SET treasury_verification = $2::jsonb
         WHERE organization_id = $1`,
