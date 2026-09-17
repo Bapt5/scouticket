@@ -55,11 +55,6 @@ export async function executerRouteAvecLogs(
         ...contexte,
         statut: reponse.status,
       });
-    } else {
-      journal.info("api.reponse_ok", {
-        ...contexte,
-        statut: reponse.status,
-      });
     }
 
     return new Response(reponse.body, {
