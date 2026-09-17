@@ -33,6 +33,7 @@
     "auth:migrate": "pnpm dlx auth@1.7.3 migrate"
   },
   "dependencies": {
+    "@better-auth/i18n": "^1.7.5",
     "@heroicons/react": "^2.1.5",
     "@openobserve/browser-logs": "0.4.2",
     "@openobserve/browser-rum": "^0.4.2",

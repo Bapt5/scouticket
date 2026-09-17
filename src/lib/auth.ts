@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth";
 import { createAuthMiddleware } from "better-auth/api";
 import { organization } from "better-auth/plugins";
+import { i18n, locales } from "@better-auth/i18n";
 import { nextCookies } from "better-auth/next-js";
 import { pool } from "@/lib/baseDeDonnees";
 import { envoyerEmailInvitation } from "@/lib/emailInvitation";
@@ -116,6 +117,11 @@ export const auth = betterAuth({
           nomInvitant: data.inviter.user.name,
           invitationId: data.id,
         });
+      },
+    }),
+    i18n({
+      translations: {
+        fr: locales.fr,
       },
     }),
     nextCookies(),
