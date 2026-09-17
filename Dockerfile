@@ -1,17 +1,19 @@
-FROM node:22-bookworm-slim AS dependances
+FROM node:26-alpine AS base
+
+RUN apk add --no-cache libc6-compat \
+  && npm install --global corepack@latest \
+  && corepack enable
+
+FROM base AS dependances
 
 WORKDIR /app
-
-RUN corepack enable
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
-FROM node:22-bookworm-slim AS construction
+FROM base AS construction
 
 WORKDIR /app
-
-RUN corepack enable
 
 # Next.js évalue certains modules serveur pendant le build. Ces valeurs ne sont
 # présentes que dans cette étape ; Compose injecte les vraies valeurs au runtime.
@@ -25,15 +27,13 @@ COPY --from=dependances /app/node_modules ./node_modules
 COPY . .
 RUN pnpm build
 
-FROM node:22-bookworm-slim AS execution
+FROM base AS execution
 
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
-
-RUN corepack enable
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --prod --frozen-lockfile --ignore-scripts
