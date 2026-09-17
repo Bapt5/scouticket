@@ -136,9 +136,7 @@ export default function PageInvitation({
       if (resultat.error) {
         const erreur = extraireErreurInvitation(resultat.error);
         journaliserEchec("acceptation", erreur, Date.now() - debut);
-        setMessage(
-          `${messageErreurInvitation(erreur.code)}${erreur.code ? ` (code : ${erreur.code})` : ""}`,
-        );
+        setMessage(`${messageErreurInvitation(erreur.code)}`);
         setEnCours(false);
         return;
       }
