@@ -24,11 +24,13 @@ export async function executerRouteAvecLogs(
   // Sert à corréler la réponse envoyée au client avec les journaux serveur.
   const identifiantRequete = crypto.randomUUID();
   const contexte: {
+    categorie: "api";
     identifiantRequete: string;
     identifiantUtilisateur: string | null;
     methode: string;
     route: string;
   } = {
+    categorie: "api",
     identifiantRequete,
     identifiantUtilisateur: null,
     methode: requete.method,
@@ -48,12 +50,12 @@ export async function executerRouteAvecLogs(
       // Les erreurs serveur et les requêtes invalides sont distinguées dans les logs.
       journal.erreur("api.reponse_serveur_en_erreur", {
         ...contexte,
-        statut: reponse.status,
+        statutHttp: reponse.status,
       });
     } else if (reponse.status >= 400) {
       journal.avertissement("api.requete_rejetee", {
         ...contexte,
-        statut: reponse.status,
+        statutHttp: reponse.status,
       });
     }
 
@@ -63,11 +65,8 @@ export async function executerRouteAvecLogs(
       headers: entetes,
     });
   } catch (erreur) {
-    // Ajouter le message d'erreur au contexte du log.
-    const messageErreur = erreur instanceof Error ? erreur.message : "";
     journal.erreur("api.exception_non_interceptee", {
       ...contexte,
-      messageErreur,
       erreur,
     });
     // Ne jamais exposer le détail d'une exception au client.

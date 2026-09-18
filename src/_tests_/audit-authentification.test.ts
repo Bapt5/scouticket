@@ -42,12 +42,16 @@ describe("audit Better Auth", () => {
     const entree = JSON.parse(espion.mock.calls[0][0] as string) as {
       contexte: Record<string, unknown>;
     };
-    expect(dechiffrerIdentifiant(entree.contexte.utilisateur as string)).toBe(
-      "user_123",
-    );
-    expect(dechiffrerIdentifiant(entree.contexte.organisation as string)).toBe(
-      "org_456",
-    );
+    expect(
+      dechiffrerIdentifiant(
+        entree.contexte.identifiantUtilisateurPseudonymise as string,
+      ),
+    ).toBe("user_123");
+    expect(
+      dechiffrerIdentifiant(
+        entree.contexte.identifiantOrganisationPseudonymise as string,
+      ),
+    ).toBe("org_456");
   });
 
   it("utilise une nouvelle session lors de la connexion", () => {
@@ -61,10 +65,12 @@ describe("audit Better Auth", () => {
     const entree = JSON.parse(espion.mock.calls[0][0] as string) as {
       contexte: Record<string, unknown>;
     };
-    expect(dechiffrerIdentifiant(entree.contexte.utilisateur as string)).toBe(
-      "user_123",
-    );
-    expect(entree.contexte.organisation).toBeNull();
+    expect(
+      dechiffrerIdentifiant(
+        entree.contexte.identifiantUtilisateurPseudonymise as string,
+      ),
+    ).toBe("user_123");
+    expect(entree.contexte.identifiantOrganisationPseudonymise).toBeNull();
   });
 
   it("utilise l’organisation du corps et ne journalise aucune donnée sensible", () => {
@@ -84,15 +90,20 @@ describe("audit Better Auth", () => {
     };
     expect(entree.evenement).toBe("auth.audit.membre_invite");
     expect(entree.contexte).toMatchObject({
+      categorie: "auth",
       resultat: "echec",
       codeErreur: "FORBIDDEN",
     });
-    expect(dechiffrerIdentifiant(entree.contexte.utilisateur as string)).toBe(
-      "user_123",
-    );
-    expect(dechiffrerIdentifiant(entree.contexte.organisation as string)).toBe(
-      "org_456",
-    );
+    expect(
+      dechiffrerIdentifiant(
+        entree.contexte.identifiantUtilisateurPseudonymise as string,
+      ),
+    ).toBe("user_123");
+    expect(
+      dechiffrerIdentifiant(
+        entree.contexte.identifiantOrganisationPseudonymise as string,
+      ),
+    ).toBe("org_456");
     expect(sortie).not.toContain("user_123");
     expect(sortie).not.toContain("org_456");
     expect(sortie).not.toContain("membre@example.test");
@@ -113,15 +124,19 @@ describe("audit Better Auth", () => {
     const entree = JSON.parse(espion.mock.calls[0][0] as string) as {
       contexte: Record<string, unknown>;
     };
-    expect(dechiffrerIdentifiant(entree.contexte.utilisateur as string)).toBe(
-      "user_123",
-    );
-    expect(dechiffrerIdentifiant(entree.contexte.organisation as string)).toBe(
-      "org_456",
-    );
+    expect(
+      dechiffrerIdentifiant(
+        entree.contexte.identifiantUtilisateurPseudonymise as string,
+      ),
+    ).toBe("user_123");
+    expect(
+      dechiffrerIdentifiant(
+        entree.contexte.identifiantOrganisationPseudonymise as string,
+      ),
+    ).toBe("org_456");
   });
 
-  it("journalise le code et le message d’une erreur Better Auth", () => {
+  it("journalise le code d’une erreur Better Auth", () => {
     const espion = vi.spyOn(console, "warn").mockImplementation(() => {});
     journaliserAuditAuthentification({
       chemin: "/organization/invite-member",
@@ -137,9 +152,6 @@ describe("audit Better Auth", () => {
     expect(entree.contexte.codeErreur).toBe(
       "USER_IS_ALREADY_A_MEMBER_OF_THIS_ORGANIZATION",
     );
-    expect(entree.contexte.messageErreur).toBe(
-      "Cet utilisateur appartient déjà à ce groupe.",
-    );
   });
 
   it("laisse les identifiants à null pour une action anonyme", () => {
@@ -154,8 +166,9 @@ describe("audit Better Auth", () => {
       contexte: Record<string, unknown>;
     };
     expect(entree.contexte).toMatchObject({
-      utilisateur: null,
-      organisation: null,
+      categorie: "auth",
+      identifiantUtilisateurPseudonymise: null,
+      identifiantOrganisationPseudonymise: null,
     });
   });
 });

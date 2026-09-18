@@ -7,10 +7,13 @@ export const onRequestError: Instrumentation.onRequestError = (
   contexte,
 ) => {
   journal.erreur("next.exception_serveur", {
+    categorie: "framework",
     erreur,
     methode: requete.method,
     route: requete.path.split("?")[0],
-    routeType: contexte.routeType,
-    routePath: contexte.routePath,
+    details: {
+      typeRoute: contexte.routeType,
+      cheminRoute: contexte.routePath,
+    },
   });
 };

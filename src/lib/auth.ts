@@ -36,6 +36,7 @@ export const auth = betterAuth({
         });
       } catch (erreur) {
         journal.erreur("auth.reinitialisation_mot_de_passe_non_envoyee", {
+          categorie: "authentification",
           erreur,
         });
         throw erreur;
@@ -52,7 +53,10 @@ export const auth = betterAuth({
           url,
         });
       } catch (erreur) {
-        journal.erreur("auth.verification_email_non_envoyee", { erreur });
+        journal.erreur("auth.verification_email_non_envoyee", {
+          categorie: "authentification",
+          erreur,
+        });
         throw erreur;
       }
     },

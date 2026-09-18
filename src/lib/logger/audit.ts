@@ -78,9 +78,10 @@ export function journaliserAuditAuthentification({
   codeErreur,
 }: EntreeAuditAuthentification) {
   const contexte = {
+    categorie: "auth" as const,
     resultat,
-    utilisateur: pseudonymiserIdentifiant(utilisateur),
-    organisation: pseudonymiserIdentifiant(organisation),
+    identifiantUtilisateurPseudonymise: pseudonymiserIdentifiant(utilisateur),
+    identifiantOrganisationPseudonymise: pseudonymiserIdentifiant(organisation),
     ...(codeErreur ? { codeErreur } : {}),
   };
 

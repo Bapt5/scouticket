@@ -21,14 +21,17 @@ describe("journal technique", () => {
     const espion = vi.spyOn(console, "error").mockImplementation(() => {});
 
     journal.erreur("test.erreur", {
-      emailUtilisateur: "membre@example.test",
-      motDePasse: "secret",
+      categorie: "framework",
+      details: {
+        emailUtilisateur: "membre@example.test",
+        motDePasse: "secret",
+      },
       erreur: new Error("Échec pour membre@example.test"),
     });
 
     const entree = JSON.parse(espion.mock.calls[0][0] as string);
-    expect(entree.contexte.emailUtilisateur).toBe("[masqué]");
-    expect(entree.contexte.motDePasse).toBe("[masqué]");
+    expect(entree.contexte.details.emailUtilisateur).toBe("[masqué]");
+    expect(entree.contexte.details.motDePasse).toBe("[masqué]");
     expect(entree.contexte.erreur.message).not.toContain("membre@example.test");
   });
 
@@ -44,7 +47,8 @@ describe("journal technique", () => {
     const entree = JSON.parse(espion.mock.calls[0][0] as string);
     expect(entree.evenement).toBe("api.requete_rejetee");
     expect(entree.contexte.route).toBe("/api/test");
-    expect(entree.contexte.statut).toBe(400);
+    expect(entree.contexte.statutHttp).toBe(400);
+    expect(entree.contexte.identifiantRequete).toBeTruthy();
     expect(entree.contexte.identifiantUtilisateur).toBe("user_123");
   });
 
@@ -75,6 +79,6 @@ describe("journal technique", () => {
     expect(reponse.headers.get("X-Request-Id")).toBeTruthy();
     const entree = JSON.parse(espion.mock.calls[0][0] as string);
     expect(entree.evenement).toBe("api.exception_non_interceptee");
-    expect(entree.contexte.messageErreur).toBe("Erreur inattendue");
+    expect(entree.contexte.erreur.message).toBe("Erreur inattendue");
   });
 });

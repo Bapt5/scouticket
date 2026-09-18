@@ -46,7 +46,11 @@ export function validerCorpsRequete(body: unknown): {
 
   if (!bodyParsed.success) {
     journal.avertissement("depense.corps_invalide", {
-      nombreErreursValidation: bodyParsed.error.issues.length,
+      categorie: "depense",
+      codeErreur: "CORPS_INVALIDE",
+      details: {
+        nombreErreursValidation: bodyParsed.error.issues.length,
+      },
     });
     return { error: jsonError("Données manquantes ou incorrecte", 400) };
   }

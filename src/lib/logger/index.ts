@@ -1,10 +1,46 @@
 // Point d’entrée unique des journaux applicatifs.
 type NiveauJournal = "info" | "warn" | "error";
 
-export type ContexteJournal = Record<string, unknown>;
+export type CategorieJournal =
+  | "api"
+  | "authentification"
+  | "email"
+  | "base_de_donnees"
+  | "depense"
+  | "invitation"
+  | "preference_unite"
+  | "framework"
+  | "auth";
+
+export type ValeurDetailJournal = string | number | boolean | null;
+
+type ContexteJournalTechnique = {
+  categorie: Exclude<CategorieJournal, "auth">;
+  identifiantRequete?: string;
+  identifiantUtilisateur?: string | null;
+  methode?: string;
+  route?: string;
+  statutHttp?: number;
+  dureeMs?: number;
+  resultat?: "succes" | "echec";
+  codeErreur?: string;
+  erreur?: Error | unknown;
+  details?: Record<string, ValeurDetailJournal>;
+};
+
+type ContexteJournalAudit = {
+  categorie: "auth";
+  resultat: "succes" | "echec";
+  identifiantUtilisateurPseudonymise: string | null;
+  identifiantOrganisationPseudonymise: string | null;
+  codeErreur?: string;
+  details?: Record<string, ValeurDetailJournal>;
+};
+
+export type ContexteJournal = ContexteJournalTechnique | ContexteJournalAudit;
 
 const expressionCleSensible =
-  /(email|mail|password|motdepasse|authorization|cookie|token|secret|base64|attachment|piecejointe|donnees|data|body|corps|userid|orgid|messageid|filename|nomfichier)/i;
+  /(email|mail|password|mot_?de_?passe|authorization|cookie|token|secret|base64|attachment|piece_?jointe|donnees|data|body|corps|user_?id|org_?id|message_?id|file_?name|nom_?fichier)/i;
 const expressionEmail = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
 const expressionJeton = /\b(?:bearer|basic)\s+[^\s]+/gi;
 
@@ -53,7 +89,7 @@ function nettoyerValeur(valeur: unknown, profondeur = 0): unknown {
 function ecrireJournal(
   niveau: NiveauJournal,
   evenement: string,
-  contexte: ContexteJournal = {},
+  contexte: ContexteJournal,
 ) {
   const entree = JSON.stringify({
     niveau,
@@ -67,10 +103,10 @@ function ecrireJournal(
 }
 
 export const journal = {
-  info: (evenement: string, contexte?: ContexteJournal) =>
+  info: (evenement: string, contexte: ContexteJournal) =>
     ecrireJournal("info", evenement, contexte),
-  avertissement: (evenement: string, contexte?: ContexteJournal) =>
+  avertissement: (evenement: string, contexte: ContexteJournal) =>
     ecrireJournal("warn", evenement, contexte),
-  erreur: (evenement: string, contexte?: ContexteJournal) =>
+  erreur: (evenement: string, contexte: ContexteJournal) =>
     ecrireJournal("error", evenement, contexte),
 };

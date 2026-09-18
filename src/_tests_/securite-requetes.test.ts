@@ -40,9 +40,12 @@ describe("verifierOrigineRequete", () => {
     });
     const entree = JSON.parse(espion.mock.calls[0][0] as string);
     expect(entree.contexte).toMatchObject({
-      motif: "origine-differente",
-      origineRecue: "https://site-tiers.example",
-      origineAutorisee: "https://app.scouticket.fr",
+      categorie: "api",
+      codeErreur: "origine-differente",
+      details: {
+        origineRecue: "https://site-tiers.example",
+        origineAutorisee: "https://app.scouticket.fr",
+      },
     });
     espion.mockRestore();
   });

@@ -18,7 +18,10 @@ function validateEnv() {
     !process.env.SMTP_USER ||
     !process.env.SMTP_PASSWORD
   ) {
-    journal.erreur("smtp.variables_environnement_manquantes");
+    journal.erreur("smtp.variables_environnement_manquantes", {
+      categorie: "email",
+      codeErreur: "VARIABLES_ENVIRONNEMENT_MANQUANTES",
+    });
     return jsonError("Configuration serveur manquante", 500);
   }
   return null;
@@ -90,7 +93,10 @@ export async function POST(req: NextRequest) {
         messageId: resultat.messageId,
       });
     } catch (error) {
-      journal.erreur("depense.envoi_echoue", { erreur: error });
+      journal.erreur("depense.envoi_echoue", {
+        categorie: "depense",
+        erreur: error,
+      });
       if (error instanceof Error) {
         return verifierErreurSmtp(error);
       }

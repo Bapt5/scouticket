@@ -27,13 +27,14 @@ function origineApplication(req: Request) {
 function creerReponseRejetOrigine(
   req: Request,
   motif: "origine-differente" | "requete-cross-site",
-  contexte: Record<string, string>,
+  details: Record<string, string>,
 ) {
   journal.avertissement("api.origine_rejetee", {
+    categorie: "api",
     methode: req.method,
     route: new URL(req.url).pathname,
-    motif,
-    ...contexte,
+    codeErreur: motif,
+    details,
   });
   return NextResponse.json({ error: "Requête refusée" }, { status: 403 });
 }

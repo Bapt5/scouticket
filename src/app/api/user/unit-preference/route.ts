@@ -74,7 +74,10 @@ export async function POST(req: Request) {
 
       return NextResponse.json({ success: true, unitId });
     } catch (erreur) {
-      journal.erreur("preference_unite.mise_a_jour_echouee", { erreur });
+      journal.erreur("preference_unite.mise_a_jour_echouee", {
+        categorie: "preference_unite",
+        erreur,
+      });
       return NextResponse.json({ error: "Erreur interne" }, { status: 500 });
     }
   });

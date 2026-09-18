@@ -38,9 +38,12 @@ export async function POST(requete: Request) {
     corps.data.code ??
     (corps.data.statut ? `HTTP_${corps.data.statut}` : "INCONNUE");
   journal.erreur("invitation.acceptation_echouee", {
-    etape: corps.data.etape,
+    categorie: "invitation",
     codeErreur,
     dureeMs: corps.data.dureeMs,
+    details: {
+      etape: corps.data.etape,
+    },
   });
   journaliserAuditAuthentification({
     evenement: "auth.audit.invitation_acceptee",

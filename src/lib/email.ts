@@ -73,9 +73,11 @@ export async function envoyerMail(optionsEmail: Omit<SendMailOptions, "from">) {
 
   try {
     await transporteur.verify();
-    journal.info("smtp.connexion_verifiee");
   } catch (error) {
-    journal.erreur("smtp.configuration_invalide", { error });
+    journal.erreur("smtp.configuration_invalide", {
+      categorie: "email",
+      erreur: error,
+    });
     throw new Error("Configuration SMTP invalide");
   }
 
@@ -84,10 +86,16 @@ export async function envoyerMail(optionsEmail: Omit<SendMailOptions, "from">) {
       from: creerExpediteurEmail(),
       ...optionsEmail,
     });
-    journal.info("smtp.email_envoye");
+    journal.info("smtp.email_envoye", {
+      categorie: "email",
+      resultat: "succes",
+    });
     return info;
   } catch (error) {
-    journal.erreur("smtp.envoi_email_echoue", { erreur: error });
+    journal.erreur("smtp.envoi_email_echoue", {
+      categorie: "email",
+      erreur: error,
+    });
     throw error;
   }
 }
@@ -150,7 +158,10 @@ export const envoyerEmailDepense = async (donnees: DonneesEmailDepense) => {
       }
       return { buffer, mime };
     } catch (e) {
-      journal.erreur("smtp.conversion_piece_jointe_echouee", { erreur: e });
+      journal.erreur("smtp.conversion_piece_jointe_echouee", {
+        categorie: "email",
+        erreur: e,
+      });
       throw new Error("ATTACHMENT_BUFFER_CONVERSION_FAILED");
     }
   };

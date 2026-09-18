@@ -113,7 +113,7 @@ describe("Page d’invitation", () => {
       await screen.findByText(/confirmez d’abord votre adresse e-mail/i),
     ).toBeInTheDocument();
     expect(screen.getByRole("alert")).toHaveTextContent(
-      "EMAIL_VERIFICATION_REQUIRED_BEFORE_ACCEPTING_OR_REJECTING_INVITATION",
+      "Confirmez d’abord votre adresse e-mail avant d’accepter cette invitation.",
     );
   });
 
