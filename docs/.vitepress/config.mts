@@ -55,6 +55,11 @@ const metadonneesPages: Record<string, { titre: string; description: string }> =
       description:
         "Déployez Scouticket avec Docker pour héberger l’application dans votre propre environnement.",
     },
+    "technical/journalisation.md": {
+      titre: "Journalisation structurée",
+      description:
+        "Référence des journaux structurés Scouticket et de leurs champs pour OpenObserve.",
+    },
     "technical/troubleshooting.md": {
       titre: "Dépannage",
       description:
@@ -160,6 +165,10 @@ export default defineConfig({
             link: "/technical/environment-variables",
           },
           { text: "Déploiement Docker", link: "/technical/docker" },
+          {
+            text: "Journalisation structurée",
+            link: "/technical/journalisation",
+          },
           { text: "Dépannage", link: "/technical/troubleshooting" },
           {
             text: "Méta documentation VitePress",
