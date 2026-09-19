@@ -86,26 +86,46 @@ export async function POST(req: Request) {
       );
 
     const group = await recupererGroupeActif(identifiantOrganisation);
+    // La contrainte SQL compare également les adresses sans tenir compte de la casse.
+    const emailTresorerie = parsed.data.treasuryEmail.toLowerCase();
     // Une modification génère un nouveau jeton : l'ancienne validation ne reste pas valable.
     const { token, verification } = construireValidationTresorerie();
-    await pool.query(
-      `INSERT INTO scouticket_group_data
+    try {
+      await pool.query(
+        `INSERT INTO scouticket_group_data
         (organization_id, units, treasury_email, treasury_verification)
        VALUES ($1, $2::jsonb, $3, $4::jsonb)
        ON CONFLICT (organization_id) DO UPDATE
        SET units = EXCLUDED.units, treasury_email = EXCLUDED.treasury_email,
            treasury_verification = EXCLUDED.treasury_verification`,
-      [
-        identifiantOrganisation,
-        JSON.stringify(units),
-        parsed.data.treasuryEmail,
-        JSON.stringify(verification),
-      ],
-    );
+        [
+          identifiantOrganisation,
+          JSON.stringify(units),
+          emailTresorerie,
+          JSON.stringify(verification),
+        ],
+      );
+    } catch (erreur) {
+      // Seule la contrainte d'unicité est transformée en erreur métier ; les autres erreurs restent journalisées.
+      if (
+        typeof erreur === "object" &&
+        erreur !== null &&
+        "code" in erreur &&
+        erreur.code === "23505"
+      )
+        return NextResponse.json(
+          {
+            error:
+              "Cette adresse e-mail est déjà utilisée par un autre groupe.",
+          },
+          { status: 409 },
+        );
+      throw erreur;
+    }
     // La validation est enregistrée avant l'envoi pour que le lien reçu soit utilisable.
     const url = creerUrlVerificationTresorerie(identifiantOrganisation, token);
     await envoyerEmailValidationTresorerie({
-      destinataire: parsed.data.treasuryEmail,
+      destinataire: emailTresorerie,
       nomGroupe: group.organisation.name,
       url,
     });
