@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { pool } from "@/lib/baseDeDonnees";
 import { executerRouteAvecLogs } from "@/lib/api/routeAvecLogs";
+import { journal } from "@/lib/logger";
 import { recupererSession } from "@/lib/sessionServeur";
 
 const erreurInvitationInutilisable =
@@ -40,18 +41,30 @@ export async function GET(requete: Request) {
       [identifiantInvitation, session.user.id],
     );
     const invitation = resultat.rows[0];
-    if (!invitation)
+    if (!invitation) {
+      journal.avertissement("invitation.consultation_rejetee", {
+        categorie: "invitation",
+        identifiantUtilisateur: session.user.id,
+        codeErreur: "INVITATION_INTROUVABLE",
+      });
       return NextResponse.json(
         { error: erreurInvitationInutilisable },
         { status: 404 },
       );
+    }
 
     // la table invitation stocke l'id des utilisateurs via un email, pas un id.
-    if (invitation.email.toLowerCase() !== session.user.email.toLowerCase())
+    if (invitation.email.toLowerCase() !== session.user.email.toLowerCase()) {
+      journal.avertissement("invitation.consultation_rejetee", {
+        categorie: "invitation",
+        identifiantUtilisateur: session.user.id,
+        codeErreur: "INVITATION_DESTINATAIRE_INCORRECT",
+      });
       return NextResponse.json(
         { error: erreurInvitationInutilisable },
         { status: 404 },
       );
+    }
 
     if (invitation.status === "pending" && invitation.expiresAt > new Date())
       return NextResponse.json({
@@ -65,6 +78,14 @@ export async function GET(requete: Request) {
         statut: "deja_acceptee",
       });
 
+    journal.avertissement("invitation.consultation_rejetee", {
+      categorie: "invitation",
+      identifiantUtilisateur: session.user.id,
+      codeErreur:
+        invitation.status === "pending"
+          ? "INVITATION_EXPIREE"
+          : "INVITATION_STATUT_NON_ACTIONNABLE",
+    });
     return NextResponse.json(
       { error: erreurInvitationInutilisable },
       { status: 404 },
