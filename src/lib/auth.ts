@@ -23,6 +23,12 @@ export const auth = betterAuth({
     enabled: true,
     storage: "database",
   },
+  advanced: {
+    ipAddress: {
+      // Cloudflare Tunnel transmet l'adresse du visiteur dans cet en-tête.
+      ipAddressHeaders: ["cf-connecting-ip"],
+    },
+  },
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
