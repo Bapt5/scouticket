@@ -89,7 +89,7 @@ export default function PageInvitation({
           setEtatInvitation("invalide");
           return;
         }
-        void fetch(`/api/inv  itation?id=${encodeURIComponent(identifiant)}`)
+        void fetch(`/api/invitation?id=${encodeURIComponent(identifiant)}`)
           .then(async (reponse) => {
             if (!reponse.ok) return null;
             return (await reponse.json()) as InvitationVerifiee;
