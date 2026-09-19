@@ -49,6 +49,7 @@ export async function GET(requete: Request) {
       configured: Boolean(group.emailTresorerie && group.unites.length),
       treasuryVerified: group.validation.status === "verified",
       isAdmin: isAdmin(role),
+      treasuryEmail: isAdmin(role) ? group.emailTresorerie : undefined,
       unitPreference: preference.rows[0]?.unit_id ?? "",
     });
   });

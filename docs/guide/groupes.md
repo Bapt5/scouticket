@@ -5,11 +5,13 @@ Cette page s’adresse aux responsables de groupe. Eux seuls peuvent configurer 
 ## Créer et configurer le groupe
 
 1. Créez votre compte, puis créez le groupe depuis le sélecteur de groupe en haut de l’application.
-2. Renseignez l’adresse e-mail de la trésorerie qui doit recevoir les justificatifs.
-3. Configurez les unités de votre groupe et enregistrez.
-4. La trésorerie reçoit un e-mail de confirmation. Les membres pourront envoyer des justificatifs une fois le lien confirmé.
+2. À l’étape **1 — E-mail**, renseignez l’adresse de la trésorerie qui doit recevoir les justificatifs.
+3. À l’étape **2 — Unités**, adaptez les unités de votre groupe puis envoyez la demande de validation.
+4. À l’étape **3 — Validation**, la trésorerie reçoit un e-mail de confirmation. Cet écran reste affiché à tous les membres tant que le lien n’est pas confirmé ; il se débloque automatiquement après validation.
 
-Si l’e-mail n’arrive pas, le responsable peut le renvoyer depuis l’administration du groupe.
+Les responsables peuvent renvoyer l’e-mail ou modifier l’adresse et les unités depuis l’écran de validation. Si l’e-mail n’arrive pas, vérifiez les courriers indésirables avant de demander un nouvel envoi.
+
+![Écran d’attente de validation de la trésorerie](/guide/validation-tresorerie.png)
 
 ## Unités, branches et couleurs
 

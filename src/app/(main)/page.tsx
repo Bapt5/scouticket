@@ -6,7 +6,10 @@ import { clientAuth } from "@/lib/auth-client";
 import { FormulaireDepense } from "@/components/FormulaireDepense";
 import { CapturePhoto } from "@/components/PhotoCapture";
 import { InviteInstallation } from "@/components/InstallPrompt";
-import { ConfigurationGroupe } from "@/components/GroupSetup";
+import {
+  AttenteValidationTresorerie,
+  ConfigurationGroupe,
+} from "@/components/GroupSetup";
 import { useStatutEnLigne } from "@/lib/useOnlineStatus";
 import {
   MAX_ATTACHMENT_COUNT,
@@ -19,6 +22,7 @@ type Groupe = {
   configured: boolean;
   treasuryVerified: boolean;
   isAdmin: boolean;
+  treasuryEmail?: string;
   unitPreference: string;
 };
 
@@ -72,11 +76,13 @@ export default function Home() {
   const { data: organisations } = clientAuth.useListOrganizations();
   const [piecesJointes, setPiecesJointes] = useState<PieceJointeDepense[]>([]);
   const [groupe, setGroupe] = useState<Groupe | null>(null);
+  const [chargementGroupe, setChargementGroupe] = useState(true);
   const [nomGroupe, setNomGroupe] = useState("");
   const [initialisationGroupeTerminee, setInitialisationGroupeTerminee] =
     useState(false);
   const [choixManuelGroupe, setChoixManuelGroupe] = useState(false);
   const [administrationOuverte, setAdministrationOuverte] = useState(false);
+  const [editionConfiguration, setEditionConfiguration] = useState(false);
   const [invitations, setInvitations] = useState<InvitationEnAttente[]>([]);
   const estEnLigne = useStatutEnLigne();
 
@@ -140,16 +146,57 @@ export default function Home() {
     };
   }, [choixManuelGroupe, organisation, organisations, session]);
 
-  const chargerGroupe = useCallback(() => {
-    if (!organisation) return setGroupe(null);
-    fetch("/api/group/config")
-      .then((r) => (r.ok ? r.json() : null))
-      .then(setGroupe)
-      .catch(() => setGroupe(null));
-  }, [organisation]);
+  const chargerGroupe = useCallback(
+    async (silencieux = false) => {
+      if (!organisation) {
+        setGroupe(null);
+        setChargementGroupe(false);
+        return;
+      }
+      if (!silencieux) setChargementGroupe(true);
+      try {
+        const reponse = await fetch("/api/group/config");
+        setGroupe(reponse.ok ? ((await reponse.json()) as Groupe) : null);
+      } catch {
+        setGroupe(null);
+      } finally {
+        if (!silencieux) setChargementGroupe(false);
+      }
+    },
+    [organisation],
+  );
   useEffect(() => {
     chargerGroupe();
   }, [chargerGroupe]);
+
+  useEffect(() => {
+    if (
+      !organisation ||
+      !groupe?.configured ||
+      groupe.treasuryVerified ||
+      !estEnLigne
+    )
+      return;
+
+    const actualiserSiVisible = () => {
+      if (document.visibilityState === "visible") void chargerGroupe(true);
+    };
+    const identifiantIntervalle = window.setInterval(
+      actualiserSiVisible,
+      15_000,
+    );
+    document.addEventListener("visibilitychange", actualiserSiVisible);
+    return () => {
+      window.clearInterval(identifiantIntervalle);
+      document.removeEventListener("visibilitychange", actualiserSiVisible);
+    };
+  }, [
+    chargerGroupe,
+    estEnLigne,
+    groupe?.configured,
+    groupe?.treasuryVerified,
+    organisation,
+  ]);
 
   if (isPending)
     return (
@@ -287,12 +334,38 @@ export default function Home() {
           </p>
         )}
         <div className="space-y-6 p-6">
-          {!groupe?.configured && groupe?.isAdmin ? (
-            <ConfigurationGroupe onSaved={chargerGroupe} />
+          {chargementGroupe ? (
+            <div
+              className="min-h-[31rem] animate-pulse space-y-6"
+              aria-label="Chargement de la configuration"
+            >
+              <div className="h-7 w-2/3 rounded bg-zinc-200" />
+              <div className="h-10 rounded bg-zinc-200" />
+              <div className="h-36 rounded-xl bg-zinc-100" />
+            </div>
+          ) : (!groupe?.configured && groupe?.isAdmin) ||
+            (groupe?.configured &&
+              !groupe.treasuryVerified &&
+              groupe.isAdmin &&
+              editionConfiguration) ? (
+            <ConfigurationGroupe
+              key={`${groupe?.treasuryEmail ?? "nouveau"}-${groupe?.units.length ?? 0}`}
+              onSaved={() => {
+                setEditionConfiguration(false);
+                void chargerGroupe();
+              }}
+              emailInitial={groupe?.treasuryEmail}
+              unitesInitiales={groupe?.configured ? groupe.units : undefined}
+            />
           ) : !groupe?.configured ? (
             <p className="text-sm text-zinc-600">
               Votre responsable doit terminer la configuration du groupe.
             </p>
+          ) : !groupe.treasuryVerified ? (
+            <AttenteValidationTresorerie
+              estAdmin={groupe.isAdmin}
+              onModifier={() => setEditionConfiguration(true)}
+            />
           ) : (
             <>
               <div className="space-y-2">

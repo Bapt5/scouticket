@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import {
   jetonTresorerieValide,
   type ValidationTresorerie,
@@ -66,6 +67,14 @@ export default async function VerifyTreasuryPage({
             ? "Cette adresse est maintenant rattachée au groupe. Les membres peuvent envoyer leurs notes de frais."
             : "Demandez au responsable du groupe de renvoyer un nouveau lien de confirmation."}
         </p>
+        {valid && (
+          <Link
+            href="/"
+            className="mt-5 inline-block font-medium text-[#1E3A8A] underline"
+          >
+            Retourner à Scouticket
+          </Link>
+        )}
       </section>
     </main>
   );

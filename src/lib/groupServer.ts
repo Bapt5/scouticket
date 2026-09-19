@@ -6,7 +6,7 @@ export async function recupererGroupeActif(identifiantOrganisation: string) {
   const resultat = await pool.query<{
     name: string;
     units: unknown;
-    treasury_email: string;
+    treasury_email: string | null;
     treasury_verification: unknown;
   }>(
     `SELECT organization.name, donnees.units, donnees.treasury_email,
@@ -22,7 +22,7 @@ export async function recupererGroupeActif(identifiantOrganisation: string) {
   return {
     organisation: { id: identifiantOrganisation, name: groupe.name },
     unites: lireUnites(groupe.units),
-    emailTresorerie: groupe.treasury_email,
+    emailTresorerie: groupe.treasury_email ?? "",
     validation: (groupe.treasury_verification ?? {
       status: "pending",
     }) as ValidationTresorerie,
