@@ -2,13 +2,12 @@
 
 import { useEffect } from "react";
 
-const versionDeploiement =
-  process.env.NEXT_PUBLIC_VERSION_DEPLOIEMENT ?? "inconnue";
-
 export function RegisterServiceWorker() {
   useEffect(() => {
     if (!("serviceWorker" in navigator) || !window.isSecureContext) return;
 
+    const versionDeploiement =
+      process.env.NEXT_PUBLIC_VERSION_DEPLOIEMENT ?? "inconnue";
     const controleurInitial = navigator.serviceWorker.controller;
     let rechargementEffectue = false;
     const rechargerApresMiseAJour = () => {
