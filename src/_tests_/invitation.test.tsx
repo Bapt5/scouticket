@@ -58,6 +58,16 @@ describe("Page d’invitation", () => {
     mocks.connecterEmail.mockReset();
     window.sessionStorage.clear();
     window.history.replaceState({}, "", "/");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          nomGroupe: "Groupe test",
+          statut: "en_attente",
+        }),
+      }),
+    );
   });
 
   it("redirige vers l’accueil après une acceptation réussie", async () => {
@@ -82,7 +92,16 @@ describe("Page d’invitation", () => {
     mocks.accepterInvitation.mockResolvedValue({
       data: { invitation: { organizationId: "groupe-test" } },
     });
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          nomGroupe: "Groupe test",
+          statut: "en_attente",
+        }),
+      }),
+    );
     const utilisateur = userEvent.setup();
     afficherInvitation();
 
@@ -160,7 +179,9 @@ describe("Page d’invitation", () => {
     render(<PageInvitation searchParams={Promise.resolve({})} />);
 
     expect(
-      await screen.findByRole("heading", { name: "Invitation introuvable" }),
+      await screen.findByRole("heading", {
+        name: "Invitation invalide ou expirée",
+      }),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Accepter l’invitation" }),

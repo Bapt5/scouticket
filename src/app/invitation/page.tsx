@@ -20,7 +20,14 @@ function messageErreurInvitation(code: string | undefined) {
 
 type ErreurInvitation = {
   code?: string;
-  statut?: number;
+};
+
+type EtatInvitation =
+  "chargement" | "en_attente" | "deja_acceptee" | "invalide";
+
+type InvitationVerifiee = {
+  nomGroupe: string;
+  statut: "en_attente" | "deja_acceptee";
 };
 
 function extraireErreurInvitation(erreur: unknown): ErreurInvitation {
@@ -28,7 +35,6 @@ function extraireErreurInvitation(erreur: unknown): ErreurInvitation {
   const valeur = erreur as Record<string, unknown>;
   return {
     ...(typeof valeur.code === "string" ? { code: valeur.code } : {}),
-    ...(typeof valeur.status === "number" ? { statut: valeur.status } : {}),
   };
 }
 
@@ -55,26 +61,10 @@ export default function PageInvitation({
   } = clientAuth.useSession();
   const [invitationId, setInvitationId] = useState<string>();
   const [nomGroupe, setNomGroupe] = useState<string>();
-  const [invitationPrete, setInvitationPrete] = useState(false);
+  const [etatInvitation, setEtatInvitation] =
+    useState<EtatInvitation>("chargement");
   const [message, setMessage] = useState("");
   const [enCours, setEnCours] = useState(false);
-  const journaliserEchec = (
-    etape: "acceptation" | "activation_groupe" | "groupe_principal",
-    erreur: ErreurInvitation,
-    dureeMs: number,
-  ) => {
-    console.error("Échec lors de l’acceptation d’invitation", {
-      etape,
-      ...erreur,
-      dureeMs,
-    });
-    void fetch("/api/observabilite/echec-invitation", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ etape, ...erreur, dureeMs }),
-      keepalive: true,
-    }).catch(() => {});
-  };
   useEffect(() => {
     let annule = false;
     void searchParams
@@ -95,39 +85,60 @@ export default function PageInvitation({
 
         if (annule) return;
         setInvitationId(identifiant);
-        setInvitationPrete(true);
-
-        if (!identifiant) return;
-        void fetch(`/api/invitation?id=${encodeURIComponent(identifiant)}`)
-          .then((reponse) => (reponse.ok ? reponse.json() : null))
-          .then((invitation: { nomGroupe: string } | null) => {
-            if (!annule) setNomGroupe(invitation?.nomGroupe);
+        if (!identifiant) {
+          setEtatInvitation("invalide");
+          return;
+        }
+        void fetch(`/api/inv  itation?id=${encodeURIComponent(identifiant)}`)
+          .then(async (reponse) => {
+            if (!reponse.ok) return null;
+            return (await reponse.json()) as InvitationVerifiee;
+          })
+          .then((invitation) => {
+            if (annule) return;
+            if (!invitation) {
+              setEtatInvitation("invalide");
+              return;
+            }
+            setNomGroupe(invitation.nomGroupe);
+            setEtatInvitation(invitation.statut);
           })
           .catch(() => {
-            // Le nom du groupe est informatif : l’invitation reste actionnable.
+            if (!annule) setEtatInvitation("invalide");
           });
       })
       .catch(() => {
-        if (!annule) setInvitationPrete(true);
+        if (!annule) setEtatInvitation("invalide");
       });
     return () => {
       annule = true;
     };
   }, [searchParams]);
   useEffect(() => {
-    if (isPending || session || enCours || !invitationId || !invitationPrete)
+    if (
+      isPending ||
+      session ||
+      enCours ||
+      !invitationId ||
+      etatInvitation !== "en_attente"
+    )
       return;
     const retour = new URLSearchParams({
       callbackURL: `/invitation?id=${invitationId}`,
       invitation: "1",
     });
     window.location.replace(`/sign-in?${retour.toString()}`);
-  }, [enCours, invitationId, invitationPrete, isPending, session]);
+  }, [enCours, etatInvitation, invitationId, isPending, session]);
+  useEffect(() => {
+    if (etatInvitation !== "deja_acceptee") return;
+    window.sessionStorage.removeItem("invitation-retour");
+    const minuterie = window.setTimeout(() => routeur.replace("/"), 3_000);
+    return () => window.clearTimeout(minuterie);
+  }, [etatInvitation, routeur]);
   const accepter = async () => {
-    if (!invitationId || enCours) return;
+    if (!invitationId || enCours || etatInvitation !== "en_attente") return;
     setEnCours(true);
     setMessage("");
-    const debut = Date.now();
     try {
       const resultat = await avecDelai(
         clientAuth.organization.acceptInvitation({ invitationId }),
@@ -135,7 +146,6 @@ export default function PageInvitation({
       );
       if (resultat.error) {
         const erreur = extraireErreurInvitation(resultat.error);
-        journaliserEchec("acceptation", erreur, Date.now() - debut);
         setMessage(`${messageErreurInvitation(erreur.code)}`);
         setEnCours(false);
         return;
@@ -149,22 +159,7 @@ export default function PageInvitation({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ organizationId: identifiantOrganisation }),
           keepalive: true,
-        })
-          .then((reponse) => {
-            if (!reponse.ok)
-              journaliserEchec(
-                "groupe_principal",
-                { statut: reponse.status },
-                Date.now() - debut,
-              );
-          })
-          .catch((erreur) => {
-            journaliserEchec(
-              "groupe_principal",
-              extraireErreurInvitation(erreur),
-              Date.now() - debut,
-            );
-          });
+        }).catch(() => {});
       }
       try {
         await rafraichirSession?.();
@@ -173,14 +168,8 @@ export default function PageInvitation({
       }
       routeur.replace("/");
     } catch (erreur) {
-      const details = extraireErreurInvitation(erreur);
       const estDelaiDepasse =
         erreur instanceof Error && erreur.message === "DELAI_DEPASSE";
-      journaliserEchec(
-        "acceptation",
-        { ...details, ...(estDelaiDepasse ? { code: "DELAI_DEPASSE" } : {}) },
-        Date.now() - debut,
-      );
       setMessage(
         estDelaiDepasse
           ? "L’acceptation prend trop de temps. Vérifiez votre connexion puis réessayez. (code : DELAI_DEPASSE)"
@@ -190,7 +179,7 @@ export default function PageInvitation({
     }
   };
   const refuser = async () => {
-    if (!invitationId) return;
+    if (!invitationId || etatInvitation !== "en_attente") return;
     const resultat = await clientAuth.organization.rejectInvitation({
       invitationId,
     });
@@ -201,22 +190,21 @@ export default function PageInvitation({
     );
     if (!resultat.error) window.sessionStorage.removeItem("invitation-retour");
   };
-  if (!invitationPrete)
+  if (etatInvitation === "chargement")
     return (
       <main className="min-h-screen bg-zinc-50 p-6 text-center text-zinc-600">
         Chargement de l’invitation…
       </main>
     );
-  if (!invitationId)
+  if (etatInvitation === "invalide")
     return (
       <main className="min-h-screen bg-zinc-50 p-6 flex items-center justify-center">
         <section className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-6 text-center">
           <h1 className="text-xl font-semibold text-[#1E3A8A]">
-            Invitation introuvable
+            Invitation invalide ou expirée
           </h1>
           <p className="mt-2 text-zinc-600">
-            Le lien ne contient pas d’invitation. Retrouvez vos invitations en
-            attente sur l’accueil.
+            Cette invitation est invalide, expirée ou ne vous est pas destinée.
           </p>
           <Link href="/" className="mt-4 inline-block text-[#1E3A8A] underline">
             Retour à l’accueil
@@ -234,6 +222,22 @@ export default function PageInvitation({
         >
           Accéder à la connexion
         </Link>
+      </main>
+    );
+  if (etatInvitation === "deja_acceptee")
+    return (
+      <main className="min-h-screen bg-zinc-50 p-6 flex items-center justify-center">
+        <section className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-6 text-center">
+          <h1 className="text-xl font-semibold text-[#1E3A8A]">
+            Invitation déjà acceptée
+          </h1>
+          <p className="mt-2 text-zinc-600">
+            Vous avez déjà rejoint {nomGroupe || "ce groupe"}. Redirection…
+          </p>
+          <Link href="/" className="mt-4 inline-block text-[#1E3A8A] underline">
+            Retourner à l’accueil
+          </Link>
+        </section>
       </main>
     );
   return (
