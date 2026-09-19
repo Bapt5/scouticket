@@ -136,7 +136,7 @@ describe("audit Better Auth", () => {
     ).toBe("org_456");
   });
 
-  it("journalise le code d’une erreur Better Auth", () => {
+  it("journalise le code d’une erreur Better Auth sans son message", () => {
     const espion = vi.spyOn(console, "warn").mockImplementation(() => {});
     journaliserAuditAuthentification({
       chemin: "/organization/invite-member",
@@ -152,6 +152,7 @@ describe("audit Better Auth", () => {
     expect(entree.contexte.codeErreur).toBe(
       "USER_IS_ALREADY_A_MEMBER_OF_THIS_ORGANIZATION",
     );
+    expect(entree.contexte.messageErreur).toBeUndefined();
   });
 
   it("laisse les identifiants à null pour une action anonyme", () => {
