@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
 import { createAuthMiddleware } from "better-auth/api";
-import { organization } from "better-auth/plugins";
+import { lastLoginMethod, organization } from "better-auth/plugins";
 import { i18n, locales } from "@better-auth/i18n";
 import { nextCookies } from "better-auth/next-js";
 import { pool } from "@/lib/baseDeDonnees";
@@ -118,6 +118,7 @@ export const auth = betterAuth({
     }),
   },
   plugins: [
+    lastLoginMethod(),
     organization({
       invitationExpiresIn: 15 * 24 * 60 * 60,
       async sendInvitationEmail(data) {
