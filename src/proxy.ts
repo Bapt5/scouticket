@@ -47,7 +47,10 @@ export default function proxy(requete: NextRequest) {
     chemin === "/reset-password" ||
     chemin === "/verify-treasury" ||
     chemin === "/offline" ||
-    chemin === "/invitation";
+    chemin === "/invitation" ||
+    // Utilisées avant qu'une session n'existe pour préremplir/valider l'inscription par invitation.
+    chemin === "/api/invitation/email" ||
+    chemin === "/api/invitation/inscription";
   if (estRoutePublique || estConnecte) return NextResponse.next();
   if (chemin.startsWith("/api/"))
     return NextResponse.json({ error: "Non autorisé" }, { status: 401 });

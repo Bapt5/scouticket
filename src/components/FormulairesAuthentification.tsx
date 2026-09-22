@@ -21,17 +21,51 @@ export function FormulaireConnexionEmail() {
   const retour = recherche?.get("callbackURL");
   const callbackURL = retour?.startsWith("/") ? retour : "/";
   const estInvitation = recherche?.get("invitation") === "1";
+  // L'identifiant d'invitation est transmis dans callbackURL (/invitation?id=...),
+  // pas comme paramètre direct de /sign-in.
+  const invitationId =
+    recherche?.get("id") ||
+    (callbackURL.startsWith("/invitation?")
+      ? new URLSearchParams(callbackURL.split("?")[1]).get("id") || undefined
+      : undefined);
   const [email, setEmail] = useState("");
   const [motDePasse, setMotDePasse] = useState("");
   const [erreur, setErreur] = useState("");
   const [message, setMessage] = useState("");
   const [enCours, setEnCours] = useState(false);
+  const [emailVerrouille, setEmailVerrouille] = useState(false);
+  const [invitationInvalide, setInvitationInvalide] = useState(false);
   const referenceFormulaire = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     if (!callbackURL.startsWith("/invitation?id=")) return;
     window.sessionStorage.setItem("invitation-retour", callbackURL);
   }, [callbackURL]);
+
+  useEffect(() => {
+    if (!estInvitation || !invitationId) return;
+    let annule = false;
+    void fetch(`/api/invitation/email?id=${encodeURIComponent(invitationId)}`)
+      .then(async (reponse) => {
+        if (!reponse.ok) return null;
+        return (await reponse.json()) as { email: string };
+      })
+      .then((donnees) => {
+        if (annule) return;
+        if (!donnees) {
+          setInvitationInvalide(true);
+          return;
+        }
+        setEmail(donnees.email);
+        setEmailVerrouille(true);
+      })
+      .catch(() => {
+        if (!annule) setInvitationInvalide(true);
+      });
+    return () => {
+      annule = true;
+    };
+  }, [estInvitation, invitationId]);
 
   const connecter = async (event: FormEvent) => {
     event.preventDefault();
@@ -61,12 +95,40 @@ export function FormulaireConnexionEmail() {
     setEnCours(true);
     setErreur("");
     setMessage("");
+
+    if (estInvitation && invitationId) {
+      const reponse = await fetch("/api/invitation/inscription", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          invitationId,
+          email,
+          password: motDePasse,
+        }),
+      });
+      setEnCours(false);
+      if (!reponse.ok) {
+        const corps = (await reponse.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        setErreur(
+          corps?.error ||
+            "Impossible de créer le compte. Vérifiez le mot de passe.",
+        );
+        return;
+      }
+      window.location.assign(callbackURL);
+      return;
+    }
+
     const resultat = await clientAuth.signUp.email({
       name: email,
       email,
       password: motDePasse,
       callbackURL,
     });
+    if (!resultat.error)
+      await clientAuth.sendVerificationEmail({ email, callbackURL });
     setEnCours(false);
     if (resultat.error) {
       setErreur(
@@ -84,12 +146,20 @@ export function FormulaireConnexionEmail() {
 
   return (
     <form ref={referenceFormulaire} onSubmit={connecter} className="space-y-4">
-      {estInvitation && (
+      {estInvitation && !invitationInvalide && (
         <p
           className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-950"
           role="status"
         >
           Vous avez été invité à rejoindre ce groupe.
+        </p>
+      )}
+      {invitationInvalide && (
+        <p
+          className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900"
+          role="alert"
+        >
+          Cette invitation est invalide ou expirée.
         </p>
       )}
       <div>
@@ -101,9 +171,10 @@ export function FormulaireConnexionEmail() {
           type="email"
           autoComplete="email"
           required
+          readOnly={emailVerrouille}
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          className={classeChamp}
+          className={`${classeChamp} ${emailVerrouille ? "cursor-not-allowed bg-zinc-100 text-zinc-500" : ""}`}
         />
       </div>
       <div>
@@ -151,7 +222,7 @@ export function FormulaireConnexionEmail() {
         </button>
         <button
           type="button"
-          disabled={enCours}
+          disabled={enCours || (estInvitation && invitationInvalide)}
           onClick={() => void inscrire()}
           className="cursor-pointer rounded-lg border border-[#1E3A8A] px-5 py-3 font-medium text-[#1E3A8A] transition-colors hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
         >
