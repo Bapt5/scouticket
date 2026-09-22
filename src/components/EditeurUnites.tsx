@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronUpIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
 import type { UniteGroupe } from "@/lib/group";
 
 const COULEURS_CHOIX = [
@@ -10,6 +11,20 @@ const COULEURS_CHOIX = [
   ["#00A19A", "Turquoise"],
   ["#1E3A8A", "Bleu foncé"],
 ] as const;
+
+export function deplacerUnite(
+  unites: UniteGroupe[],
+  index: number,
+  direction: -1 | 1,
+): UniteGroupe[] {
+  const cible = index + direction;
+  if (cible < 0 || cible >= unites.length) {
+    return unites;
+  }
+  const copie = [...unites];
+  [copie[index], copie[cible]] = [copie[cible], copie[index]];
+  return copie;
+}
 
 export function EditeurUnites({
   unites,
@@ -25,12 +40,38 @@ export function EditeurUnites({
       ),
     );
 
+  const monterUnite = (index: number) =>
+    onChange(deplacerUnite(unites, index, -1));
+
+  const descendreUnite = (index: number) =>
+    onChange(deplacerUnite(unites, index, 1));
+
   return (
     <div className="space-y-2">
       <p className="text-sm font-medium text-zinc-700">Unités du groupe</p>
       {unites.map((unite, index) => (
         <div key={unite.id} className="rounded-xl border border-zinc-200 p-3">
           <div className="flex items-center gap-2">
+            <div className="flex shrink-0 flex-col">
+              <button
+                type="button"
+                onClick={() => monterUnite(index)}
+                disabled={index === 0}
+                className="flex h-10 w-10 items-center justify-center rounded-xl text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-30"
+                aria-label={`Monter ${unite.label}`}
+              >
+                <ChevronUpIcon className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => descendreUnite(index)}
+                disabled={index === unites.length - 1}
+                className="flex h-10 w-10 items-center justify-center rounded-xl text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-30"
+                aria-label={`Descendre ${unite.label}`}
+              >
+                <ChevronDownIcon className="h-5 w-5" />
+              </button>
+            </div>
             <input
               value={unite.label}
               onChange={(event) =>
