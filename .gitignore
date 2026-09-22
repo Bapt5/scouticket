@@ -41,3 +41,6 @@ README.old
 # vitepress build output
 docs/.vitepress/dist
 docs/.vitepress/cache
+
+# claude code local session state
+.claude

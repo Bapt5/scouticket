@@ -41,6 +41,10 @@ COPY --from=construction /app/.next ./.next
 COPY --from=construction /app/public ./public
 COPY --from=construction /app/scripts/migrate-base-de-donnees.mjs ./scripts/migrate-base-de-donnees.mjs
 COPY --from=construction /app/sql ./sql
+# La CLI Better Auth (pnpm auth:migrate) a besoin du fichier de config
+# src/lib/auth.ts et de tsconfig.json (alias "@/*") au runtime.
+COPY --from=construction /app/tsconfig.json ./tsconfig.json
+COPY --from=construction /app/src ./src
 
 EXPOSE 3000
 

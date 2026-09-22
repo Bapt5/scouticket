@@ -6,8 +6,9 @@ Ce dépôt héberge une application **Next.js 16** (App Router) pour la gestion 
 
 - **TypeScript**
 - **Tailwind CSS** pour le style
-- **Clerk** pour l'authentification
+- **Better Auth** pour l'authentification, les organisations (groupes) et les invitations — pas Clerk
 - **Nodemailer** (SMTP) pour l'envoi d'e-mails côté serveur
+- **PostgreSQL** pour les données Better Auth et les données propres à l'app (`scouticket_group_data`, `scouticket_user_default_group`)
 - Des fonctionnalités **Progressive Web App (PWA)** (manifest, service worker, support hors-ligne)
 
 Le code source se trouve dans le dossier `src/` et suit la structure conventionnelle de Next.js :
@@ -16,13 +17,13 @@ Le code source se trouve dans le dossier `src/` et suit la structure conventionn
 src/
 ├─ app/               # Pages App Router & routes API
 │   ├─ layout.tsx
-│   ├─ (main)          # Page d'accueil + app
-│   ├─ (auth)          # Logique d'authentification Clerk
+│   ├─ (main)          # Page d'accueil + app (gestion-membres, gestion-unites, etc.)
+│   ├─ (auth)          # Pages d'authentification (sign-in, forgot/reset-password)
 │   ├─ offline/        # UI spécifique hors-ligne
-│   └─ api/            # Gestionnaires de routes côté serveur
+│   └─ api/            # Gestionnaires de routes côté serveur, dont api/auth/[...all] (Better Auth)
 ├─ components/        # Composants UI réutilisables (formulaires, modales, etc.)
-├─ lib/               # Fonctions utilitaires, types et clients API
-└─ middleware.ts      # Gestion globale des requêtes (auth, redirections)
+├─ lib/               # Fonctions utilitaires, types et clients API (dont auth.ts / auth-client.ts)
+└─ proxy.ts           # Middleware Next.js : gestion globale des requêtes (auth, redirections, maintenance)
 ```
 
 ## 🎯 Objectifs pour les agents IA
@@ -30,11 +31,12 @@ src/
 **PRIMORDIAL : Rester le plus simple possible. N'écris que le code strictement nécessaire, privilégie toujours une solution existante plutôt qu'ajouter du nouveau code !**
 
 1. **Maintenir la cohérence architecturale** – placer les nouveaux fichiers dans les sous-dossiers appropriés : `app/`, `components/` ou `lib/`.
-2. **Respecter le style de code existant** – TypeScript en mode strict, styles Tailwind utilitaires, et règles ESLint définies dans `.eslintrc.json`.
+2. **Respecter le style de code existant** – TypeScript en mode strict, styles Tailwind utilitaires, et règles ESLint définies dans `eslint.config.mjs`.
 3. **Utiliser des conventions françaises** – nommer les variables, fonctions, types, composants, commentaires et messages utilisateur en français lorsque cela reste compatible avec les conventions ou API externes. Exemple : préférer `montantTotal`, `envoyerFacture` et `FactureFormulaire` à `totalAmount`, `sendInvoice` et `InvoiceForm`, tout en conservant les termes imposés ou conventionnels comme `useState`, `onClick`, `className` et les types d'une bibliothèque externe.
 4. **Préserver l'expérience utilisateur** – toute modification d'interface doit respecter l'esthétique dark mode / glassmorphisme déjà en place.
 5. **Garantir sécurité et confidentialité** – ne jamais stocker les images uploadées sur le serveur ; les transmettre uniquement par e-mail.
 6. **Rédiger les commits en français** – utiliser les préfixes conventionnels (`feat:`, `fix:`, `chore:`…) suivis d’un message concis en français.
+7. **Une branche par fonctionnalité** – créer une branche dédiée (ex. `feat/nom-fonctionnalite`, `fix/nom-bug`) pour chaque fonctionnalité ou correctif, plutôt que de travailler directement sur `main`. La branche est fusionnée en _squash_ lors du merge, pour ne garder qu'un seul commit propre par fonctionnalité dans l'historique de `main`.
 
 ## 🛠️ Workflow de développement
 
@@ -45,11 +47,11 @@ src/
 
 ## 📂 Fichiers clés et leur rôle
 
-- **`src/app/layout.tsx`** – encapsule toutes les pages, injecte les styles globaux Tailwind et configure le provider Clerk.
-- **`src/app/api/`** – contient les gestionnaires de routes côté serveur (endpoints `POST`) pour l'envoi d'e-mails.
-- **`src/components/`** – blocs de construction UI (ex. : `CaptureButton`, `InvoiceForm`).
-- **`src/lib/`** – logiques métiers partagées, validations, transformations de données et utilitaires comme `formatFileName.ts` ou `emailSender.ts`.
-- **`proxy.ts`** – protège les routes, redirige les utilisateurs non authentifiés vers la page de connexion Clerk.
+- **`src/app/layout.tsx`** – encapsule toutes les pages et injecte les styles globaux Tailwind.
+- **`src/app/api/`** – contient les gestionnaires de routes côté serveur, dont `api/auth/[...all]` (catch-all Better Auth) et `api/send-expense` (envoi d'e-mails avec justificatifs).
+- **`src/components/`** – blocs de construction UI (ex. : `PhotoCapture`, `FormulaireDepense`).
+- **`src/lib/`** – logiques métiers partagées, validations, transformations de données et utilitaires : `auth.ts`/`auth-client.ts` (Better Auth), `attachments.ts`, `email.ts`, `group.ts`/`groupServer.ts`, `api/routeAvecLogs.ts`.
+- **`src/proxy.ts`** – middleware Next.js : gère le mode maintenance et redirige les utilisateurs non authentifiés vers `/sign-in` (Better Auth), pas Clerk. Ce n'est pas un fichier `middleware.ts` classique.
 - **`public/`** – assets statiques (icônes, manifest PWA).
 - **`tailwind.config.js`** – palette de couleurs personnalisée et configuration du dark mode.
 
