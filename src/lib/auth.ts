@@ -50,7 +50,9 @@ export const auth = betterAuth({
     },
   },
   emailVerification: {
-    sendOnSignUp: true,
+    // Envoyé explicitement par le client après l'inscription (voir FormulairesAuthentification.tsx) :
+    // le flux d'inscription par invitation ne doit jamais déclencher cet envoi.
+    sendOnSignUp: false,
     autoSignInAfterVerification: true,
     async sendVerificationEmail({ user, url }) {
       try {

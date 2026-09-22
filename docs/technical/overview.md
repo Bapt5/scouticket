@@ -131,12 +131,13 @@ sequenceDiagram
     Client->>Proxy: Retour vers /invitation?id=...
   else Aucun compte
     Proxy-->>Client: Redirection /sign-in avec callbackURL
-    Membre->>Client: S’inscrit avec l’adresse invitée
-    Client->>Auth: POST /api/auth/sign-up/email
-    Auth->>SMTP: Envoie l’e-mail de vérification
-    SMTP->>Boite: Lien de confirmation
-    Membre->>Boite: Ouvre le lien de confirmation
-    Boite->>Auth: Valide l’e-mail, crée la session
+    Client->>API: GET /api/invitation/email?id=... (sans session)
+    API-->>Client: Adresse invitée (préremplie et verrouillée)
+    Membre->>Client: S’inscrit avec l’adresse invitée (verrouillée) et un mot de passe
+    Client->>API: POST /api/invitation/inscription
+    API->>DB: Vérifie qu’aucun compte n’existe déjà pour cette adresse
+    API->>Auth: signUpEmail puis marque emailVerified=true (pas d’e-mail envoyé)
+    API->>Auth: signInEmail (crée la session)
     Auth-->>Client: Retour vers /invitation?id=...
   else Session déjà active
     Proxy-->>Client: Affiche /invitation
@@ -166,3 +167,7 @@ L'application n'a pas de base de données persistante pour les justificatifs. Le
 Better Auth gère les comptes, les organisations, les rôles et les invitations. L’application stocke la configuration des groupes (adresse de trésorerie, unités et état de validation) dans PostgreSQL, dans `scouticket_group_data`.
 
 La préférence de groupe principal est stockée séparément dans `scouticket_user_default_group`. Après l’acceptation d’une invitation, le groupe rejoint devient automatiquement le groupe actif et principal du membre.
+
+Un utilisateur peut appartenir à plusieurs groupes simultanément (plusieurs lignes `member`) ; `scouticket_user_default_group` ne fait que retenir lequel afficher par défaut, sans jamais retirer l’accès aux autres groupes.
+
+Lors d’une inscription via un lien d’invitation, l’adresse e-mail est préremplie et verrouillée avec l’adresse invitée (`GET /api/invitation/email`, sans authentification) et la vérification d’e-mail habituelle est sautée : `POST /api/invitation/inscription` crée le compte, marque directement `emailVerified = true` en base puisque l’ouverture du lien d’invitation prouve déjà la possession de l’adresse, puis connecte l’utilisateur. Une inscription classique (hors invitation) continue de recevoir l’e-mail de vérification comme avant.
