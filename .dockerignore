@@ -1,0 +1,11 @@
+.git
+.next
+node_modules
+.env
+.env.*
+coverage
+docs/.vitepress/cache
+docs/.vitepress/dist
+npm-debug.log*
+pnpm-debug.log*
+

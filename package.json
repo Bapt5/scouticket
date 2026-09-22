@@ -1,0 +1,71 @@
+{
+  "name": "scouticket",
+  "version": "0.1",
+  "packageManager": "pnpm@12.4.2",
+  "private": true,
+  "description": "Application de gestion de justificatifs et de notes de frais pour les scouts",
+  "license": "MIT",
+  "homepage": "https://scouticket.fr",
+  "author": {
+    "name": "Yipfram",
+    "email": "romain@romain-rochas.fr"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Bapt5/scouticket.git"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "validate": "pnpm lint && pnpm type && pnpm test && pnpm build",
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx --max-warnings 0",
+    "format": "prettier --write . --ignore-path .prettierignore --ignore-unknown",
+    "format:check": "prettier --check . --ignore-path .prettierignore --ignore-unknown",
+    "type": "tsc --noEmit",
+    "db:migrate": "node --env-file-if-exists=.env scripts/migrate-base-de-donnees.mjs",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs",
+    "auth:migrate": "pnpm dlx auth@1.7.3 migrate"
+  },
+  "dependencies": {
+    "@better-auth/i18n": "^1.7.5",
+    "@heroicons/react": "^2.2.0",
+    "@openobserve/browser-logs": "0.4.2",
+    "@openobserve/browser-rum": "^0.4.2",
+    "better-auth": "^1.7.5",
+    "next": "16.3.5",
+    "nodemailer": "^8.0.11",
+    "pg": "^8.23.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "@testing-library/jest-dom": "^6.10.0",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.7",
+    "@types/node": "^26.6.1",
+    "@types/nodemailer": "^8.0.2",
+    "@types/pg": "^8.23.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@typescript-eslint/parser": "^8.70.0",
+    "autoprefixer": "^10.6.1",
+    "baseline-browser-mapping": "^2.11.25",
+    "eslint": "^10.10.0",
+    "eslint-config-next": "16.3.5",
+    "jsdom": "^29.1.1",
+    "postcss": "^8.5.28",
+    "prettier": "^3.9.7",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.0",
+    "vitepress": "^1.6.4",
+    "vitest": "^4.1.11"
+  }
+}
