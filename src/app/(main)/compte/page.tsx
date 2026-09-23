@@ -1,4 +1,5 @@
 import Link from "next/link";
+import ProfilUtilisateur from "@/components/ProfilUtilisateur";
 import SuppressionCompte from "@/components/SuppressionCompte";
 
 /** Page « Mon compte » : paramètres du profil de l’utilisateur connecté. */
@@ -12,6 +13,7 @@ export default function PageCompte() {
             Retour
           </Link>
         </header>
+        <ProfilUtilisateur />
         <SuppressionCompte />
       </div>
     </main>

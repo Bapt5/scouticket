@@ -83,6 +83,7 @@ export const auth = betterAuth({
     accountLinking: { trustedProviders: ["google"] },
   },
   user: {
+    changeEmail: { enabled: true },
     deleteUser: {
       enabled: true,
       beforeDelete: async (utilisateur) => {
