@@ -45,7 +45,8 @@ export async function POST(requete: Request) {
     } catch (erreur) {
       if (
         erreur instanceof APIError &&
-        erreur.body?.code === "YOU_CANNOT_LEAVE_THE_ORGANIZATION_AS_THE_ONLY_OWNER"
+        erreur.body?.code ===
+          "YOU_CANNOT_LEAVE_THE_ORGANIZATION_AS_THE_ONLY_OWNER"
       )
         return NextResponse.json(
           {

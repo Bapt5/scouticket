@@ -51,6 +51,7 @@ export default function PageGestionMembres() {
   const [membres, setMembres] = useState<Membre[]>([]);
   const [renvoiEnCours, setRenvoiEnCours] = useState<string>();
   const [membreSelectionne, setMembreSelectionne] = useState<Membre>();
+  const [moi, setMoi] = useState<{ id: string; role: string }>();
   const chargementLance = useRef(false);
   const chargerMembres = useCallback(async () => {
     try {
@@ -60,6 +61,7 @@ export default function PageGestionMembres() {
       if (!reponse.ok) return;
       setOrganisation(corps.organisation);
       setMembres(corps.membres);
+      setMoi(corps.moi);
       setInvitations(corps.invitations);
     } catch {
       setAutorise(false);
@@ -287,10 +289,22 @@ export default function PageGestionMembres() {
           </ul>
         )}
       </section>
-      {membreSelectionne && (
+      {membreSelectionne && moi && (
         <GestionAccesUniteMembre
           membre={membreSelectionne}
+          estMoi={membreSelectionne.id === moi.id}
+          roleAppelant={moi.role}
           onClose={() => setMembreSelectionne(undefined)}
+          onRoleModifie={(membreId, role) => {
+            setMembres((precedents) =>
+              precedents.map((membre) =>
+                membre.id === membreId ? { ...membre, role } : membre,
+              ),
+            );
+            setMembreSelectionne((precedent) =>
+              precedent?.id === membreId ? { ...precedent, role } : precedent,
+            );
+          }}
           onMembreRetire={(membreId) => {
             setMembres((precedents) =>
               precedents.filter((membre) => membre.id !== membreId),

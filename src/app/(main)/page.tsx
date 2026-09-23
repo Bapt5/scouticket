@@ -87,9 +87,7 @@ export default function Home() {
   const [groupeAQuitter, setGroupeAQuitter] = useState<string | null>(null);
   const [departEnCours, setDepartEnCours] = useState(false);
   const [erreurDepart, setErreurDepart] = useState("");
-  const [groupesQuittes, setGroupesQuittes] = useState<Set<string>>(
-    new Set(),
-  );
+  const [groupesQuittes, setGroupesQuittes] = useState<Set<string>>(new Set());
   const estEnLigne = useStatutEnLigne();
 
   useEffect(() => {

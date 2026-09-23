@@ -245,9 +245,7 @@ describe("Page principale", () => {
       await userEvent.click(
         await screen.findByRole("button", { name: "Quitter" }),
       );
-      await userEvent.click(
-        screen.getByRole("button", { name: "Confirmer" }),
-      );
+      await userEvent.click(screen.getByRole("button", { name: "Confirmer" }));
 
       await screen.findByRole("heading", { name: "Bienvenue" });
       expect(
@@ -287,9 +285,7 @@ describe("Page principale", () => {
       await userEvent.click(
         await screen.findByRole("button", { name: "Quitter" }),
       );
-      await userEvent.click(
-        screen.getByRole("button", { name: "Confirmer" }),
-      );
+      await userEvent.click(screen.getByRole("button", { name: "Confirmer" }));
 
       expect(
         await screen.findByText(

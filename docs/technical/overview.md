@@ -168,6 +168,8 @@ Better Auth gère les comptes, les organisations, les rôles et les invitations.
 
 Par défaut, un membre simple (rôle `member`) ne peut soumettre une dépense que pour les unités qui lui ont été explicitement attribuées par un responsable (owner/admin) depuis `/gestion-membres` ; l’absence de ligne pour une unité donnée dans `scouticket_acces_unite_membre` signifie qu’il n’y a pas accès. Les responsables (owner/admin) ne sont jamais restreints : ils ont toujours accès à toutes les unités de leur groupe, sans qu’aucune ligne ne soit nécessaire. Cette restriction est vérifiée à l’envoi d’une dépense (`POST /api/send-expense`) et lors du choix d’une unité par défaut (`POST /api/user/unit-preference`).
 
+Depuis `/gestion-membres`, un responsable peut changer le rôle d’un autre membre (jamais le sien) via `PATCH /api/group/members/[memberId]/role`, qui délègue à Better Auth (`auth.api.updateMemberRole`, journalisé sous l’action d’audit `role_membre_modifie`). Better Auth réserve au rôle `owner` la modification du rôle d’un autre `owner` et la promotion au rang de `owner`.
+
 La préférence de groupe principal est stockée séparément dans `scouticket_user_default_group`. Après l’acceptation d’une invitation, le groupe rejoint devient automatiquement le groupe actif et principal du membre.
 
 Un utilisateur peut appartenir à plusieurs groupes simultanément (plusieurs lignes `member`) ; `scouticket_user_default_group` ne fait que retenir lequel afficher par défaut, sans jamais retirer l’accès aux autres groupes.

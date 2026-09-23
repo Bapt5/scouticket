@@ -12,17 +12,26 @@ function libelleRole(role: string) {
   return "Membre";
 }
 
+const estResponsableRole = (role: string) =>
+  role === "admin" || role === "owner";
+
 export function GestionAccesUniteMembre({
   membre,
+  estMoi,
+  roleAppelant,
   onClose,
   onMembreRetire,
+  onRoleModifie,
 }: {
   readonly membre: Membre;
+  readonly estMoi: boolean;
+  readonly roleAppelant: string;
   readonly onClose: () => void;
   readonly onMembreRetire: (membreId: string) => void;
+  readonly onRoleModifie: (membreId: string, role: string) => void;
 }) {
   const [chargement, setChargement] = useState(true);
-  const [accesTotal, setAccesTotal] = useState(false);
+  const [role, setRole] = useState(membre.role);
   const [unites, setUnites] = useState<UniteGroupe[]>([]);
   const [uniteIdsAutorisees, setUniteIdsAutorisees] = useState<Set<string>>(
     new Set(),
@@ -49,7 +58,6 @@ export function GestionAccesUniteMembre({
             setMessage("Impossible de charger les accès de ce membre.");
             return;
           }
-          setAccesTotal(corps.accesTotal);
           setUnites(corps.unites);
           setUniteIdsAutorisees(new Set(corps.uniteIdsAutorisees));
         },
@@ -90,20 +98,54 @@ export function GestionAccesUniteMembre({
         : new Set(unites.map((unite) => unite.id)),
     );
 
+  const peutModifierRole =
+    !estMoi && !(membre.role === "owner" && roleAppelant !== "owner");
+  const accesTotalAffiche = estResponsableRole(role);
+  const roleAChange = peutModifierRole && role !== membre.role;
+
   const enregistrer = async () => {
     setEnregistrement(true);
     setMessage("");
-    const reponse = await fetch(`/api/group/members/${membre.id}/unites`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ uniteIds: [...uniteIdsAutorisees] }),
-    });
-    setEnregistrement(false);
-    setMessage(
-      reponse.ok
-        ? "Accès enregistrés."
-        : "Impossible d’enregistrer les accès. Réessayez.",
-    );
+    try {
+      if (roleAChange) {
+        const reponseRole = await fetch(
+          `/api/group/members/${membre.id}/role`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ role }),
+          },
+        );
+        if (!reponseRole.ok) {
+          const corps = (await reponseRole.json().catch(() => null)) as {
+            error?: string;
+          } | null;
+          setMessage(
+            corps?.error ??
+              "Impossible d’enregistrer les modifications. Réessayez.",
+          );
+          return;
+        }
+        onRoleModifie(membre.id, role);
+      }
+      if (!accesTotalAffiche) {
+        const reponseUnites = await fetch(
+          `/api/group/members/${membre.id}/unites`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ uniteIds: [...uniteIdsAutorisees] }),
+          },
+        );
+        if (!reponseUnites.ok) {
+          setMessage("Impossible d’enregistrer les modifications. Réessayez.");
+          return;
+        }
+      }
+      setMessage("Modifications enregistrées.");
+    } finally {
+      setEnregistrement(false);
+    }
   };
 
   const retirerMembre = async () => {
@@ -147,9 +189,24 @@ export function GestionAccesUniteMembre({
             {membre.nom && (
               <p className="truncate text-sm text-zinc-500">{membre.email}</p>
             )}
-            <p className="mt-1 text-sm text-zinc-600">
-              {libelleRole(membre.role)}
-            </p>
+            {peutModifierRole ? (
+              <select
+                aria-label="Rôle du membre"
+                value={role}
+                onChange={(event) => setRole(event.target.value)}
+                className="mt-1 rounded-lg border border-zinc-300 bg-white px-2 py-1 text-sm text-zinc-900 outline-none focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A]/20"
+              >
+                <option value="member">Membre</option>
+                <option value="admin">Administrateur</option>
+                {roleAppelant === "owner" && (
+                  <option value="owner">Responsable</option>
+                )}
+              </select>
+            ) : (
+              <p className="mt-1 text-sm text-zinc-600">
+                {libelleRole(membre.role)}
+              </p>
+            )}
           </div>
           <button
             type="button"
@@ -164,7 +221,7 @@ export function GestionAccesUniteMembre({
         <div className="min-h-0 flex-1 overflow-y-auto p-6">
           {chargement ? (
             <p className="text-sm text-zinc-600">Chargement…</p>
-          ) : accesTotal ? (
+          ) : accesTotalAffiche ? (
             <p className="text-sm text-zinc-600">
               Ce membre a accès à toutes les unités du groupe (responsable ou
               administrateur).
@@ -248,14 +305,16 @@ export function GestionAccesUniteMembre({
 
         <div className="shrink-0 border-t border-zinc-200 p-6">
           {message && <p className="mb-3 text-sm text-zinc-600">{message}</p>}
-          {!chargement && !accesTotal && (
+          {!chargement && (peutModifierRole || !accesTotalAffiche) && (
             <button
               type="button"
               disabled={enregistrement}
               onClick={() => void enregistrer()}
               className="w-full rounded-xl bg-[#1E3A8A] p-3 font-semibold text-white shadow-sm transition-colors hover:bg-[#162d69] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {enregistrement ? "Enregistrement…" : "Enregistrer les accès"}
+              {enregistrement
+                ? "Enregistrement…"
+                : "Enregistrer les modifications"}
             </button>
           )}
           {membre.role !== "owner" &&
