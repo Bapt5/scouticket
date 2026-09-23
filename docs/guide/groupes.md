@@ -28,6 +28,27 @@ Vous pouvez renommer ou supprimer une unité, en ajouter une autre et choisir sa
 
 Conservez au moins une unité : un justificatif doit toujours être rattaché à une unité du groupe.
 
+## Nom des justificatifs
+
+Par défaut, les pièces jointes envoyées à la trésorerie sont nommées `date - unité - type - mode de paiement - montant`. Les responsables peuvent définir leur propre format depuis **Administration** puis **Nom des justificatifs**.
+
+Le format mélange du texte fixe et des variables entre accolades, par exemple `{YYYY}-{MM}-{DD} - {Branche} - {Type} - {Montant} - {Numero}` donne `2026-03-05 - Louveteaux - Carburants - 28.50 - 01.pdf`. Les boutons de la page insèrent les variables, et un aperçu montre le résultat. L’extension du fichier est ajoutée automatiquement.
+
+| Variable                                          | Valeur                                                         |
+| ------------------------------------------------- | -------------------------------------------------------------- |
+| `{YYYY}` `{MM}` `{DD}`                            | Année, mois et jour du justificatif (pas de l’envoi)           |
+| `{Branche}` `{Type}` `{ModePaiement}` `{Montant}` | Unité, type de dépense, mode de paiement et montant            |
+| `{AnneeComptable}`                                | Année comptable du justificatif                                |
+| `{Numero}`                                        | Rang du justificatif dans l’envoi (01, 02…)                    |
+| `{GlobalNumeroComptable}`                         | Rang dans l’année comptable, tous envois confondus (001, 002…) |
+| `{GlobalNumero}`                                  | Rang dans l’ensemble des envois du groupe (001, 002…)          |
+
+**Année comptable.** Elle commence par défaut le 1er septembre et se termine le 31 août. Vous pouvez changer le jour et le mois de début (pas le 29 février). Lorsqu’elle chevauche deux années civiles, choisissez l’affichage de `{AnneeComptable}` : année de début (2023), année de fin (2024) ou les deux (2023-2024). La numérotation `{GlobalNumeroComptable}` repart de 001 à chaque nouvelle année comptable.
+
+**Numéros.** Un numéro n’est consommé que si l’e-mail est bien parti : un envoi en échec ne crée pas de trou. Pour reprendre une numérotation existante, saisissez le prochain numéro à attribuer dans la page. Si deux justificatifs d’un même envoi devaient porter le même nom, un ` - 01`, ` - 02`… est ajouté.
+
+Décochez la personnalisation pour revenir au nom par défaut.
+
 ## Inviter les membres
 
 Depuis **Administration**, choisissez **Gérer les membres** et saisissez son adresse e-mail. Better Auth lui envoie une invitation ; après l’avoir acceptée, cette personne rejoint le groupe et peut envoyer ses justificatifs. La liste **Utilisateurs** réunit les membres du groupe et les invitations encore en attente d’acceptation. Une invitation en attente peut être annulée.

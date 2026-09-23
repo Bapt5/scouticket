@@ -23,3 +23,5 @@ Pour Gmail, activez la validation en deux étapes et créez un mot de passe d’
 ## Configuration dans l’application
 
 Après le déploiement, le responsable crée son groupe dans l’application. Il configure alors l’adresse de trésorerie, les unités et leurs couleurs. L’adresse doit être confirmée depuis l’e-mail de validation avant le premier envoi de justificatif.
+
+Le format de nom des justificatifs (`/gestion-nomenclature`, `GET`/`PATCH /api/group/nomenclature`, responsables uniquement) est facultatif : sans format, le nom historique est conservé. Il n’y a aucune variable d’environnement à ajouter.

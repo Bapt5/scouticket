@@ -11,7 +11,15 @@ import {
   DocumentTextIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
-import { construireNomsFichiersNormalises } from "@/lib/attachments";
+import {
+  construireNomsFichiersNormalises,
+  devinerExtension,
+} from "@/lib/attachments";
+import {
+  analyserDateIso,
+  genererNomsNomenclature,
+  type ParametresAnneeComptable,
+} from "@/lib/nomenclature";
 import {
   MAX_ATTACHMENT_COUNT,
   MAX_ATTACHMENT_SIZE_BYTES,
@@ -26,6 +34,10 @@ interface FormulaireDepenseProps {
   readonly piecesJointes: PieceJointeDepense[];
   readonly emailUtilisateur: string;
   readonly units: UniteGroupe[];
+  readonly nomenclature?: {
+    format: string | null;
+    anneeComptable: ParametresAnneeComptable;
+  };
   readonly uniteInitiale?: string;
   readonly treasuryVerified: boolean;
   readonly onChangementUnite?: (unitId: string) => void;
@@ -38,6 +50,7 @@ export function FormulaireDepense({
   piecesJointes,
   emailUtilisateur,
   units,
+  nomenclature,
   uniteInitiale = "",
   treasuryVerified,
   onChangementUnite,
@@ -194,6 +207,33 @@ export function FormulaireDepense({
 
   const genererNomsFichiers = () => {
     if (piecesJointes.length === 0) return [];
+    if (nomenclature?.format && analyserDateIso(formulaire.date)) {
+      const depenses = plusieursDepenses
+        ? detailsDepenses
+        : [
+            {
+              typeDepense: formulaire.typeDepense,
+              modePaiement: formulaire.modePaiement,
+              montant: Number(normaliserMontant(formulaire.montant)),
+            },
+          ];
+      if (depenses.length === piecesJointes.length) {
+        return genererNomsNomenclature({
+          format: nomenclature.format,
+          parametresAnnee: nomenclature.anneeComptable,
+          date: formulaire.date,
+          branche: uniteSelectionnee?.label ?? "",
+          depenses: depenses.map((depense) => ({
+            ...depense,
+            montant: Number.isFinite(depense.montant) ? depense.montant : 0,
+          })),
+          extensions: piecesJointes.map((piece) =>
+            devinerExtension(piece.typeMime, piece.nomFichierOriginal),
+          ),
+          apercu: true,
+        });
+      }
+    }
     if (plusieursDepenses) {
       return piecesJointes.map((pieceJointe, index) => {
         const detail = detailsDepenses[index];

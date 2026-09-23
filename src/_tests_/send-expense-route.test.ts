@@ -11,6 +11,9 @@ const mocks = vi.hoisted(() => ({
   reponseRateLimit: vi.fn(),
   validerCorpsRequete: vi.fn(),
   envoyerEmailDepense: vi.fn(),
+  reserverNumeros: vi.fn(),
+  requeteClient: vi.fn(),
+  liberer: vi.fn(),
 }));
 
 vi.mock("@/lib/sessionServeur", () => ({
@@ -27,8 +30,17 @@ vi.mock("@/lib/groupServer", async () => {
     recupererGroupeActif: mocks.recupererGroupeActif,
     recupererRoleMembre: mocks.recupererRoleMembre,
     recupererUnitesAutoriseesMembre: mocks.recupererUnitesAutoriseesMembre,
+    reserverNumeros: mocks.reserverNumeros,
   };
 });
+vi.mock("@/lib/baseDeDonnees", () => ({
+  pool: {
+    connect: async () => ({
+      query: mocks.requeteClient,
+      release: mocks.liberer,
+    }),
+  },
+}));
 vi.mock("@/lib/api/securiteRequetes", () => ({
   verifierOrigineRequete: mocks.verifierOrigineRequete,
   verifierRateLimit: mocks.verifierRateLimit,
@@ -83,6 +95,10 @@ describe("POST /api/send-expense", () => {
       unites: [{ id: "farfadets", label: "Farfadets", color: "#6CC24A" }],
       emailTresorerie: "tresorerie@example.test",
       validation: { status: "verified" },
+      nomenclature: {
+        format: null,
+        anneeComptable: { mois: 9, jour: 1, format: "debut-fin" },
+      },
     });
     mocks.envoyerEmailDepense.mockResolvedValue({ messageId: "abc" });
   });
@@ -122,4 +138,106 @@ describe("POST /api/send-expense", () => {
       expect(mocks.envoyerEmailDepense).toHaveBeenCalled();
     },
   );
+
+  describe("avec une nomenclature de groupe", () => {
+    const groupeAvecFormat = (format: string) => ({
+      organisation: { id: "org_1", name: "Groupe test" },
+      unites: [{ id: "farfadets", label: "Farfadets", color: "#6CC24A" }],
+      emailTresorerie: "tresorerie@example.test",
+      validation: { status: "verified" },
+      nomenclature: {
+        format,
+        anneeComptable: { mois: 9, jour: 1, format: "debut-fin" },
+      },
+    });
+
+    beforeEach(() => {
+      mocks.recupererRoleMembre.mockResolvedValue("owner");
+      mocks.validerCorpsRequete.mockReturnValue({
+        donneesEmail: {
+          emailUtilisateur: "membre@example.test",
+          date: "2026-03-05",
+          branche: "farfadets",
+          typeDepense: "Transport",
+          modePaiement: "Carte",
+          montant: 12,
+          description: "",
+          piecesJointes: [
+            {
+              nomAffiche: "a.pdf",
+              typeMime: "application/pdf",
+              donneesBase64: "QQ==",
+              nomFichierOriginal: "a.pdf",
+              nomFichierNormalise: "nom-du-client.pdf",
+            },
+          ],
+        },
+      });
+      mocks.reserverNumeros.mockResolvedValue({
+        premierGlobal: 42,
+        premierComptable: 13,
+      });
+    });
+
+    it("génère le nom côté serveur et valide la transaction", async () => {
+      mocks.recupererGroupeActif.mockResolvedValue(
+        groupeAvecFormat("{AnneeComptable} - {GlobalNumeroComptable}"),
+      );
+
+      const reponse = await POST(REQUETE_BASE() as never);
+
+      expect(reponse.status).toBe(200);
+      const envoye = mocks.envoyerEmailDepense.mock.calls[0][0];
+      expect(envoye.piecesJointes[0].nomFichierNormalise).toBe(
+        "2025-2026 - 013.pdf",
+      );
+      expect(mocks.reserverNumeros).toHaveBeenCalledWith(
+        expect.anything(),
+        "org_1",
+        { global: 0, comptable: { annee: 2025, nombre: 1 } },
+      );
+      expect(mocks.requeteClient).toHaveBeenCalledWith("COMMIT");
+      expect(mocks.liberer).toHaveBeenCalled();
+    });
+
+    it("n'utilise aucun compteur sans numéro global dans le format", async () => {
+      mocks.recupererGroupeActif.mockResolvedValue(
+        groupeAvecFormat("{YYYY}-{MM}-{DD} - {Branche} - {Numero}"),
+      );
+
+      await POST(REQUETE_BASE() as never);
+
+      expect(mocks.reserverNumeros).not.toHaveBeenCalled();
+      const envoye = mocks.envoyerEmailDepense.mock.calls[0][0];
+      expect(envoye.piecesJointes[0].nomFichierNormalise).toBe(
+        "2026-03-05 - Farfadets - 01.pdf",
+      );
+    });
+
+    it("annule la réservation si l'envoi échoue", async () => {
+      mocks.recupererGroupeActif.mockResolvedValue(
+        groupeAvecFormat("{GlobalNumero}"),
+      );
+      mocks.envoyerEmailDepense.mockRejectedValue(new Error("SMTP_KO"));
+
+      const reponse = await POST(REQUETE_BASE() as never);
+
+      expect(reponse.status).toBeGreaterThanOrEqual(400);
+      expect(mocks.requeteClient).toHaveBeenCalledWith("ROLLBACK");
+      expect(mocks.requeteClient).not.toHaveBeenCalledWith("COMMIT");
+      expect(mocks.liberer).toHaveBeenCalled();
+    });
+
+    it("refuse une date invalide quand un format est défini", async () => {
+      mocks.recupererGroupeActif.mockResolvedValue(groupeAvecFormat("{YYYY}"));
+      const corps = mocks.validerCorpsRequete();
+      corps.donneesEmail.date = "pas-une-date";
+      mocks.validerCorpsRequete.mockReturnValue(corps);
+
+      const reponse = await POST(REQUETE_BASE() as never);
+
+      expect(reponse.status).toBe(400);
+      expect(mocks.envoyerEmailDepense).not.toHaveBeenCalled();
+    });
+  });
 });

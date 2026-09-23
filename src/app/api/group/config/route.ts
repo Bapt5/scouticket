@@ -58,6 +58,7 @@ export async function GET(requete: Request) {
     return NextResponse.json({
       groupName: group.organisation.name,
       units: unitesVisibles,
+      nomenclature: group.nomenclature,
       configured: Boolean(group.emailTresorerie && group.unites.length),
       treasuryVerified: group.validation.status === "verified",
       isAdmin: isAdmin(role),
