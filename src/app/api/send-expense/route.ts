@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { envoyerEmailDepense } from "@/lib/email";
 import { jsonError, verifierErreurSmtp } from "@/lib/api/utils";
 import { validerCorpsRequete } from "@/lib/api/validateBody";
-import { recupererGroupeActif } from "@/lib/groupServer";
+import {
+  estResponsable,
+  recupererGroupeActif,
+  recupererRoleMembre,
+  recupererUnitesAutoriseesMembre,
+} from "@/lib/groupServer";
 import {
   reponseRateLimit,
   verifierOrigineRequete,
@@ -81,6 +86,18 @@ export async function POST(req: NextRequest) {
         (item) => item.id === donneesEmail.branche,
       );
       if (!unit) return jsonError("Unité invalide pour ce groupe", 400);
+      const role = await recupererRoleMembre(
+        identifiantUtilisateur,
+        identifiantOrganisation,
+      );
+      if (!estResponsable(role)) {
+        const unitesAutorisees = await recupererUnitesAutoriseesMembre(
+          identifiantUtilisateur,
+          identifiantOrganisation,
+        );
+        if (!unitesAutorisees.has(unit.id))
+          return jsonError("Vous n'avez pas accès à cette unité", 403);
+      }
       donneesEmail.branche = unit.label;
       donneesEmail.groupe = group.organisation.name;
       donneesEmail.couleur = unit.color;

@@ -4,13 +4,13 @@ import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { EditeurUnites } from "@/components/EditeurUnites";
 import { clientAuth } from "@/lib/auth-client";
-import type { UniteGroupe } from "@/lib/group";
+import type { UniteBrouillon } from "@/lib/group";
 
-type Groupe = { units: UniteGroupe[]; isAdmin: boolean };
+type Groupe = { units: UniteBrouillon[]; isAdmin: boolean };
 
 export default function PageGestionUnites() {
   const { data: organisation } = clientAuth.useActiveOrganization();
-  const [unites, setUnites] = useState<UniteGroupe[]>([]);
+  const [unites, setUnites] = useState<UniteBrouillon[]>([]);
   const [chargement, setChargement] = useState(true);
   const [estAdministrateur, setEstAdministrateur] = useState(false);
   const [enregistrement, setEnregistrement] = useState(false);
@@ -40,6 +40,14 @@ export default function PageGestionUnites() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ units: unites }),
     });
+    // Les unités nouvellement créées reçoivent leur id définitif côté base :
+    // on resynchronise l'état local pour continuer à les modifier sans les dupliquer.
+    const corps = reponse.ok
+      ? ((await reponse.json().catch(() => null)) as {
+          units?: UniteBrouillon[];
+        } | null)
+      : null;
+    if (corps?.units) setUnites(corps.units);
     setEnregistrement(false);
     setMessage(
       reponse.ok

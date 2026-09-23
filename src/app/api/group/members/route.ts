@@ -18,7 +18,7 @@ export async function GET(requete: Request) {
     if (role !== "admin" && role !== "owner")
       return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
 
-    const [organisation, membres, invitations] = await Promise.all([
+    const [organisation, membres, invitations, moiLigne] = await Promise.all([
       pool.query<{ name: string }>(
         "SELECT name FROM organization WHERE id = $1",
         [identifiantOrganisation],
@@ -40,6 +40,10 @@ export async function GET(requete: Request) {
         'SELECT id, email, role, "expiresAt" FROM invitation WHERE "organizationId" = $1 AND status = $2 ORDER BY "createdAt" DESC',
         [identifiantOrganisation, "pending"],
       ),
+      pool.query<{ id: string }>(
+        `SELECT id FROM member WHERE "userId" = $1 AND "organizationId" = $2`,
+        [identifiantUtilisateur, identifiantOrganisation],
+      ),
     ]);
 
     return NextResponse.json({
@@ -48,6 +52,7 @@ export async function GET(requete: Request) {
         name: organisation.rows[0]?.name ?? "",
       },
       membres: membres.rows,
+      moi: { id: moiLigne.rows[0]?.id ?? "", role },
       invitations: invitations.rows.map((invitation) => ({
         ...invitation,
         expiree: invitation.expiresAt <= new Date(),

@@ -33,3 +33,15 @@ La trésorerie reçoit l’e-mail avec les pièces jointes et vous recevez une c
 Si vous ne voyez aucun groupe, demandez à votre responsable de groupe de vous envoyer une invitation. Ne créez pas un nouveau groupe si vous êtes simplement membre.
 
 Pour configurer un groupe ou inviter des membres, consultez le [guide des groupes](/guide/groupes).
+
+## Modifier mon profil
+
+Depuis « Mon compte », vous pouvez modifier votre nom et votre adresse e-mail, puis cliquer sur « Enregistrer ». Si vous changez d’adresse e-mail, un lien de confirmation est envoyé à la nouvelle adresse : elle ne sera prise en compte qu’après avoir cliqué sur ce lien.
+
+## Changer mon mot de passe
+
+Toujours depuis « Mon compte », section « Modifier mon mot de passe » : saisissez votre ancien mot de passe, puis le nouveau (8 caractères minimum) deux fois. Vos autres appareils seront déconnectés. Si vous vous connectez uniquement avec Google, ces sections sont remplacées par un message : votre nom, votre e-mail et votre mot de passe se gèrent depuis votre compte Google.
+
+## Supprimer mon compte
+
+Depuis « Mon compte », vous pouvez supprimer définitivement votre compte. Vous devez d’abord quitter tous vos groupes (« Changer de groupe », puis « Quitter »). Si vous êtes le seul responsable d’un groupe, nommez un autre responsable avant de partir. Pour confirmer, saisissez `SUPPRIMER` dans la fenêtre de confirmation. Si la suppression est refusée pour cause de session ancienne, reconnectez-vous puis réessayez.
