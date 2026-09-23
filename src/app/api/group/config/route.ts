@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { validerUnites } from "@/lib/group";
-import { recupererGroupeActif, recupererRoleMembre } from "@/lib/groupServer";
+import {
+  appliquerUnites,
+  estResponsable as isAdmin,
+  recupererGroupeActif,
+  recupererRoleMembre,
+  recupererUnitesAutoriseesMembre,
+} from "@/lib/groupServer";
 import { recupererContexteGroupe } from "@/lib/sessionServeur";
 import { pool } from "@/lib/baseDeDonnees";
 import {
@@ -16,11 +22,6 @@ const bodySchema = z.object({
   treasuryEmail: z.string().email(),
   units: z.unknown(),
 });
-
-function isAdmin(role: string | null) {
-  // Seuls les propriétaires et administrateurs peuvent modifier la configuration.
-  return role === "admin" || role === "owner";
-}
 
 /** Récupère la configuration et les droits de l'utilisateur pour son groupe actif. */
 export async function GET(requete: Request) {
@@ -43,14 +44,29 @@ export async function GET(requete: Request) {
         WHERE user_id = $1 AND organization_id = $2`,
       [identifiantUtilisateur, identifiantOrganisation],
     );
+    // Un membre simple ne doit se voir proposer que les unités qui lui sont
+    // attribuées ; un responsable (owner/admin) voit toujours tout le groupe.
+    const unitesVisibles = isAdmin(role)
+      ? group.unites
+      : await (async () => {
+          const autorisees = await recupererUnitesAutoriseesMembre(
+            identifiantUtilisateur,
+            identifiantOrganisation,
+          );
+          return group.unites.filter((unite) => autorisees.has(unite.id));
+        })();
     return NextResponse.json({
       groupName: group.organisation.name,
-      units: group.unites,
+      units: unitesVisibles,
       configured: Boolean(group.emailTresorerie && group.unites.length),
       treasuryVerified: group.validation.status === "verified",
       isAdmin: isAdmin(role),
       treasuryEmail: isAdmin(role) ? group.emailTresorerie : undefined,
-      unitPreference: preference.rows[0]?.unit_id ?? "",
+      unitPreference: unitesVisibles.some(
+        (unite) => unite.id === preference.rows[0]?.unit_id,
+      )
+        ? preference.rows[0].unit_id
+        : "",
     });
   });
 }
@@ -90,22 +106,26 @@ export async function POST(req: Request) {
     const emailTresorerie = parsed.data.treasuryEmail.toLowerCase();
     // Une modification génère un nouveau jeton : l'ancienne validation ne reste pas valable.
     const { token, verification } = construireValidationTresorerie();
+    const client = await pool.connect();
     try {
-      await pool.query(
+      await client.query("BEGIN");
+      await client.query(
         `INSERT INTO scouticket_group_data
-        (organization_id, units, treasury_email, treasury_verification)
-       VALUES ($1, $2::jsonb, $3, $4::jsonb)
+        (organization_id, treasury_email, treasury_verification)
+       VALUES ($1, $2, $3::jsonb)
        ON CONFLICT (organization_id) DO UPDATE
-       SET units = EXCLUDED.units, treasury_email = EXCLUDED.treasury_email,
+       SET treasury_email = EXCLUDED.treasury_email,
            treasury_verification = EXCLUDED.treasury_verification`,
         [
           identifiantOrganisation,
-          JSON.stringify(units),
           emailTresorerie,
           JSON.stringify(verification),
         ],
       );
+      await appliquerUnites(client, identifiantOrganisation, units);
+      await client.query("COMMIT");
     } catch (erreur) {
+      await client.query("ROLLBACK");
       // Seule la contrainte d'unicité est transformée en erreur métier ; les autres erreurs restent journalisées.
       if (
         typeof erreur === "object" &&
@@ -121,6 +141,8 @@ export async function POST(req: Request) {
           { status: 409 },
         );
       throw erreur;
+    } finally {
+      client.release();
     }
     // La validation est enregistrée avant l'envoi pour que le lien reçu soit utilisable.
     const url = creerUrlVerificationTresorerie(identifiantOrganisation, token);

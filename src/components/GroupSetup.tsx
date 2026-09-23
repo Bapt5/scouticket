@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { EditeurUnites } from "@/components/EditeurUnites";
-import { UNITES_PAR_DEFAUT, type UniteGroupe } from "@/lib/group";
+import { UNITES_PAR_DEFAUT, type UniteBrouillon } from "@/lib/group";
 
 type EtapeConfiguration = 1 | 2;
 
@@ -49,11 +49,11 @@ export function ConfigurationGroupe({
 }: {
   readonly onSaved: () => void;
   readonly emailInitial?: string | null;
-  readonly unitesInitiales?: UniteGroupe[];
+  readonly unitesInitiales?: UniteBrouillon[];
 }) {
   const [etape, setEtape] = useState<EtapeConfiguration>(1);
   const [email, setEmail] = useState(emailInitial ?? "");
-  const [unites, setUnites] = useState<UniteGroupe[]>(unitesInitiales);
+  const [unites, setUnites] = useState<UniteBrouillon[]>(unitesInitiales);
   const [enregistrement, setEnregistrement] = useState(false);
   const [erreur, setErreur] = useState("");
 

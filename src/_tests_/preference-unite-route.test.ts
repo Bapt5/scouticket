@@ -4,6 +4,8 @@ const mocks = vi.hoisted(() => ({
   recupererContexteGroupe: vi.fn(),
   recupererSession: vi.fn(),
   recupererGroupeActif: vi.fn(),
+  recupererRoleMembre: vi.fn(),
+  recupererUnitesAutoriseesMembre: vi.fn(),
   query: vi.fn(),
   verifierOrigineRequete: vi.fn(),
   verifierRateLimit: vi.fn(),
@@ -16,9 +18,18 @@ vi.mock("@/lib/sessionServeur", () => ({
 
 vi.mock("@/lib/baseDeDonnees", () => ({ pool: { query: mocks.query } }));
 
-vi.mock("@/lib/groupServer", () => ({
-  recupererGroupeActif: mocks.recupererGroupeActif,
-}));
+vi.mock("@/lib/groupServer", async () => {
+  const reel =
+    await vi.importActual<typeof import("@/lib/groupServer")>(
+      "@/lib/groupServer",
+    );
+  return {
+    ...reel,
+    recupererGroupeActif: mocks.recupererGroupeActif,
+    recupererRoleMembre: mocks.recupererRoleMembre,
+    recupererUnitesAutoriseesMembre: mocks.recupererUnitesAutoriseesMembre,
+  };
+});
 
 vi.mock("@/lib/api/securiteRequetes", () => ({
   verifierOrigineRequete: mocks.verifierOrigineRequete,
@@ -43,6 +54,10 @@ describe("POST /api/user/unit-preference", () => {
         { id: "pionniers-caravelles", label: "Pionniers", color: "#E30613" },
       ],
     });
+    mocks.recupererRoleMembre.mockResolvedValue("member");
+    mocks.recupererUnitesAutoriseesMembre.mockResolvedValue(
+      new Set(["pionniers-caravelles"]),
+    );
     mocks.query.mockResolvedValue({});
   });
 
@@ -87,6 +102,44 @@ describe("POST /api/user/unit-preference", () => {
     expect(reponse.status).toBe(403);
     expect(mocks.query).not.toHaveBeenCalled();
   });
+
+  it("refuse un membre sans accès à l’unité choisie", async () => {
+    mocks.recupererUnitesAutoriseesMembre.mockResolvedValue(new Set());
+
+    const reponse = await POST(
+      new Request("https://example.test/api/user/unit-preference", {
+        method: "POST",
+        body: JSON.stringify({
+          organizationId: "org_1",
+          unitId: "pionniers-caravelles",
+        }),
+      }),
+    );
+
+    expect(reponse.status).toBe(403);
+    expect(mocks.query).not.toHaveBeenCalled();
+  });
+
+  it.each(["admin", "owner"])(
+    "laisse un responsable (%s) choisir sans ligne d’accès",
+    async (role) => {
+      mocks.recupererRoleMembre.mockResolvedValue(role);
+      mocks.recupererUnitesAutoriseesMembre.mockResolvedValue(new Set());
+
+      const reponse = await POST(
+        new Request("https://example.test/api/user/unit-preference", {
+          method: "POST",
+          body: JSON.stringify({
+            organizationId: "org_1",
+            unitId: "pionniers-caravelles",
+          }),
+        }),
+      );
+
+      expect(reponse.status).toBe(200);
+      expect(mocks.query).toHaveBeenCalled();
+    },
+  );
 
   it.each([
     { identifiantUtilisateur: null, identifiantOrganisation: null },

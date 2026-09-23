@@ -164,7 +164,9 @@ sequenceDiagram
 
 L'application n'a pas de base de données persistante pour les justificatifs. Les pièces jointes sont transmises par e-mail et ne sont pas stockées par l’application.
 
-Better Auth gère les comptes, les organisations, les rôles et les invitations. L’application stocke la configuration des groupes (adresse de trésorerie, unités et état de validation) dans PostgreSQL, dans `scouticket_group_data`.
+Better Auth gère les comptes, les organisations, les rôles et les invitations. L’application stocke la configuration des groupes (adresse de trésorerie et état de validation) dans PostgreSQL, dans `scouticket_group_data`. Les unités de chaque groupe sont dans une table dédiée, `scouticket_unites` (une ligne par unité, clé composite `(organization_id, id)`, avec son ordre d’affichage). L’id d’une unité est un identifiant opaque généré côté base (`appliquerUnites` dans `src/lib/groupServer.ts`) au moment de sa création, jamais dérivé de son libellé : renommer une unité ne change donc jamais son id.
+
+Par défaut, un membre simple (rôle `member`) ne peut soumettre une dépense que pour les unités qui lui ont été explicitement attribuées par un responsable (owner/admin) depuis `/gestion-membres` ; l’absence de ligne pour une unité donnée dans `scouticket_acces_unite_membre` signifie qu’il n’y a pas accès. Les responsables (owner/admin) ne sont jamais restreints : ils ont toujours accès à toutes les unités de leur groupe, sans qu’aucune ligne ne soit nécessaire. Cette restriction est vérifiée à l’envoi d’une dépense (`POST /api/send-expense`) et lors du choix d’une unité par défaut (`POST /api/user/unit-preference`).
 
 La préférence de groupe principal est stockée séparément dans `scouticket_user_default_group`. Après l’acceptation d’une invitation, le groupe rejoint devient automatiquement le groupe actif et principal du membre.
 

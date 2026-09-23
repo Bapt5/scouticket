@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { clientAuth } from "@/lib/auth-client";
+import { GestionAccesUniteMembre } from "@/components/GestionAccesUniteMembre";
 
 type Invitation = {
   id: string;
@@ -49,6 +50,7 @@ export default function PageGestionMembres() {
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [membres, setMembres] = useState<Membre[]>([]);
   const [renvoiEnCours, setRenvoiEnCours] = useState<string>();
+  const [membreSelectionne, setMembreSelectionne] = useState<Membre>();
   const chargementLance = useRef(false);
   const chargerMembres = useCallback(async () => {
     try {
@@ -214,23 +216,30 @@ export default function PageGestionMembres() {
         ) : (
           <ul className="mt-3 space-y-2">
             {membres.map((membre) => (
-              <li
-                key={membre.id}
-                className="flex items-center justify-between gap-3 rounded-lg border border-zinc-200 p-3 text-sm"
-              >
-                <span className="min-w-0">
-                  <span className="block truncate font-medium text-zinc-700">
-                    {membre.nom || membre.email}
-                  </span>
-                  {membre.nom && (
-                    <span className="block truncate text-zinc-500">
-                      {membre.email}
+              <li key={membre.id}>
+                <button
+                  type="button"
+                  onClick={() => setMembreSelectionne(membre)}
+                  className="flex w-full items-center justify-between gap-3 rounded-lg border border-zinc-200 p-3 text-left text-sm transition-colors hover:bg-zinc-50"
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium text-zinc-700">
+                      {membre.nom || membre.email}
                     </span>
-                  )}
-                </span>
-                <span className="shrink-0 text-zinc-600">
-                  {membre.role === "owner" ? "Responsable" : "Membre"}
-                </span>
+                    {membre.nom && (
+                      <span className="block truncate text-zinc-500">
+                        {membre.email}
+                      </span>
+                    )}
+                  </span>
+                  <span className="shrink-0 text-zinc-600">
+                    {membre.role === "owner"
+                      ? "Responsable"
+                      : membre.role === "admin"
+                        ? "Administrateur"
+                        : "Membre"}
+                  </span>
+                </button>
               </li>
             ))}
             {invitations.map((invitation) => (
@@ -278,6 +287,12 @@ export default function PageGestionMembres() {
           </ul>
         )}
       </section>
+      {membreSelectionne && (
+        <GestionAccesUniteMembre
+          membre={membreSelectionne}
+          onClose={() => setMembreSelectionne(undefined)}
+        />
+      )}
     </main>
   );
 }

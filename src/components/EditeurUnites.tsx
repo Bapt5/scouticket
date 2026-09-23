@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronUpIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
-import type { UniteGroupe } from "@/lib/group";
+import type { UniteBrouillon } from "@/lib/group";
 
 const COULEURS_CHOIX = [
   ["#6CC24A", "Vert"],
@@ -12,11 +12,11 @@ const COULEURS_CHOIX = [
   ["#1E3A8A", "Bleu foncé"],
 ] as const;
 
-export function deplacerUnite(
-  unites: UniteGroupe[],
+export function deplacerUnite<T>(
+  unites: T[],
   index: number,
   direction: -1 | 1,
-): UniteGroupe[] {
+): T[] {
   const cible = index + direction;
   if (cible < 0 || cible >= unites.length) {
     return unites;
@@ -30,10 +30,13 @@ export function EditeurUnites({
   unites,
   onChange,
 }: {
-  readonly unites: UniteGroupe[];
-  readonly onChange: (unites: UniteGroupe[]) => void;
+  readonly unites: UniteBrouillon[];
+  readonly onChange: (unites: UniteBrouillon[]) => void;
 }) {
-  const modifierUnite = (index: number, modification: Partial<UniteGroupe>) =>
+  const modifierUnite = (
+    index: number,
+    modification: Partial<UniteBrouillon>,
+  ) =>
     onChange(
       unites.map((unite, position) =>
         position === index ? { ...unite, ...modification } : unite,
@@ -50,7 +53,10 @@ export function EditeurUnites({
     <div className="space-y-2">
       <p className="text-sm font-medium text-zinc-700">Unités du groupe</p>
       {unites.map((unite, index) => (
-        <div key={unite.id} className="rounded-xl border border-zinc-200 p-3">
+        <div
+          key={unite.id ?? `nouvelle-${index}`}
+          className="rounded-xl border border-zinc-200 p-3"
+        >
           <div className="flex items-center gap-2">
             <div className="flex shrink-0 flex-col">
               <button
@@ -139,11 +145,7 @@ export function EditeurUnites({
         onClick={() =>
           onChange([
             ...unites,
-            {
-              id: `unite-${crypto.randomUUID()}`,
-              label: "Nouvelle unité",
-              color: "#1E3A8A",
-            },
+            { id: null, label: "Nouvelle unité", color: "#1E3A8A" },
           ])
         }
         className="w-full rounded-xl border border-dashed border-zinc-300 p-3 text-sm font-medium text-[#1E3A8A] transition-colors hover:border-[#1E3A8A] hover:bg-blue-50"
