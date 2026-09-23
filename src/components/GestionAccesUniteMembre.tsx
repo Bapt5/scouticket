@@ -15,9 +15,11 @@ function libelleRole(role: string) {
 export function GestionAccesUniteMembre({
   membre,
   onClose,
+  onMembreRetire,
 }: {
   readonly membre: Membre;
   readonly onClose: () => void;
+  readonly onMembreRetire: (membreId: string) => void;
 }) {
   const [chargement, setChargement] = useState(true);
   const [accesTotal, setAccesTotal] = useState(false);
@@ -27,6 +29,8 @@ export function GestionAccesUniteMembre({
   );
   const [enregistrement, setEnregistrement] = useState(false);
   const [message, setMessage] = useState("");
+  const [confirmationRetrait, setConfirmationRetrait] = useState(false);
+  const [retraitEnCours, setRetraitEnCours] = useState(false);
 
   useEffect(() => {
     let annule = false;
@@ -100,6 +104,24 @@ export function GestionAccesUniteMembre({
         ? "Accès enregistrés."
         : "Impossible d’enregistrer les accès. Réessayez.",
     );
+  };
+
+  const retirerMembre = async () => {
+    setRetraitEnCours(true);
+    setMessage("");
+    const reponse = await fetch(`/api/group/members/${membre.id}`, {
+      method: "DELETE",
+    });
+    if (reponse.ok) {
+      onMembreRetire(membre.id);
+      return;
+    }
+    setRetraitEnCours(false);
+    setConfirmationRetrait(false);
+    const corps = (await reponse.json().catch(() => null)) as {
+      error?: string;
+    } | null;
+    setMessage(corps?.error ?? "Impossible de retirer ce membre.");
   };
 
   return (
@@ -236,6 +258,40 @@ export function GestionAccesUniteMembre({
               {enregistrement ? "Enregistrement…" : "Enregistrer les accès"}
             </button>
           )}
+          {membre.role !== "owner" &&
+            (confirmationRetrait ? (
+              <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3">
+                <p className="text-sm text-red-900">
+                  Retirer ce membre du groupe ?
+                </p>
+                <div className="mt-3 flex gap-2">
+                  <button
+                    type="button"
+                    disabled={retraitEnCours}
+                    onClick={() => void retirerMembre()}
+                    className="flex-1 rounded-lg bg-red-700 p-2 text-sm font-semibold text-white transition-colors hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {retraitEnCours ? "Retrait…" : "Confirmer"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={retraitEnCours}
+                    onClick={() => setConfirmationRetrait(false)}
+                    className="flex-1 rounded-lg border border-zinc-300 p-2 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Annuler
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmationRetrait(true)}
+                className="mt-3 w-full rounded-xl border border-red-200 p-3 text-sm font-semibold text-red-700 transition-colors hover:bg-red-50"
+              >
+                Retirer l’utilisateur
+              </button>
+            ))}
         </div>
       </div>
     </div>

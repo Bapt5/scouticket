@@ -291,6 +291,13 @@ export default function PageGestionMembres() {
         <GestionAccesUniteMembre
           membre={membreSelectionne}
           onClose={() => setMembreSelectionne(undefined)}
+          onMembreRetire={(membreId) => {
+            setMembres((precedents) =>
+              precedents.filter((membre) => membre.id !== membreId),
+            );
+            setMembreSelectionne(undefined);
+            setMessage("Membre retiré du groupe.");
+          }}
         />
       )}
     </main>

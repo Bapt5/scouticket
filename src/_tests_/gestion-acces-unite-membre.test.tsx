@@ -34,7 +34,13 @@ describe("GestionAccesUniteMembre", () => {
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({}) });
     vi.stubGlobal("fetch", fetchMock);
 
-    render(<GestionAccesUniteMembre membre={membre} onClose={vi.fn()} />);
+    render(
+      <GestionAccesUniteMembre
+        membre={membre}
+        onClose={vi.fn()}
+        onMembreRetire={vi.fn()}
+      />,
+    );
 
     expect(await screen.findByText("Farfadets")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Farfadets" })).toHaveAttribute(
@@ -80,7 +86,13 @@ describe("GestionAccesUniteMembre", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    render(<GestionAccesUniteMembre membre={membre} onClose={vi.fn()} />);
+    render(
+      <GestionAccesUniteMembre
+        membre={membre}
+        onClose={vi.fn()}
+        onMembreRetire={vi.fn()}
+      />,
+    );
     await screen.findByText("A");
 
     const toutSelectionner = screen.getByRole("checkbox", {
@@ -123,6 +135,7 @@ describe("GestionAccesUniteMembre", () => {
       <GestionAccesUniteMembre
         membre={{ ...membre, role: "owner" }}
         onClose={vi.fn()}
+        onMembreRetire={vi.fn()}
       />,
     );
 
@@ -138,5 +151,81 @@ describe("GestionAccesUniteMembre", () => {
     expect(
       screen.queryByRole("button", { name: /Enregistrer/ }),
     ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Retirer l’utilisateur/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("retire un membre après confirmation", async () => {
+    const utilisateur = userEvent.setup();
+    const onMembreRetire = vi.fn();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            accesTotal: false,
+            unites: [],
+            uniteIdsAutorisees: [],
+          }),
+      })
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({}) });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <GestionAccesUniteMembre
+        membre={membre}
+        onClose={vi.fn()}
+        onMembreRetire={onMembreRetire}
+      />,
+    );
+
+    await utilisateur.click(
+      screen.getByRole("button", { name: "Retirer l’utilisateur" }),
+    );
+    expect(
+      screen.getByText("Retirer ce membre du groupe ?"),
+    ).toBeInTheDocument();
+
+    await utilisateur.click(screen.getByRole("button", { name: "Confirmer" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    const [urlRetrait, optionsRetrait] = fetchMock.mock.calls[1];
+    expect(urlRetrait).toBe(`/api/group/members/${membre.id}`);
+    expect(optionsRetrait.method).toBe("DELETE");
+    expect(onMembreRetire).toHaveBeenCalledWith(membre.id);
+  });
+
+  it("permet d’annuler la confirmation de retrait", async () => {
+    const utilisateur = userEvent.setup();
+    const fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          accesTotal: false,
+          unites: [],
+          uniteIdsAutorisees: [],
+        }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <GestionAccesUniteMembre
+        membre={membre}
+        onClose={vi.fn()}
+        onMembreRetire={vi.fn()}
+      />,
+    );
+
+    await utilisateur.click(
+      screen.getByRole("button", { name: "Retirer l’utilisateur" }),
+    );
+    await utilisateur.click(screen.getByRole("button", { name: "Annuler" }));
+
+    expect(
+      screen.queryByText("Retirer ce membre du groupe ?"),
+    ).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
