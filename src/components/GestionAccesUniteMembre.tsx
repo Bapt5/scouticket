@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { CheckIcon, MinusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import type { UniteGroupe } from "@/lib/group";
 
 type Membre = { id: string; nom: string; email: string; role: string };
@@ -70,6 +70,22 @@ export function GestionAccesUniteMembre({
       return suivant;
     });
 
+  const etatToutSelectionner =
+    uniteIdsAutorisees.size === 0
+      ? "aucune"
+      : uniteIdsAutorisees.size === unites.length
+        ? "toutes"
+        : "partiel";
+
+  const basculerTout = () =>
+    setUniteIdsAutorisees(
+      // Majorité déjà cochée (ou tout coché) : on décoche tout : sinon on
+      // sélectionne tout, y compris depuis une sélection partielle minoritaire.
+      uniteIdsAutorisees.size > unites.length / 2
+        ? new Set()
+        : new Set(unites.map((unite) => unite.id)),
+    );
+
   const enregistrer = async () => {
     setEnregistrement(true);
     setMessage("");
@@ -137,6 +153,36 @@ export function GestionAccesUniteMembre({
             </p>
           ) : (
             <div className="space-y-2">
+              <button
+                type="button"
+                role="checkbox"
+                aria-checked={
+                  etatToutSelectionner === "partiel"
+                    ? "mixed"
+                    : etatToutSelectionner === "toutes"
+                }
+                onClick={basculerTout}
+                className="flex w-full items-center gap-3 rounded-xl border border-dashed border-zinc-300 p-3 text-left text-sm text-zinc-600 transition-colors hover:border-[#1E3A8A] hover:bg-blue-50"
+              >
+                <span className="min-w-0 flex-1 truncate font-medium">
+                  Tout sélectionner
+                </span>
+                <span
+                  aria-hidden="true"
+                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+                    etatToutSelectionner === "aucune"
+                      ? "border-zinc-400"
+                      : "border-zinc-600 bg-zinc-600"
+                  }`}
+                >
+                  {etatToutSelectionner === "partiel" && (
+                    <MinusIcon className="h-3.5 w-3.5 text-white" />
+                  )}
+                  {etatToutSelectionner === "toutes" && (
+                    <CheckIcon className="h-3.5 w-3.5 text-white" />
+                  )}
+                </span>
+              </button>
               {unites.map((unite) => {
                 const autorisee = uniteIdsAutorisees.has(unite.id);
                 return (

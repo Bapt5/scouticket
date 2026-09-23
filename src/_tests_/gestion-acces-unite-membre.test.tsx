@@ -61,6 +61,52 @@ describe("GestionAccesUniteMembre", () => {
     expect(await screen.findByText("Accès enregistrés.")).toBeInTheDocument();
   });
 
+  it("« Tout sélectionner » bascule selon la majorité cochée", async () => {
+    const utilisateur = userEvent.setup();
+    const fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          accesTotal: false,
+          unites: [
+            { id: "a", label: "A", color: "#6CC24A" },
+            { id: "b", label: "B", color: "#F28C00" },
+            { id: "c", label: "C", color: "#0072CE" },
+            { id: "d", label: "D", color: "#E30613" },
+          ],
+          // Minorité cochée (1/4) au départ.
+          uniteIdsAutorisees: ["a"],
+        }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<GestionAccesUniteMembre membre={membre} onClose={vi.fn()} />);
+    await screen.findByText("A");
+
+    const toutSelectionner = screen.getByRole("checkbox", {
+      name: "Tout sélectionner",
+    });
+    expect(toutSelectionner).toHaveAttribute("aria-checked", "mixed");
+
+    // Minorité cochée : un clic sélectionne tout.
+    await utilisateur.click(toutSelectionner);
+    expect(toutSelectionner).toHaveAttribute("aria-checked", "true");
+    for (const nom of ["A", "B", "C", "D"])
+      expect(screen.getByRole("button", { name: nom })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+
+    // Tout coché (majorité) : un clic désélectionne tout.
+    await utilisateur.click(toutSelectionner);
+    expect(toutSelectionner).toHaveAttribute("aria-checked", "false");
+    for (const nom of ["A", "B", "C", "D"])
+      expect(screen.getByRole("button", { name: nom })).toHaveAttribute(
+        "aria-pressed",
+        "false",
+      );
+  });
+
   it("n’affiche aucune case pour un membre responsable", async () => {
     const fetchMock = vi.fn().mockResolvedValueOnce({
       ok: true,
@@ -85,6 +131,9 @@ describe("GestionAccesUniteMembre", () => {
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Groupe" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("checkbox", { name: "Tout sélectionner" }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /Enregistrer/ }),
