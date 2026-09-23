@@ -11,6 +11,7 @@ import {
 } from "@/lib/emailAuthentification";
 import { journal } from "@/lib/logger";
 import { journaliserAuditAuthentification } from "@/lib/auditAuthentification";
+import { verifierSuppressionCompte } from "@/lib/suppressionCompte";
 
 export const auth = betterAuth({
   database: pool,
@@ -77,6 +78,14 @@ export const auth = betterAuth({
   },
   account: {
     accountLinking: { trustedProviders: ["google"] },
+  },
+  user: {
+    deleteUser: {
+      enabled: true,
+      beforeDelete: async (utilisateur) => {
+        await verifierSuppressionCompte(utilisateur.id);
+      },
+    },
   },
   hooks: {
     after: createAuthMiddleware(async (contexte) => {

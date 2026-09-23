@@ -360,6 +360,12 @@ export default function Home() {
               Créer
             </button>
           </div>
+          <Link
+            href="/compte"
+            className="mt-5 block text-center text-sm text-zinc-600 underline"
+          >
+            Mon compte
+          </Link>
         </section>
       </main>
     );
@@ -386,6 +392,9 @@ export default function Home() {
             >
               Changer de groupe
             </button>
+            <Link href="/compte" className="text-sm text-zinc-600 underline">
+              Mon compte
+            </Link>
             <button
               type="button"
               onClick={() =>

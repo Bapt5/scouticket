@@ -33,3 +33,7 @@ La trésorerie reçoit l’e-mail avec les pièces jointes et vous recevez une c
 Si vous ne voyez aucun groupe, demandez à votre responsable de groupe de vous envoyer une invitation. Ne créez pas un nouveau groupe si vous êtes simplement membre.
 
 Pour configurer un groupe ou inviter des membres, consultez le [guide des groupes](/guide/groupes).
+
+## Supprimer mon compte
+
+Depuis « Mon compte », vous pouvez supprimer définitivement votre compte. Vous devez d’abord quitter tous vos groupes (« Changer de groupe », puis « Quitter »). Si vous êtes le seul responsable d’un groupe, nommez un autre responsable avant de partir. Pour confirmer, saisissez `SUPPRIMER` dans la fenêtre de confirmation. Si la suppression est refusée pour cause de session ancienne, reconnectez-vous puis réessayez.
