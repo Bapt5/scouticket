@@ -9,8 +9,10 @@ import {
   envoyerEmailReinitialisationMotDePasse,
   envoyerEmailVerificationCompte,
 } from "@/lib/emailAuthentification";
+import { googleActif } from "@/lib/google";
 import { journal } from "@/lib/logger";
 import { journaliserAuditAuthentification } from "@/lib/auditAuthentification";
+import { verifierSuppressionCompte } from "@/lib/suppressionCompte";
 
 export const auth = betterAuth({
   database: pool,
@@ -69,14 +71,25 @@ export const auth = betterAuth({
       }
     },
   },
-  socialProviders: {
-    google: {
-      clientId: process.env.GOOGLE_CLIENT_ID as string,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
-    },
-  },
+  socialProviders: googleActif()
+    ? {
+        google: {
+          clientId: process.env.GOOGLE_CLIENT_ID as string,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+        },
+      }
+    : {},
   account: {
     accountLinking: { trustedProviders: ["google"] },
+  },
+  user: {
+    changeEmail: { enabled: true },
+    deleteUser: {
+      enabled: true,
+      beforeDelete: async (utilisateur) => {
+        await verifierSuppressionCompte(utilisateur.id);
+      },
+    },
   },
   hooks: {
     after: createAuthMiddleware(async (contexte) => {

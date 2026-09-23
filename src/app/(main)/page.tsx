@@ -84,6 +84,10 @@ export default function Home() {
   const [administrationOuverte, setAdministrationOuverte] = useState(false);
   const [editionConfiguration, setEditionConfiguration] = useState(false);
   const [invitations, setInvitations] = useState<InvitationEnAttente[]>([]);
+  const [groupeAQuitter, setGroupeAQuitter] = useState<string | null>(null);
+  const [departEnCours, setDepartEnCours] = useState(false);
+  const [erreurDepart, setErreurDepart] = useState("");
+  const [groupesQuittes, setGroupesQuittes] = useState<Set<string>>(new Set());
   const estEnLigne = useStatutEnLigne();
 
   useEffect(() => {
@@ -119,6 +123,30 @@ export default function Home() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ organizationId: identifiantOrganisation }),
     });
+  };
+
+  const quitterGroupe = async (identifiantOrganisation: string) => {
+    setDepartEnCours(true);
+    setErreurDepart("");
+    const reponse = await fetch("/api/group/leave", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ organizationId: identifiantOrganisation }),
+    });
+    setDepartEnCours(false);
+    if (reponse.ok) {
+      setGroupesQuittes((precedent) => {
+        const suivant = new Set(precedent);
+        suivant.add(identifiantOrganisation);
+        return suivant;
+      });
+      setGroupeAQuitter(null);
+      return;
+    }
+    const corps = (await reponse.json().catch(() => null)) as {
+      error?: string;
+    } | null;
+    setErreurDepart(corps?.error ?? "Impossible de quitter ce groupe.");
   };
 
   useEffect(() => {
@@ -249,23 +277,73 @@ export default function Home() {
             </div>
           )}
           <div className="mt-5 space-y-2">
-            {organisations?.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() =>
-                  void (async () => {
-                    await definirGroupePrincipal(item.id);
-                    await clientAuth.organization.setActive({
-                      organizationId: item.id,
-                    });
-                  })()
-                }
-                className="block w-full rounded-lg border border-zinc-300 p-3 text-left text-zinc-900 hover:bg-zinc-50"
-              >
-                {item.name}
-              </button>
-            ))}
+            {organisations
+              ?.filter((item) => !groupesQuittes.has(item.id))
+              .map((item) => (
+                <div
+                  key={item.id}
+                  className="rounded-lg border border-zinc-300"
+                >
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void (async () => {
+                        await definirGroupePrincipal(item.id);
+                        await clientAuth.organization.setActive({
+                          organizationId: item.id,
+                        });
+                      })()
+                    }
+                    className="block w-full p-3 text-left text-zinc-900 hover:bg-zinc-50"
+                  >
+                    {item.name}
+                  </button>
+                  {groupeAQuitter === item.id ? (
+                    <div className="border-t border-red-200 bg-red-50 p-3">
+                      <p className="text-sm text-red-900">
+                        Quitter le groupe « {item.name} » ?
+                      </p>
+                      {erreurDepart && (
+                        <p className="mt-2 text-sm text-red-700">
+                          {erreurDepart}
+                        </p>
+                      )}
+                      <div className="mt-3 flex gap-2">
+                        <button
+                          type="button"
+                          disabled={departEnCours}
+                          onClick={() => void quitterGroupe(item.id)}
+                          className="flex-1 rounded-lg bg-red-700 p-2 text-sm font-semibold text-white transition-colors hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {departEnCours ? "Départ…" : "Confirmer"}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={departEnCours}
+                          onClick={() => {
+                            setGroupeAQuitter(null);
+                            setErreurDepart("");
+                          }}
+                          className="flex-1 rounded-lg border border-zinc-300 p-2 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          Annuler
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setGroupeAQuitter(item.id);
+                        setErreurDepart("");
+                      }}
+                      className="block w-full border-t border-zinc-200 p-2 text-center text-sm font-medium text-red-700 hover:bg-red-50"
+                    >
+                      Quitter
+                    </button>
+                  )}
+                </div>
+              ))}
           </div>
           <div className="mt-5 flex gap-2">
             <input
@@ -282,6 +360,12 @@ export default function Home() {
               Créer
             </button>
           </div>
+          <Link
+            href="/compte"
+            className="mt-5 block text-center text-sm text-zinc-600 underline"
+          >
+            Mon compte
+          </Link>
         </section>
       </main>
     );
@@ -308,6 +392,9 @@ export default function Home() {
             >
               Changer de groupe
             </button>
+            <Link href="/compte" className="text-sm text-zinc-600 underline">
+              Mon compte
+            </Link>
             <button
               type="button"
               onClick={() =>

@@ -2,8 +2,17 @@ import { describe, expect, it } from "vitest";
 import {
   lireUniteSelectionnee,
   lireUnitesSelectionnees,
-  UNITES_PAR_DEFAUT,
+  type UniteGroupe,
 } from "@/lib/group";
+
+const UNITES_TEST: UniteGroupe[] = [
+  {
+    id: "pionniers-caravelles",
+    label: "Pionniers-Caravelles",
+    color: "#E30613",
+  },
+  { id: "groupe", label: "Groupe", color: "#1E3A8A" },
+];
 
 describe("préférences d’unité", () => {
   it("lit uniquement une unité existante du groupe actif", () => {
@@ -16,7 +25,7 @@ describe("préférences d’unité", () => {
           },
         },
         "org_a",
-        UNITES_PAR_DEFAUT,
+        UNITES_TEST,
       ),
     ).toBe("pionniers-caravelles");
     expect(
@@ -25,7 +34,7 @@ describe("préférences d’unité", () => {
           unitesSelectionneesParOrganisation: { org_b: "inconnue" },
         },
         "org_b",
-        UNITES_PAR_DEFAUT,
+        UNITES_TEST,
       ),
     ).toBe("");
   });

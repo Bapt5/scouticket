@@ -34,6 +34,15 @@ La publication GitHub Actions envoie automatiquement les cartes sources de chaqu
 
 Les cartes sont associées à `service=scouticket-web`, `env=production` et au SHA complet du commit. Ces trois valeurs doivent correspondre exactement aux métadonnées RUM. Les fichiers `.map` ne sont jamais inclus dans l’image de production ni accessibles par les navigateurs.
 
+## Connexion Google (optionnelle)
+
+| Variable               |  Requis   | Description                        |
+| ---------------------- | :-------: | ---------------------------------- |
+| `GOOGLE_CLIENT_ID`     | Optionnel | Identifiant client OAuth de Google |
+| `GOOGLE_CLIENT_SECRET` | Optionnel | Secret client OAuth de Google      |
+
+Le bouton « Continuer avec Google » n’est affiché, et le fournisseur n’est activé côté serveur, que si les deux variables sont renseignées.
+
 ## Ancienne configuration Clerk
 
 | Variable                            | Requis | Description                                  |

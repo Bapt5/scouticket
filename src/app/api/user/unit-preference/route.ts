@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import {} from "@/lib/group";
-import { recupererGroupeActif } from "@/lib/groupServer";
+import {
+  estResponsable,
+  recupererGroupeActif,
+  recupererRoleMembre,
+  recupererUnitesAutoriseesMembre,
+} from "@/lib/groupServer";
 import { recupererContexteGroupe } from "@/lib/sessionServeur";
 import { pool } from "@/lib/baseDeDonnees";
 import {
@@ -59,6 +64,21 @@ export async function POST(req: Request) {
       }
 
       if (unitId) {
+        const role = await recupererRoleMembre(
+          identifiantUtilisateur,
+          identifiantOrganisation,
+        );
+        if (!estResponsable(role)) {
+          const unitesAutorisees = await recupererUnitesAutoriseesMembre(
+            identifiantUtilisateur,
+            identifiantOrganisation,
+          );
+          if (!unitesAutorisees.has(unitId))
+            return NextResponse.json(
+              { error: "Unité non autorisée" },
+              { status: 403 },
+            );
+        }
         await pool.query(
           `INSERT INTO scouticket_user_unit_preference (user_id, organization_id, unit_id)
            VALUES ($1, $2, $3)

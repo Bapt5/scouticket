@@ -2,7 +2,17 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { FormulaireDepense } from "@/components/FormulaireDepense";
-import { UNITES_PAR_DEFAUT } from "@/lib/group";
+import type { UniteGroupe } from "@/lib/group";
+
+const UNITES_TEST: UniteGroupe[] = [
+  { id: "farfadets", label: "Farfadets", color: "#6CC24A" },
+  {
+    id: "pionniers-caravelles",
+    label: "Pionniers-Caravelles",
+    color: "#E30613",
+  },
+  { id: "groupe", label: "Groupe", color: "#1E3A8A" },
+];
 
 const pieceJointe = {
   nomAffiche: "ticket.jpg",
@@ -21,7 +31,7 @@ describe("FormulaireDepense", () => {
       <FormulaireDepense
         piecesJointes={[]}
         emailUtilisateur="test@example.test"
-        units={UNITES_PAR_DEFAUT}
+        units={UNITES_TEST}
         treasuryVerified
         onChangementUnite={onChangementUnite}
       />,
@@ -40,7 +50,7 @@ describe("FormulaireDepense", () => {
       <FormulaireDepense
         piecesJointes={[]}
         emailUtilisateur="test@example.test"
-        units={UNITES_PAR_DEFAUT}
+        units={UNITES_TEST}
         uniteInitiale="groupe"
         treasuryVerified
         onChangementUnite={onChangementUnite}
@@ -68,7 +78,7 @@ describe("FormulaireDepense", () => {
       <FormulaireDepense
         piecesJointes={[]}
         emailUtilisateur="test@example.test"
-        units={UNITES_PAR_DEFAUT}
+        units={UNITES_TEST}
         treasuryVerified
       />,
     );
@@ -102,7 +112,7 @@ describe("FormulaireDepense", () => {
       <FormulaireDepense
         piecesJointes={[pieceJointe]}
         emailUtilisateur="test@example.test"
-        units={UNITES_PAR_DEFAUT}
+        units={UNITES_TEST}
         uniteInitiale="groupe"
         treasuryVerified
       />,
@@ -137,7 +147,7 @@ describe("FormulaireDepense", () => {
           { ...pieceJointe, nomAffiche: "ticket-2.jpg" },
         ]}
         emailUtilisateur="test@example.test"
-        units={UNITES_PAR_DEFAUT}
+        units={UNITES_TEST}
         uniteInitiale="groupe"
         treasuryVerified
       />,

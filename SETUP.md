@@ -191,7 +191,7 @@ Si vous avez un serveur SMTP personnalisé :
 
 Better Auth gère l’authentification depuis l’application. Configurez une base PostgreSQL, puis définissez `DATABASE_URL`, `BETTER_AUTH_SECRET` (une valeur longue et aléatoire), `AUDIT_LOG_SECRET` (une valeur différente, utilisée pour pseudonymiser les audits), `BETTER_AUTH_URL` et `APP_URL`. L’inscription e-mail/mot de passe requiert aussi la configuration SMTP afin d’envoyer les liens de vérification et de réinitialisation.
 
-Après le déploiement, exécutez `pnpm auth:migrate`, puis `pnpm db:migrate`. Cette dernière commande charge le fichier `.env` lorsqu’il existe. La première commande crée les tables Better Auth ; la seconde applique une seule fois chaque migration de `sql/` et l’historise dans PostgreSQL. Relancez ces deux commandes avant un déploiement qui introduit une migration. Google est optionnel : ajoutez `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET` pour l’activer.
+Après le déploiement, exécutez `pnpm auth:migrate`, puis `pnpm db:migrate`. Cette dernière commande charge le fichier `.env` lorsqu’il existe. La première commande crée les tables Better Auth ; la seconde applique une seule fois chaque migration de `sql/` et l’historise dans PostgreSQL. Relancez ces deux commandes avant un déploiement qui introduit une migration. Google est optionnel : ajoutez `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET` pour l’activer ; si l’une des deux est absente, le bouton « Continuer avec Google » n’est pas affiché.
 
 Si une connexion sociale échoue avec `column "id" of relation "rateLimit" does not exist`, la base n’a pas encore reçu la migration Scouticket : exécutez `pnpm db:migrate` avec la `DATABASE_URL` de cet environnement.
 

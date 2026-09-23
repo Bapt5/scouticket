@@ -6,6 +6,7 @@ import Home from "../app/(main)/page";
 const mocks = vi.hoisted(() => ({
   session: vi.fn(),
   organisation: vi.fn(),
+  organisations: vi.fn(),
   listerInvitations: vi.fn(),
 }));
 
@@ -13,7 +14,7 @@ vi.mock("@/lib/auth-client", () => ({
   clientAuth: {
     useSession: () => ({ data: mocks.session(), isPending: false }),
     useActiveOrganization: () => ({ data: mocks.organisation() }),
-    useListOrganizations: () => ({ data: [] }),
+    useListOrganizations: () => ({ data: mocks.organisations() }),
     organization: {
       setActive: vi.fn(),
       create: vi.fn(),
@@ -62,6 +63,7 @@ describe("Page principale", () => {
       },
     });
     mocks.organisation.mockReturnValue({ id: "org_test", name: "Test" });
+    mocks.organisations.mockReturnValue([]);
     mocks.listerInvitations.mockReset();
     mocks.listerInvitations.mockResolvedValue({ data: [], error: null });
     vi.stubGlobal(
@@ -183,5 +185,116 @@ describe("Page principale", () => {
 
     expect(await screen.findByText("Nouveau groupe")).toBeInTheDocument();
     expect(screen.queryByText("Ancien groupe")).not.toBeInTheDocument();
+  });
+
+  describe("Quitter un groupe", () => {
+    beforeEach(() => {
+      mocks.organisation.mockReturnValue(null);
+      mocks.organisations.mockReturnValue([
+        { id: "org_1", name: "Groupe des Éclaireurs" },
+      ]);
+      vi.stubGlobal(
+        "fetch",
+        vi.fn((url: string) => {
+          if (url === "/api/user/default-group")
+            return Promise.resolve({
+              ok: true,
+              json: () => Promise.resolve({ organizationId: null }),
+            });
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+        }),
+      );
+    });
+
+    it("affiche une confirmation avant de quitter un groupe", async () => {
+      render(<Home />);
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Quitter" }),
+      );
+
+      expect(
+        screen.getByText("Quitter le groupe « Groupe des Éclaireurs » ?"),
+      ).toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("button", { name: "Annuler" }));
+
+      expect(
+        screen.queryByText("Quitter le groupe « Groupe des Éclaireurs » ?"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("retire le groupe de la liste après confirmation", async () => {
+      const fetchMock = vi.fn((url: string) => {
+        if (url === "/api/group/leave")
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ success: true }),
+          });
+        if (url === "/api/user/default-group")
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ organizationId: null }),
+          });
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+      });
+      vi.stubGlobal("fetch", fetchMock);
+
+      render(<Home />);
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Quitter" }),
+      );
+      await userEvent.click(screen.getByRole("button", { name: "Confirmer" }));
+
+      await screen.findByRole("heading", { name: "Bienvenue" });
+      expect(
+        screen.queryByText("Groupe des Éclaireurs"),
+      ).not.toBeInTheDocument();
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/group/leave",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({ organizationId: "org_1" }),
+        }),
+      );
+    });
+
+    it("affiche l’erreur renvoyée par l’API sans fermer la confirmation", async () => {
+      const fetchMock = vi.fn((url: string) => {
+        if (url === "/api/group/leave")
+          return Promise.resolve({
+            ok: false,
+            json: () =>
+              Promise.resolve({
+                error:
+                  "Impossible de quitter le groupe : vous êtes le seul responsable.",
+              }),
+          });
+        if (url === "/api/user/default-group")
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ organizationId: null }),
+          });
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+      });
+      vi.stubGlobal("fetch", fetchMock);
+
+      render(<Home />);
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Quitter" }),
+      );
+      await userEvent.click(screen.getByRole("button", { name: "Confirmer" }));
+
+      expect(
+        await screen.findByText(
+          "Impossible de quitter le groupe : vous êtes le seul responsable.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("Quitter le groupe « Groupe des Éclaireurs » ?"),
+      ).toBeInTheDocument();
+    });
   });
 });

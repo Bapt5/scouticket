@@ -25,6 +25,10 @@ const actionsParChemin: Record<string, string> = {
   "/organization/remove-member": "membre_supprime",
   "/organization/update-member-role": "role_membre_modifie",
   "/organization/leave": "organisation_quittee",
+  "/update-user": "profil_modifie",
+  "/change-email": "changement_email_demande",
+  "/change-password": "mot_de_passe_modifie",
+  "/delete-user": "compte_supprime",
 };
 
 function estObjet(valeur: unknown): valeur is ValeurObjet {

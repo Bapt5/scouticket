@@ -36,6 +36,8 @@ Depuis **Administration**, choisissez **Gérer les membres** et saisissez son ad
 
 La personne invitée se connecte avec l’adresse e-mail qui a reçu l’invitation. Si elle crée son compte, elle confirme d’abord cette adresse depuis le lien reçu par e-mail. Sur l’accueil, un bandeau **« invitation en attente »** indique le nom du groupe et propose **Voir l’invitation**. Il apparaît sur l’écran **Bienvenue**, même avant que la personne ne rejoigne son premier groupe, et reste visible si elle utilise déjà un autre groupe. Elle doit accepter l’invitation pour rejoindre le nouveau groupe.
 
+Depuis la fiche d’un membre (clic sur son nom dans la liste), un responsable peut aussi changer son rôle (Membre, Administrateur ou Responsable) grâce à la liste déroulante en haut de la fenêtre, puis cliquer sur **Enregistrer les modifications**. Seul un responsable (rôle Responsable) peut modifier le rôle d’un autre responsable ou promouvoir un membre au rang de responsable. Votre propre rôle ne peut pas être modifié depuis cet écran, pour éviter de vous retirer accidentellement vos responsabilités.
+
 Les membres invités n’ont pas accès à la configuration du groupe, à l’adresse de trésorerie ni à la gestion des invitations.
 
 ![Menu Administration de Scouticket](/guide/administration-groupe.png)

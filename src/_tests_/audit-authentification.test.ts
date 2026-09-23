@@ -26,6 +26,16 @@ describe("audit Better Auth", () => {
     expect(actionAuditAuthentification("/get-session")).toBeNull();
   });
 
+  it("reconnaît les actions de modification du profil", () => {
+    expect(actionAuditAuthentification("/update-user")).toBe("profil_modifie");
+    expect(actionAuditAuthentification("/change-email")).toBe(
+      "changement_email_demande",
+    );
+    expect(actionAuditAuthentification("/change-password")).toBe(
+      "mot_de_passe_modifie",
+    );
+  });
+
   it("journalise les identifiants pseudonymisés de la session Better Auth", () => {
     const espion = vi.spyOn(console, "info").mockImplementation(() => {});
     journaliserAuditAuthentification({

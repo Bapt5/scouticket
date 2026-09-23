@@ -15,6 +15,16 @@ export interface UniteGroupe {
   color: string;
 }
 
+/**
+ * Unité en cours d'édition côté admin : `id` vaut `null` tant qu'elle n'a
+ * pas encore été enregistrée, l'identifiant opaque étant généré côté base.
+ */
+export interface UniteBrouillon {
+  id: string | null;
+  label: string;
+  color: string;
+}
+
 export const CLE_UNITE_SELECTIONNEE_PAR_ORGANISATION =
   "unitesSelectionneesParOrganisation";
 
@@ -54,37 +64,41 @@ export function lireUniteSelectionnee(
     : "";
 }
 
-export const UNITES_PAR_DEFAUT: UniteGroupe[] = [
-  ["farfadets", "Farfadets", "#6CC24A"],
-  ["louveteaux-jeannettes", "Louveteaux-Jeannettes", "#F28C00"],
-  ["scouts-guides", "Scouts-Guides", "#0072CE"],
-  ["pionniers-caravelles", "Pionniers-Caravelles", "#E30613"],
-  ["compagnons", "Compagnons", "#00A19A"],
-  ["groupe", "Groupe", "#1E3A8A"],
-].map(([id, label, color]) => ({ id, label, color }));
+// Les ids sont attribués côté base à l'enregistrement (voir appliquerUnites) :
+// ces unités par défaut n'en portent volontairement pas encore.
+export const UNITES_PAR_DEFAUT: UniteBrouillon[] = [
+  ["Farfadets", "#6CC24A"],
+  ["Louveteaux-Jeannettes", "#F28C00"],
+  ["Scouts-Guides", "#0072CE"],
+  ["Pionniers-Caravelles", "#E30613"],
+  ["Compagnons", "#00A19A"],
+  ["Groupe", "#1E3A8A"],
+].map(([label, color]) => ({ id: null, label, color }));
 
-export function lireUnites(valeur: unknown): UniteGroupe[] {
+function lireUnites(valeur: unknown): UniteBrouillon[] {
   if (!Array.isArray(valeur)) return [];
   return valeur.filter(
-    (unite): unite is UniteGroupe =>
+    (unite): unite is UniteBrouillon =>
       !!unite &&
       typeof unite === "object" &&
-      typeof unite.id === "string" &&
+      (unite.id === null || typeof unite.id === "string") &&
       typeof unite.label === "string" &&
       typeof unite.color === "string",
   );
 }
 
-export function validerUnites(valeur: unknown): UniteGroupe[] | null {
+export function validerUnites(valeur: unknown): UniteBrouillon[] | null {
   const unites = lireUnites(valeur);
   if (unites.length === 0 || unites.length > 30) return null;
   const identifiants = new Set<string>();
   for (const unite of unites) {
-    if (!/^[a-z0-9-]{1,50}$/.test(unite.id) || identifiants.has(unite.id))
-      return null;
+    if (unite.id !== null) {
+      if (!/^[a-z0-9-]{1,64}$/i.test(unite.id) || identifiants.has(unite.id))
+        return null;
+      identifiants.add(unite.id);
+    }
     if (!unite.label.trim() || unite.label.trim().length > 80) return null;
     if (!COULEUR_HEXADECIMALE.test(unite.color)) return null;
-    identifiants.add(unite.id);
   }
   return unites.map((unite) => ({ ...unite, label: unite.label.trim() }));
 }

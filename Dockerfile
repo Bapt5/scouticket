@@ -19,8 +19,6 @@ WORKDIR /app
 # présentes que dans cette étape ; Compose injecte les vraies valeurs au runtime.
 ENV BETTER_AUTH_SECRET=build-only-secret-not-used-at-runtime-1234567890
 ENV BETTER_AUTH_URL=http://localhost:3000
-ENV GOOGLE_CLIENT_ID=build-only-google-client-id
-ENV GOOGLE_CLIENT_SECRET=build-only-google-client-secret
 ENV DATABASE_URL=postgresql://scouticket:scouticket@localhost:5432/scouticket
 
 COPY --from=dependances /app/node_modules ./node_modules

@@ -41,7 +41,7 @@ Définissez `APP_URL` avec l’URL publique de l’application (par exemple `htt
 
 La liste d’unités par défaut peut être renommée, complétée ou simplifiée par chaque groupe. Chaque unité possède une couleur, reprise dans les e-mails de notes de frais.
 
-Better Auth gère les organisations et les invitations dans la base PostgreSQL. Google reste optionnel : renseignez ses identifiants OAuth si vous souhaitez afficher « Continuer avec Google » en plus de l’e-mail/mot de passe.
+Better Auth gère les organisations et les invitations dans la base PostgreSQL. Google reste optionnel : renseignez `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET` si vous souhaitez afficher « Continuer avec Google » en plus de l’e-mail/mot de passe ; sans les deux, le bouton est masqué.
 
 Un membre qui crée son compte depuis une invitation revient automatiquement, connecté, sur cette invitation après la validation de son adresse e-mail. Après l’acceptation, le groupe rejoint devient son groupe actif et principal.
 

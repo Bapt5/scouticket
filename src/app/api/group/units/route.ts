@@ -1,17 +1,17 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { validerUnites } from "@/lib/group";
-import { recupererRoleMembre } from "@/lib/groupServer";
+import {
+  appliquerUnites,
+  estResponsable,
+  recupererRoleMembre,
+} from "@/lib/groupServer";
 import { recupererContexteGroupe } from "@/lib/sessionServeur";
 import { pool } from "@/lib/baseDeDonnees";
 import { verifierOrigineRequete } from "@/lib/api/securiteRequetes";
 import { executerRouteAvecLogs } from "@/lib/api/routeAvecLogs";
 
 const schemaCorps = z.object({ units: z.unknown() });
-
-function estAdministrateur(role: string | null) {
-  return role === "admin" || role === "owner";
-}
 
 export async function PATCH(requete: Request) {
   return executerRouteAvecLogs(requete, async () => {
@@ -24,7 +24,7 @@ export async function PATCH(requete: Request) {
             identifiantOrganisation,
           )
         : null;
-    if (!identifiantOrganisation || !estAdministrateur(role))
+    if (!identifiantOrganisation || !estResponsable(role))
       return NextResponse.json(
         { error: "Accès réservé aux responsables du groupe" },
         { status: 403 },
@@ -37,10 +37,24 @@ export async function PATCH(requete: Request) {
     if (!unites)
       return NextResponse.json({ error: "Unités invalides" }, { status: 400 });
 
-    await pool.query(
-      `UPDATE scouticket_group_data SET units = $2::jsonb WHERE organization_id = $1`,
-      [identifiantOrganisation, JSON.stringify(unites)],
-    );
-    return NextResponse.json({ success: true });
+    const client = await pool.connect();
+    let unitesEnregistrees;
+    try {
+      await client.query("BEGIN");
+      unitesEnregistrees = await appliquerUnites(
+        client,
+        identifiantOrganisation,
+        unites,
+      );
+      await client.query("COMMIT");
+    } catch (erreur) {
+      await client.query("ROLLBACK");
+      throw erreur;
+    } finally {
+      client.release();
+    }
+    // Les unités nouvellement créées reçoivent un id côté base : on le renvoie
+    // pour que l'éditeur puisse continuer à les modifier sans les dupliquer.
+    return NextResponse.json({ success: true, units: unitesEnregistrees });
   });
 }
