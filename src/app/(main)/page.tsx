@@ -16,9 +16,14 @@ import {
   type PieceJointeDepense,
 } from "@/constants/piecesJointes";
 import type { UniteGroupe } from "@/lib/group";
+import type { ParametresAnneeComptable } from "@/lib/nomenclature";
 
 type Groupe = {
   units: UniteGroupe[];
+  nomenclature?: {
+    format: string | null;
+    anneeComptable: ParametresAnneeComptable;
+  };
   configured: boolean;
   treasuryVerified: boolean;
   isAdmin: boolean;
@@ -485,6 +490,12 @@ export default function Home() {
                         >
                           Gérer les unités
                         </Link>
+                        <Link
+                          href="/gestion-nomenclature"
+                          className="block w-full rounded-lg bg-white px-4 py-3 text-center font-medium text-[#1E3A8A] shadow-sm ring-1 ring-zinc-200 transition-colors hover:bg-zinc-100"
+                        >
+                          Nom des justificatifs
+                        </Link>
                       </div>
                     )}
                   </>
@@ -506,6 +517,7 @@ export default function Home() {
                 piecesJointes={piecesJointes}
                 emailUtilisateur={session.user.email}
                 units={groupe.units}
+                nomenclature={groupe.nomenclature}
                 uniteInitiale={groupe.unitPreference}
                 treasuryVerified={groupe.treasuryVerified}
                 onChangementUnite={(unitId) =>

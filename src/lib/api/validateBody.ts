@@ -70,7 +70,6 @@ export function validerCorpsRequete(body: unknown): {
           ? b.imageBase64.slice(b.imageBase64.indexOf(",") + 1)
           : b.imageBase64,
         originalFileName: b.fileName,
-        normalizedFileName: b.fileName,
       },
     ];
   }
@@ -115,17 +114,8 @@ export function validerCorpsRequete(body: unknown): {
     const nomFichierOriginal = String(
       pieceJointe.originalFileName ?? pieceJointe.displayName ?? "",
     ).trim();
-    const nomFichierNormalise = String(
-      pieceJointe.normalizedFileName ?? nomFichierOriginal ?? nomAffiche ?? "",
-    ).trim();
 
-    if (
-      !nomAffiche ||
-      !typeMime ||
-      !donneesBase64 ||
-      !nomFichierOriginal ||
-      !nomFichierNormalise
-    ) {
+    if (!nomAffiche || !typeMime || !donneesBase64 || !nomFichierOriginal) {
       return {
         error: jsonError(`Justificatif incomplet (#${numeroPieceJointe})`, 400),
       };
@@ -183,7 +173,7 @@ export function validerCorpsRequete(body: unknown): {
       typeMime,
       donneesBase64,
       nomFichierOriginal,
-      nomFichierNormalise,
+      nomFichierNormalise: nomFichierOriginal,
     });
   }
 

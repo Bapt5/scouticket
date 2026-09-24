@@ -8,6 +8,7 @@ import {
   estResponsable,
   recupererGroupeActif,
   recupererUnitesAutoriseesMembre,
+  reserverNumeros,
 } from "@/lib/groupServer";
 
 describe("estResponsable", () => {
@@ -72,5 +73,57 @@ describe("recupererUnitesAutoriseesMembre", () => {
     const autorisees = await recupererUnitesAutoriseesMembre("user_1", "org_1");
 
     expect(autorisees).toEqual(new Set(["farfadets", "groupe"]));
+  });
+});
+
+describe("reserverNumeros", () => {
+  function clientAvec(ligne: unknown) {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: ligne ? [ligne] : [] })
+      .mockResolvedValue({ rows: [] });
+    return { client: { query } as never, query };
+  }
+
+  it("attribue des plages contiguës et met à jour les compteurs", async () => {
+    const { client, query } = clientAvec({
+      compteur_global: 41,
+      compteurs_comptables: { "2025": 12, "2024": 90 },
+    });
+
+    const attribues = await reserverNumeros(client, "org_1", {
+      global: 2,
+      comptable: { annee: 2025, nombre: 2 },
+    });
+
+    expect(attribues).toEqual({ premierGlobal: 42, premierComptable: 13 });
+    expect(query.mock.calls[0][0]).toMatch(/FOR UPDATE/);
+    expect(query.mock.calls[1][1]).toEqual([
+      "org_1",
+      43,
+      JSON.stringify({ "2025": 14, "2024": 90 }),
+    ]);
+  });
+
+  it("démarre à 1 pour une nouvelle année comptable", async () => {
+    const { client } = clientAvec({
+      compteur_global: 0,
+      compteurs_comptables: {},
+    });
+
+    const attribues = await reserverNumeros(client, "org_1", {
+      global: 0,
+      comptable: { annee: 2026, nombre: 1 },
+    });
+
+    expect(attribues).toEqual({ premierComptable: 1 });
+  });
+
+  it("échoue si le groupe n'est pas configuré", async () => {
+    const { client } = clientAvec(null);
+
+    await expect(
+      reserverNumeros(client, "org_1", { global: 1, comptable: null }),
+    ).rejects.toThrow("GROUPE_NON_CONFIGURE");
   });
 });

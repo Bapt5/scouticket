@@ -1,5 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { envoyerEmailDepense } from "@/lib/email";
+import { envoyerEmailDepense, type DonneesEmailDepense } from "@/lib/email";
+import { assainirSegmentNomFichier, devinerExtension } from "@/lib/attachments";
+import {
+  analyserDateIso,
+  calculerReservation,
+  dedoublonnerNomsFichiers,
+  genererNomsNomenclature,
+  type ParametresAnneeComptable,
+} from "@/lib/nomenclature";
+import { pool } from "@/lib/baseDeDonnees";
 import { jsonError, verifierErreurSmtp } from "@/lib/api/utils";
 import { validerCorpsRequete } from "@/lib/api/validateBody";
 import {
@@ -7,6 +16,7 @@ import {
   recupererGroupeActif,
   recupererRoleMembre,
   recupererUnitesAutoriseesMembre,
+  reserverNumeros,
 } from "@/lib/groupServer";
 import {
   reponseRateLimit,
@@ -30,6 +40,61 @@ function validateEnv() {
     return jsonError("Configuration serveur manquante", 500);
   }
   return null;
+}
+
+/**
+ * Les numéros globaux sont réservés dans une transaction validée seulement
+ * après l'envoi : un échec SMTP n'en consomme aucun.
+ */
+async function envoyerAvecNomenclature(
+  donneesEmail: DonneesEmailDepense,
+  identifiantOrganisation: string,
+  format: string,
+  anneeComptable: ParametresAnneeComptable,
+) {
+  const depenses = donneesEmail.detailsDepenses ?? [
+    {
+      typeDepense: donneesEmail.typeDepense,
+      modePaiement: donneesEmail.modePaiement,
+      montant: donneesEmail.montant,
+    },
+  ];
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const reservation = calculerReservation(
+      format,
+      donneesEmail.date,
+      donneesEmail.piecesJointes.length,
+      anneeComptable,
+    );
+    const numeros =
+      reservation.global > 0 || reservation.comptable
+        ? await reserverNumeros(client, identifiantOrganisation, reservation)
+        : {};
+    const noms = genererNomsNomenclature({
+      format,
+      parametresAnnee: anneeComptable,
+      date: donneesEmail.date,
+      branche: donneesEmail.branche,
+      depenses,
+      extensions: donneesEmail.piecesJointes.map((piece) =>
+        devinerExtension(piece.typeMime, piece.nomFichierOriginal),
+      ),
+      ...numeros,
+    });
+    donneesEmail.piecesJointes = donneesEmail.piecesJointes.map(
+      (piece, index) => ({ ...piece, nomFichierNormalise: noms[index] }),
+    );
+    const resultat = await envoyerEmailDepense(donneesEmail);
+    await client.query("COMMIT");
+    return resultat;
+  } catch (erreur) {
+    await client.query("ROLLBACK");
+    throw erreur;
+  } finally {
+    client.release();
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -103,7 +168,28 @@ export async function POST(req: NextRequest) {
       donneesEmail.couleur = unit.color;
       donneesEmail.emailTresorerie = group.emailTresorerie;
 
-      const resultat = await envoyerEmailDepense(donneesEmail);
+      const { format, anneeComptable } = group.nomenclature;
+      let resultat;
+      if (format) {
+        if (!analyserDateIso(donneesEmail.date))
+          return jsonError("Date invalide", 400);
+        resultat = await envoyerAvecNomenclature(
+          donneesEmail,
+          identifiantOrganisation,
+          format,
+          anneeComptable,
+        );
+      } else {
+        const noms = dedoublonnerNomsFichiers(
+          donneesEmail.piecesJointes.map((piece) =>
+            assainirSegmentNomFichier(piece.nomFichierOriginal),
+          ),
+        );
+        donneesEmail.piecesJointes = donneesEmail.piecesJointes.map(
+          (piece, index) => ({ ...piece, nomFichierNormalise: noms[index] }),
+        );
+        resultat = await envoyerEmailDepense(donneesEmail);
+      }
       return NextResponse.json({
         success: true,
         message: "Email envoyé avec succès",

@@ -1,7 +1,6 @@
 import {
   ALLOWED_ATTACHMENT_MIME_TYPES,
   MIME_EXTENSION_MAP,
-  type PieceJointeDepense,
 } from "@/constants/piecesJointes";
 
 export function estTypeMimePieceJointeAutorise(typeMime: string): boolean {
@@ -31,49 +30,4 @@ export function devinerExtension(
     }
   }
   return "bin";
-}
-
-export function construireNomBasePieceJointe(parametres: {
-  date: string;
-  branch: string;
-  expenseType: string;
-  paymentMethod: string;
-  amount: string;
-}): string {
-  const typeCourt = parametres.expenseType
-    ? parametres.expenseType.replace(/\s+/g, " ").trim()
-    : "";
-  const montantFormate = parametres.amount.replace(",", ".");
-  const modePaiementCourt = parametres.paymentMethod
-    ? parametres.paymentMethod.replace(/\s+/g, " ").trim()
-    : "";
-  return assainirSegmentNomFichier(
-    `${parametres.date} - ${parametres.branch}${typeCourt ? " - " + typeCourt : ""}${modePaiementCourt ? " - " + modePaiementCourt : ""} - ${montantFormate}`,
-  );
-}
-
-export function construireNomsFichiersNormalises(
-  piecesJointes: Array<
-    Pick<PieceJointeDepense, "typeMime" | "nomFichierOriginal">
-  >,
-  parametres: {
-    date: string;
-    branch: string;
-    expenseType: string;
-    paymentMethod: string;
-    amount: string;
-  },
-): string[] {
-  const nomBase = construireNomBasePieceJointe(parametres);
-  const ajouterIndex = piecesJointes.length > 1;
-  return piecesJointes.map((pieceJointe, index) => {
-    const extension = devinerExtension(
-      pieceJointe.typeMime,
-      pieceJointe.nomFichierOriginal,
-    );
-    const suffixe = ajouterIndex
-      ? ` - ${String(index + 1).padStart(2, "0")}`
-      : "";
-    return `${nomBase}${suffixe}.${extension}`;
-  });
 }
