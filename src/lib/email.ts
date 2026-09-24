@@ -7,17 +7,18 @@ import {
   type DetailDepense,
 } from "@/constants/piecesJointes";
 import { journal } from "@/lib/logger";
+import { totalLignes } from "@/lib/depenses";
 
 export interface DonneesEmailDepense {
   emailUtilisateur: string;
   date: string;
   branche: string;
-  typeDepense: string;
-  modePaiement: string;
+  /** Total de toutes les lignes de tous les justificatifs. */
   montant: number;
   description?: string;
   piecesJointes: PieceJointeDepense[];
-  detailsDepenses?: DetailDepense[];
+  /** Un élément par pièce jointe, dans le même ordre. */
+  detailsDepenses: DetailDepense[];
   groupe?: string;
   couleur?: string;
   emailTresorerie?: string;
@@ -106,8 +107,6 @@ export const envoyerEmailDepense = async (donnees: DonneesEmailDepense) => {
     emailUtilisateur,
     date,
     branche,
-    typeDepense,
-    modePaiement,
     montant,
     description,
     piecesJointes,
@@ -196,9 +195,16 @@ export const envoyerEmailDepense = async (donnees: DonneesEmailDepense) => {
   // Accent: If the primary color is a warm tone, keep gold, else use a light variant
   const accentColor = "#FBB042";
   const texteSurCouleurPrincipale = "#ffffff";
-  const plusieursDepenses =
-    piecesJointes.length > 1 &&
-    detailsDepenses?.length === piecesJointes.length;
+  const formaterMontant = (valeur: number) => `${valeur.toFixed(2)} €`;
+  const blocsJustificatifs = piecesJointesAnalysees.map((piece, index) => {
+    const detail = detailsDepenses[index];
+    return {
+      filename: piece.filename,
+      modePaiement: detail?.modePaiement ?? "",
+      lignes: detail?.lignes ?? [],
+      sousTotal: totalLignes(detail?.lignes ?? []),
+    };
+  });
 
   const contenuHtml = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -216,42 +222,41 @@ export const envoyerEmailDepense = async (donnees: DonneesEmailDepense) => {
               <td style="padding: 10px 0; border-bottom: 1px solid #eee; font-weight: bold; color: #374151;">Date :</td>
               <td style="padding: 10px 0; border-bottom: 1px solid #eee; color: #374151;">${echapperHtml(date)}</td>
             </tr>
-            ${
-              plusieursDepenses
-                ? `
-            <tr>
-              <td colspan="2" style="padding: 14px 0 6px; font-weight: bold; color: #374151;">Détail des dépenses :</td>
-            </tr>
-            ${detailsDepenses!
-              .map(
-                (detail, index) => `
-            <tr>
-              <td style="padding: 8px 0; border-bottom: 1px solid #eee; color: #374151;">${echapperHtml(piecesJointesAnalysees[index].filename)} — ${echapperHtml(detail.typeDepense)} — ${echapperHtml(detail.modePaiement)}</td>
-              <td style="padding: 8px 0; border-bottom: 1px solid #eee; color: #374151; text-align: right;">${echapperHtml(String(detail.montant))} €</td>
-            </tr>`,
-              )
-              .join("")}`
-                : ""
-            }
             <tr>
               <td style="padding: 10px 0; border-bottom: 1px solid #eee; font-weight: bold; color: #374151;">Branche :</td>
               <td style="padding: 10px 0; border-bottom: 1px solid #eee; color: #374151;">${echapperHtml(branche)}</td>
             </tr>
             <tr>
-              <td style="padding: 10px 0; border-bottom: 1px solid #eee; font-weight: bold; color: #374151;">Type :</td>
-              <td style="padding: 10px 0; border-bottom: 1px solid #eee; color: #374151;">${echapperHtml(typeDepense)}</td>
+              <td colspan="2" style="padding: 14px 0 6px; font-weight: bold; color: #374151;">Détail des dépenses :</td>
             </tr>
-            ${
-              plusieursDepenses
-                ? ""
-                : `<tr>
-              <td style="padding: 10px 0; border-bottom: 1px solid #eee; font-weight: bold; color: #374151;">Mode de paiement :</td>
-              <td style="padding: 10px 0; border-bottom: 1px solid #eee; color: #374151;">${echapperHtml(modePaiement)}</td>
-            </tr>`
-            }
+            ${blocsJustificatifs
+              .map(
+                (bloc) => `
             <tr>
-              <td style="padding: 10px 0; border-bottom: 1px solid #eee; font-weight: bold; color: ${couleurPrincipale};">Montant :</td>
-              <td style="padding: 10px 0; border-bottom: 1px solid #eee; color: ${couleurPrincipale}; font-weight: bold; font-size: 18px;">${echapperHtml(String(montant))} €</td>
+              <td colspan="2" style="padding: 8px 0 2px; color: #374151;"><strong>${echapperHtml(bloc.filename)}</strong> — ${echapperHtml(bloc.modePaiement)}</td>
+            </tr>
+            ${bloc.lignes
+              .map(
+                (ligne) => `
+            <tr>
+              <td style="padding: 2px 0 2px 12px; color: #374151;">${echapperHtml(ligne.categorie)}</td>
+              <td style="padding: 2px 0; color: #374151; text-align: right;">${echapperHtml(formaterMontant(ligne.montant))}</td>
+            </tr>`,
+              )
+              .join("")}
+            ${
+              bloc.lignes.length > 1
+                ? `<tr>
+              <td style="padding: 2px 0 6px 12px; color: #6B7280; font-style: italic;">Sous-total</td>
+              <td style="padding: 2px 0 6px; color: #6B7280; text-align: right; font-style: italic;">${echapperHtml(formaterMontant(bloc.sousTotal))}</td>
+            </tr>`
+                : ""
+            }`,
+              )
+              .join("")}
+            <tr>
+              <td style="padding: 10px 0; border-top: 1px solid #eee; border-bottom: 1px solid #eee; font-weight: bold; color: ${couleurPrincipale};">Total :</td>
+              <td style="padding: 10px 0; border-top: 1px solid #eee; border-bottom: 1px solid #eee; color: ${couleurPrincipale}; font-weight: bold; font-size: 18px; text-align: right;">${echapperHtml(formaterMontant(montant))}</td>
             </tr>
             <tr>
               <td style="padding: 10px 0; border-bottom: 1px solid #eee; font-weight: bold; color: #374151;">Demandeur :</td>
@@ -290,18 +295,21 @@ Nouvelle facture
 
 Date : ${date}
 Branche : ${branche}
-${plusieursDepenses ? "Dépenses :" : `Type : ${typeDepense}\nMode de paiement : ${modePaiement}`}
-${
-  plusieursDepenses
-    ? detailsDepenses!
-        .map(
-          (detail, index) =>
-            `- ${piecesJointesAnalysees[index].filename} — ${detail.typeDepense} — ${detail.modePaiement} : ${detail.montant} €`,
-        )
-        .join("\n")
-    : ""
-}
-${plusieursDepenses ? "Total" : "Montant"} : ${montant} €
+Dépenses :
+${blocsJustificatifs
+  .map((bloc) =>
+    [
+      `- ${bloc.filename} — ${bloc.modePaiement}`,
+      ...bloc.lignes.map(
+        (ligne) => `    ${ligne.categorie} : ${formaterMontant(ligne.montant)}`,
+      ),
+      ...(bloc.lignes.length > 1
+        ? [`    Sous-total : ${formaterMontant(bloc.sousTotal)}`]
+        : []),
+    ].join("\n"),
+  )
+  .join("\n")}
+Total : ${formaterMontant(montant)}
 Demandeur : ${emailUtilisateur}
 ${description ? `Description : ${description}` : ""}
 

@@ -51,9 +51,16 @@ describe("templates HTML des e-mails", () => {
       emailUtilisateur: texteDangereux,
       date: texteDangereux,
       branche: texteDangereux,
-      typeDepense: texteDangereux,
-      modePaiement: texteDangereux,
       description: texteDangereux,
+      detailsDepenses: [
+        {
+          modePaiement: texteDangereux,
+          lignes: [
+            { categorie: texteDangereux, montant: 7 },
+            { categorie: "Carburant", montant: 5 },
+          ],
+        },
+      ],
       groupe: texteDangereux,
       couleur: `#123456; background-image: url("${texteDangereux}")`,
       emailTresorerie: "tresorerie@example.test",
@@ -74,8 +81,47 @@ describe("templates HTML des e-mails", () => {
       "&lt;img src=x onerror=&quot;alerte()&quot;&gt; &amp; &#39;test&#39;",
     );
     expect(html).not.toContain('<img src=x onerror="alerte()">');
-    expect(html).toContain("Mode de paiement :");
+    expect(html).toContain("Détail des dépenses :");
+    expect(html).toContain("Sous-total");
+    expect(html).toContain("12.00 €");
     expect(html).toContain("background-color: #1E3A8A");
+  });
+
+  it("liste chaque catégorie de chaque justificatif dans le texte de l’e-mail", async () => {
+    await envoyerEmailDepense({
+      emailUtilisateur: "membre@example.test",
+      date: "2026-01-01",
+      branche: "Groupe",
+      emailTresorerie: "tresorerie@example.test",
+      montant: 30,
+      piecesJointes: [
+        {
+          nomAffiche: "a.png",
+          nomFichierOriginal: "a.png",
+          nomFichierNormalise: "a.png",
+          typeMime: "image/png",
+          donneesBase64: Buffer.from("image").toString("base64"),
+        },
+      ],
+      detailsDepenses: [
+        {
+          modePaiement: "Espèces",
+          lignes: [
+            { categorie: "Alimentation, Intendance", montant: 20 },
+            { categorie: "Achat Petit Matériel", montant: 10 },
+          ],
+        },
+      ],
+    });
+
+    const texte = envoyerMailSimule.mock.calls[
+      envoyerMailSimule.mock.calls.length - 1
+    ][0].text as string;
+    expect(texte).toContain("- a.png — Espèces");
+    expect(texte).toContain("Alimentation, Intendance : 20.00 €");
+    expect(texte).toContain("Achat Petit Matériel : 10.00 €");
+    expect(texte).toContain("Sous-total : 30.00 €");
+    expect(texte).toContain("Total : 30.00 €");
   });
 
   it("met en forme, échappe et lie l’e-mail de vérification", async () => {

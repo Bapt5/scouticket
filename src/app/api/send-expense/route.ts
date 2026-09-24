@@ -8,6 +8,7 @@ import {
   genererNomsNomenclature,
   type ParametresAnneeComptable,
 } from "@/lib/nomenclature";
+import { versDepenseNomenclature } from "@/lib/depenses";
 import { convertirPiecesJointesEnPdf } from "@/lib/conversionJustificatifs";
 import { pool } from "@/lib/baseDeDonnees";
 import { jsonError, verifierErreurSmtp } from "@/lib/api/utils";
@@ -53,13 +54,7 @@ async function envoyerAvecNomenclature(
   format: string,
   anneeComptable: ParametresAnneeComptable,
 ) {
-  const depenses = donneesEmail.detailsDepenses ?? [
-    {
-      typeDepense: donneesEmail.typeDepense,
-      modePaiement: donneesEmail.modePaiement,
-      montant: donneesEmail.montant,
-    },
-  ];
+  const depenses = donneesEmail.detailsDepenses.map(versDepenseNomenclature);
   const client = await pool.connect();
   try {
     await client.query("BEGIN");

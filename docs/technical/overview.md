@@ -3,7 +3,7 @@
 ## Fonctionnalités principales
 
 - Capture photo et import de justificatifs (images/PDF)
-- Saisie guidée des informations de dépense
+- Saisie guidée des dépenses : un justificatif par section repliable, avec une ou plusieurs lignes (montant + catégorie comptable)
 - Envoi automatique par email (trésorerie + utilisateur)
 - Groupes indépendants : unités, couleurs et adresse de trésorerie propres à chaque groupe
 - Validation de l’adresse de trésorerie avant le premier envoi

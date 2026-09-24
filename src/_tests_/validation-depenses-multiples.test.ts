@@ -15,104 +15,118 @@ const baseBody = {
   unitId: "groupe",
 };
 
-describe("validerCorpsRequete avec plusieurs dépenses", () => {
-  it("calcule le total à partir des détails de chaque justificatif", () => {
+describe("validerCorpsRequete avec plusieurs catégories par justificatif", () => {
+  it("calcule le total à partir des lignes de chaque justificatif", () => {
     const resultat = validerCorpsRequete({
       ...baseBody,
       attachments: [attachment("ticket-1.jpg"), attachment("ticket-2.jpg")],
-      expenseDetails: [
+      expenses: [
         {
-          expenseType: "Alimentation, Intendance",
           paymentMethod: "Carte bancaire",
-          amount: "12.50",
+          lines: [
+            { category: "Alimentation, Intendance", amount: "12.50" },
+            { category: "Achat Petit Matériel", amount: 3.1 },
+          ],
         },
-        { expenseType: "Carburants", paymentMethod: "Espèces", amount: 30 },
+        {
+          paymentMethod: "Espèces",
+          lines: [{ category: "Carburant", amount: 30 }],
+        },
       ],
     });
 
     expect(resultat.error).toBeUndefined();
     expect(resultat.donneesEmail).toMatchObject({
-      typeDepense: "Dépenses multiples",
-      montant: 42.5,
+      montant: 45.6,
       detailsDepenses: [
         {
-          typeDepense: "Alimentation, Intendance",
           modePaiement: "Carte bancaire",
-          montant: 12.5,
+          lignes: [
+            { categorie: "Alimentation, Intendance", montant: 12.5 },
+            { categorie: "Achat Petit Matériel", montant: 3.1 },
+          ],
         },
-        { typeDepense: "Carburants", modePaiement: "Espèces", montant: 30 },
-      ],
-    });
-  });
-
-  it("refuse un détail manquant ou une catégorie inconnue", () => {
-    const detailManquant = validerCorpsRequete({
-      ...baseBody,
-      attachments: [attachment("ticket-1.jpg"), attachment("ticket-2.jpg")],
-      expenseDetails: [
-        { expenseType: "Carburants", paymentMethod: "Espèces", amount: 20 },
-      ],
-    });
-    const categorieInvalide = validerCorpsRequete({
-      ...baseBody,
-      attachments: [attachment("ticket-1.jpg"), attachment("ticket-2.jpg")],
-      expenseDetails: [
         {
-          expenseType: "Catégorie inconnue",
-          paymentMethod: "Espèces",
-          amount: 20,
+          modePaiement: "Espèces",
+          lignes: [{ categorie: "Carburant", montant: 30 }],
         },
-        { expenseType: "Carburants", paymentMethod: "Espèces", amount: 30 },
       ],
     });
-
-    expect(detailManquant.error?.status).toBe(400);
-    expect(categorieInvalide.error?.status).toBe(400);
   });
 
-  it("refuse des détails pour un justificatif unique", () => {
+  it("accepte un justificatif unique avec une seule ligne", () => {
     const resultat = validerCorpsRequete({
       ...baseBody,
       attachments: [attachment("ticket.jpg")],
-      expenseDetails: [
-        { expenseType: "Carburants", paymentMethod: "Espèces", amount: 22 },
-        { expenseType: "Carburants", paymentMethod: "Espèces", amount: 222 },
+      expenses: [
+        {
+          paymentMethod: "Carte bancaire",
+          lines: [{ category: "Carburant", amount: "18.40" }],
+        },
+      ],
+    });
+
+    expect(resultat.donneesEmail).toMatchObject({
+      montant: 18.4,
+      detailsDepenses: [
+        {
+          modePaiement: "Carte bancaire",
+          lignes: [{ categorie: "Carburant", montant: 18.4 }],
+        },
+      ],
+    });
+  });
+
+  it("refuse un nombre de dépenses différent du nombre de justificatifs", () => {
+    const resultat = validerCorpsRequete({
+      ...baseBody,
+      attachments: [attachment("ticket-1.jpg"), attachment("ticket-2.jpg")],
+      expenses: [
+        {
+          paymentMethod: "Espèces",
+          lines: [{ category: "Carburant", amount: 20 }],
+        },
       ],
     });
 
     expect(resultat.error?.status).toBe(400);
   });
 
-  it("conserve le format d'une dépense unique", () => {
-    const resultat = validerCorpsRequete({
-      ...baseBody,
-      expenseType: "Carburants",
-      paymentMethod: "Carte bancaire",
-      amount: "18.40",
-      attachments: [attachment("ticket.jpg")],
-    });
+  it("refuse une catégorie inconnue, un montant nul ou une liste de lignes vide", () => {
+    const requete = (lines: unknown[]) =>
+      validerCorpsRequete({
+        ...baseBody,
+        attachments: [attachment("ticket.jpg")],
+        expenses: [{ paymentMethod: "Espèces", lines }],
+      });
 
-    expect(resultat.donneesEmail).toMatchObject({
-      typeDepense: "Carburants",
-      modePaiement: "Carte bancaire",
-      montant: 18.4,
-      detailsDepenses: undefined,
-    });
+    expect(
+      requete([{ category: "Catégorie inconnue", amount: 20 }]).error?.status,
+    ).toBe(400);
+    expect(requete([{ category: "Carburant", amount: 0 }]).error?.status).toBe(
+      400,
+    );
+    expect(
+      requete([{ category: "Carburant", amount: "abc" }]).error?.status,
+    ).toBe(400);
+    expect(requete([]).error?.status).toBe(400);
   });
 
   it("refuse un mode de paiement absent ou inconnu", () => {
     const absent = validerCorpsRequete({
       ...baseBody,
-      expenseType: "Carburants",
-      amount: 18,
       attachments: [attachment("ticket.jpg")],
+      expenses: [{ lines: [{ category: "Carburant", amount: 18 }] }],
     });
     const inconnu = validerCorpsRequete({
       ...baseBody,
-      expenseType: "Carburants",
-      paymentMethod: "Crypto-monnaie",
-      amount: 18,
       attachments: [attachment("ticket.jpg")],
+      expenses: [
+        {
+          paymentMethod: "Crypto-monnaie",
+          lines: [{ category: "Carburant", amount: 18 }],
+        },
+      ],
     });
 
     expect(absent.error?.status).toBe(400);

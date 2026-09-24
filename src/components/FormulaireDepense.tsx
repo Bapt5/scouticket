@@ -6,10 +6,8 @@ import {
   ClipboardDocumentListIcon,
   CheckCircleIcon,
   ExclamationTriangleIcon,
-  PlusCircleIcon,
   PaperAirplaneIcon,
   DocumentTextIcon,
-  TrashIcon,
 } from "@heroicons/react/24/outline";
 import { assainirSegmentNomFichier, devinerExtension } from "@/lib/attachments";
 import {
@@ -23,9 +21,20 @@ import {
   MAX_ATTACHMENT_SIZE_BYTES,
   MAX_TOTAL_ATTACHMENTS_SIZE_BYTES,
   type PieceJointeDepense,
-  type DetailDepense,
 } from "@/constants/piecesJointes";
-import { MODES_PAIEMENT, TYPES_DEPENSES } from "@/constants/configDepenses";
+import { MODES_PAIEMENT } from "@/constants/configDepenses";
+import {
+  analyserMontantSaisi,
+  detailSaisiComplet,
+  detailSaisieVide,
+  montantSaisiValide,
+  totalLignes,
+  versDepenseNomenclature,
+  versDetailDepense,
+  type DetailSaisie,
+} from "@/lib/depenses";
+import { AccordeonJustificatif } from "@/components/AccordeonJustificatif";
+import { LignesCategories } from "@/components/LignesCategories";
 import type { UniteGroupe } from "@/lib/group";
 
 interface FormulaireDepenseProps {
@@ -60,12 +69,10 @@ export function FormulaireDepense({
   const [formulaire, setFormulaire] = useState({
     date: new Date().toISOString().split("T")[0],
     branche: uniteInitiale || "",
-    typeDepense: "",
-    modePaiement: "",
-    montant: "",
     description: "",
   });
-  const [detailsDepenses, setDetailsDepenses] = useState<DetailDepense[]>([]);
+  const [detailsDepenses, setDetailsDepenses] = useState<DetailSaisie[]>([]);
+  const [indexOuvert, setIndexOuvert] = useState(0);
   const [erreurUnite, setErreurUnite] = useState("");
   const uniteSelectionnee = units.find(
     (unit) => unit.id === formulaire.branche,
@@ -80,13 +87,7 @@ export function FormulaireDepense({
   }>({ type: null, message: "" });
 
   const modifierChamp = (
-    champ:
-      | "date"
-      | "branche"
-      | "typeDepense"
-      | "modePaiement"
-      | "montant"
-      | "description",
+    champ: "date" | "branche" | "description",
     valeur: string,
   ) => {
     if (
@@ -108,129 +109,99 @@ export function FormulaireDepense({
     }
   };
 
-  const normaliserMontant = (montant: string) => {
-    return montant.replace(",", ".");
-  };
-
-  const plusieursDepenses = piecesJointes.length > 1;
-
   useEffect(() => {
     setDetailsDepenses((precedents) =>
-      piecesJointes.map(
-        (_, index) =>
-          precedents[index] ?? {
-            typeDepense: "",
-            modePaiement: "",
-            montant: Number.NaN,
-          },
-      ),
+      piecesJointes.map((_, index) => precedents[index] ?? detailSaisieVide()),
     );
   }, [piecesJointes]);
 
+  const detailPourIndex = (index: number) =>
+    detailsDepenses[index] ?? detailSaisieVide();
+
   const modifierDetailDepense = (
     index: number,
-    champ: keyof DetailDepense,
-    valeur: string,
+    modification: Partial<DetailSaisie>,
   ) => {
     setDetailsDepenses((precedents) =>
-      precedents.map((detail, detailIndex) =>
-        detailIndex === index
-          ? {
-              ...detail,
-              [champ]: champ === "montant" ? Number(valeur) : valeur,
-            }
-          : detail,
-      ),
+      piecesJointes.map((_, detailIndex) => {
+        const detail = precedents[detailIndex] ?? detailSaisieVide();
+        return detailIndex === index ? { ...detail, ...modification } : detail;
+      }),
     );
     if (statutEnvoi.type) setStatutEnvoi({ type: null, message: "" });
   };
 
-  const totalDepenses = detailsDepenses.reduce(
-    (total, detail) =>
-      total + (Number.isFinite(detail.montant) ? detail.montant : 0),
-    0,
-  );
+  const totalLignesDetail = (detail: DetailSaisie) =>
+    totalLignes(
+      detail.lignes.map((ligne) => ({
+        montant: analyserMontantSaisi(ligne.montant),
+      })),
+    );
+  const totalDepenses =
+    Math.round(
+      piecesJointes.reduce(
+        (total, _, index) => total + totalLignesDetail(detailPourIndex(index)),
+        0,
+      ) * 100,
+    ) / 100;
   const detailsDepensesValides =
-    detailsDepenses.length === piecesJointes.length &&
-    detailsDepenses.every(
-      (detail) =>
-        detail.typeDepense &&
-        detail.modePaiement &&
-        Number.isFinite(detail.montant) &&
-        detail.montant > 0,
+    piecesJointes.length > 0 &&
+    piecesJointes.every((_, index) =>
+      detailSaisiComplet(detailPourIndex(index)),
     );
   const erreurJustificatif =
     afficherErreursValidation && piecesJointes.length === 0;
   const erreurDate = afficherErreursValidation && !formulaire.date;
   const erreurUniteObligatoire =
     afficherErreursValidation && !formulaire.branche;
-  const erreurTypeDepense =
-    afficherErreursValidation && !plusieursDepenses && !formulaire.typeDepense;
-  const erreurModePaiement =
-    afficherErreursValidation && !plusieursDepenses && !formulaire.modePaiement;
-  const erreurMontant =
-    afficherErreursValidation &&
-    !plusieursDepenses &&
-    (!formulaire.montant || Number(formulaire.montant) <= 0);
   const champsManquants = [
     ...(piecesJointes.length === 0 ? ["un justificatif"] : []),
     ...(!formulaire.date ? ["la date"] : []),
     ...(!formulaire.branche ? ["l’unité"] : []),
-    ...(!plusieursDepenses && !formulaire.typeDepense
-      ? ["le type de dépense"]
-      : []),
-    ...(!plusieursDepenses && !formulaire.modePaiement
-      ? ["le mode de paiement"]
-      : []),
-    ...(!plusieursDepenses &&
-    (!formulaire.montant || Number(formulaire.montant) <= 0)
-      ? ["un montant valide"]
-      : []),
-    ...(plusieursDepenses
-      ? detailsDepenses.flatMap((detail, index) => [
-          ...(!detail.typeDepense
-            ? [`la catégorie du justificatif ${index + 1}`]
+    ...piecesJointes.flatMap((_, index) => {
+      const detail = detailPourIndex(index);
+      const numero = index + 1;
+      return [
+        ...(!detail.modePaiement
+          ? [`le mode de paiement du justificatif ${numero}`]
+          : []),
+        ...detail.lignes.flatMap((ligne, indexLigne) => [
+          ...(!ligne.categorie
+            ? [
+                `la catégorie de la ligne ${indexLigne + 1} du justificatif ${numero}`,
+              ]
             : []),
-          ...(!detail.modePaiement
-            ? [`le mode de paiement du justificatif ${index + 1}`]
+          ...(!montantSaisiValide(ligne.montant)
+            ? [
+                `le montant de la ligne ${indexLigne + 1} du justificatif ${numero}`,
+              ]
             : []),
-          ...(!Number.isFinite(detail.montant) || detail.montant <= 0
-            ? [`le montant du justificatif ${index + 1}`]
-            : []),
-        ])
-      : []),
+        ]),
+      ];
+    }),
   ];
   const alerteValidationRef = useRef<HTMLDivElement>(null);
   const formulaireRef = useRef<HTMLFormElement>(null);
 
+  // Le justificatif ouvert ne peut pas dépasser le dernier (suppression).
+  const indexOuvertEffectif = Math.min(indexOuvert, piecesJointes.length - 1);
+
   const genererNomsFichiers = () => {
     if (piecesJointes.length === 0) return [];
     if (nomenclature?.format && analyserDateIso(formulaire.date)) {
-      const depenses = plusieursDepenses
-        ? detailsDepenses
-        : [
-            {
-              typeDepense: formulaire.typeDepense,
-              modePaiement: formulaire.modePaiement,
-              montant: Number(normaliserMontant(formulaire.montant)),
-            },
-          ];
-      if (depenses.length === piecesJointes.length) {
-        return genererNomsNomenclature({
-          format: nomenclature.format,
-          parametresAnnee: nomenclature.anneeComptable,
-          date: formulaire.date,
-          branche: uniteSelectionnee?.label ?? "",
-          depenses: depenses.map((depense) => ({
-            ...depense,
-            montant: Number.isFinite(depense.montant) ? depense.montant : 0,
-          })),
-          extensions: piecesJointes.map((piece) =>
-            devinerExtension(piece.typeMime, piece.nomFichierOriginal),
-          ),
-          apercu: true,
-        });
-      }
+      return genererNomsNomenclature({
+        format: nomenclature.format,
+        parametresAnnee: nomenclature.anneeComptable,
+        date: formulaire.date,
+        branche: uniteSelectionnee?.label ?? "",
+        depenses: piecesJointes.map((_, index) =>
+          versDepenseNomenclature(versDetailDepense(detailPourIndex(index))),
+        ),
+        extensions: piecesJointes.map((piece) =>
+          devinerExtension(piece.typeMime, piece.nomFichierOriginal),
+        ),
+        apercu: true,
+      });
     }
     return dedoublonnerNomsFichiers(
       piecesJointes.map((piece) =>
@@ -244,7 +215,7 @@ export function FormulaireDepense({
 
     setAfficherErreursValidation(true);
 
-    if (plusieursDepenses && detailsDepenses.length !== piecesJointes.length) {
+    if (detailsDepenses.length !== piecesJointes.length) {
       setStatutEnvoi({
         type: "erreur",
         message:
@@ -254,6 +225,11 @@ export function FormulaireDepense({
     }
 
     if (!formulaireEstValide) {
+      // Ouvre le premier justificatif incomplet pour que ses erreurs soient visibles.
+      const premierIncomplet = piecesJointes.findIndex(
+        (_, index) => !detailSaisiComplet(detailPourIndex(index)),
+      );
+      if (premierIncomplet >= 0) setIndexOuvert(premierIncomplet);
       requestAnimationFrame(() => {
         const premierChampInvalide =
           formulaireRef.current?.querySelector<HTMLElement>(
@@ -284,22 +260,15 @@ export function FormulaireDepense({
           userEmail: emailUtilisateur,
           date: formulaire.date,
           unitId: formulaire.branche,
-          expenseType: plusieursDepenses ? undefined : formulaire.typeDepense,
-          paymentMethod: plusieursDepenses
-            ? undefined
-            : formulaire.modePaiement,
-          amount: plusieursDepenses
-            ? undefined
-            : normaliserMontant(formulaire.montant),
           description: formulaire.description,
           attachments: piecesJointesPourApi,
-          expenseDetails: plusieursDepenses
-            ? detailsDepenses.map((detail) => ({
-                expenseType: detail.typeDepense,
-                paymentMethod: detail.modePaiement,
-                amount: detail.montant,
-              }))
-            : undefined,
+          expenses: detailsDepenses.map((detail) => ({
+            paymentMethod: detail.modePaiement,
+            lines: detail.lignes.map((ligne) => ({
+              category: ligne.categorie,
+              amount: analyserMontantSaisi(ligne.montant),
+            })),
+          })),
         }),
       });
 
@@ -324,13 +293,11 @@ export function FormulaireDepense({
         setFormulaire((prev) => ({
           date: new Date().toISOString().split("T")[0],
           branche: prev.branche,
-          typeDepense: "",
-          modePaiement: "",
-          montant: "",
           description: "",
         }));
         setAfficherErreursValidation(false);
         setDetailsDepenses([]);
+        setIndexOuvert(0);
         onCreerNouvelleNote?.();
       } else {
         const piecesJointesTropLourdes =
@@ -377,15 +344,11 @@ export function FormulaireDepense({
     }
   };
 
-  // Validation complète (inclut type de dépense)
   const formulaireEstValide = Boolean(
     piecesJointes.length > 0 &&
+    formulaire.date &&
     formulaire.branche &&
-    (plusieursDepenses
-      ? detailsDepensesValides
-      : formulaire.typeDepense &&
-        formulaire.modePaiement &&
-        formulaire.montant),
+    detailsDepensesValides,
   );
   const nomsFichiersApercu = formulaireEstValide ? genererNomsFichiers() : [];
 
@@ -394,14 +357,12 @@ export function FormulaireDepense({
     setFormulaire((prev) => ({
       date: new Date().toISOString().split("T")[0],
       branche: prev.branche,
-      typeDepense: "",
-      modePaiement: "",
-      montant: "",
       description: "",
     }));
     setStatutEnvoi({ type: null, message: "" });
     setAfficherErreursValidation(false);
     setDetailsDepenses([]);
+    setIndexOuvert(0);
     if (onCreerNouvelleNote) onCreerNouvelleNote();
   };
 
@@ -445,270 +406,112 @@ export function FormulaireDepense({
 
       {piecesJointes.length > 0 && (
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-zinc-700">
+          <p className="block text-sm font-medium text-zinc-700">
             Justificatifs ({piecesJointes.length})
-          </label>
+          </p>
           <div className="space-y-2">
             {piecesJointes.map((pieceJointe, index) => {
               const estImage = pieceJointe.typeMime.startsWith("image/");
+              const detail = detailPourIndex(index);
+              const idAccordeon = `justificatif-${index}`;
+              const erreurModePaiement =
+                afficherErreursValidation && !detail.modePaiement;
               return (
-                <div
+                <AccordeonJustificatif
                   key={`${pieceJointe.nomAffiche}-${index}`}
-                  className="flex items-center gap-3 p-3 rounded-lg border border-zinc-200 bg-zinc-50"
-                >
-                  {estImage ? (
-                    <Image
-                      src={`data:${pieceJointe.typeMime};base64,${pieceJointe.donneesBase64}`}
-                      alt={pieceJointe.nomAffiche}
-                      width={56}
-                      height={56}
-                      className="w-14 h-14 object-cover rounded-md border border-zinc-200"
-                    />
-                  ) : (
-                    <div className="w-14 h-14 rounded-md border border-zinc-200 bg-white flex items-center justify-center">
-                      <DocumentTextIcon
-                        className="w-8 h-8 text-zinc-500"
-                        aria-hidden="true"
+                  id={idAccordeon}
+                  titre={pieceJointe.nomAffiche}
+                  sousTitre={
+                    pieceJointe.typeMime === "application/pdf" ? "PDF" : "Image"
+                  }
+                  vignette={
+                    estImage ? (
+                      <Image
+                        src={`data:${pieceJointe.typeMime};base64,${pieceJointe.donneesBase64}`}
+                        alt=""
+                        width={56}
+                        height={56}
+                        className="w-14 h-14 object-cover rounded-md border border-zinc-200"
                       />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0 space-y-3">
-                    <p className="text-sm text-zinc-900 truncate font-medium">
-                      {pieceJointe.nomAffiche}
-                    </p>
-                    <p className="text-xs text-zinc-500">
-                      {pieceJointe.typeMime === "application/pdf"
-                        ? "PDF"
-                        : "Image"}
-                    </p>
-                    {plusieursDepenses && (
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        <select
-                          aria-label={`Catégorie pour ${pieceJointe.nomAffiche}`}
-                          value={detailsDepenses[index]?.typeDepense ?? ""}
-                          onChange={(e) =>
-                            modifierDetailDepense(
-                              index,
-                              "typeDepense",
-                              e.target.value,
-                            )
-                          }
-                          aria-invalid={
-                            afficherErreursValidation &&
-                            !detailsDepenses[index]?.typeDepense
-                          }
-                          aria-describedby={
-                            afficherErreursValidation &&
-                            !detailsDepenses[index]?.typeDepense
-                              ? `erreur-categorie-${index}`
-                              : undefined
-                          }
-                          className={`p-2 border rounded-md bg-white text-sm text-zinc-900 ${
-                            afficherErreursValidation &&
-                            !detailsDepenses[index]?.typeDepense
-                              ? "border-rose-500"
-                              : "border-zinc-300"
-                          }`}
-                        >
-                          <option value="">Catégorie *</option>
-                          {TYPES_DEPENSES.map((type) => (
-                            <option key={type} value={type}>
-                              {type}
-                            </option>
-                          ))}
-                        </select>
-                        <select
-                          aria-label={`Mode de paiement pour ${pieceJointe.nomAffiche}`}
-                          value={detailsDepenses[index]?.modePaiement ?? ""}
-                          onChange={(e) =>
-                            modifierDetailDepense(
-                              index,
-                              "modePaiement",
-                              e.target.value,
-                            )
-                          }
-                          aria-invalid={
-                            afficherErreursValidation &&
-                            !detailsDepenses[index]?.modePaiement
-                          }
-                          aria-describedby={
-                            afficherErreursValidation &&
-                            !detailsDepenses[index]?.modePaiement
-                              ? `erreur-mode-paiement-${index}`
-                              : undefined
-                          }
-                          className={`p-2 border rounded-md bg-white text-sm text-zinc-900 ${
-                            afficherErreursValidation &&
-                            !detailsDepenses[index]?.modePaiement
-                              ? "border-rose-500"
-                              : "border-zinc-300"
-                          }`}
-                        >
-                          <option value="">Mode de paiement *</option>
-                          {MODES_PAIEMENT.map((mode) => (
-                            <option key={mode} value={mode}>
-                              {mode}
-                            </option>
-                          ))}
-                        </select>
-                        <input
-                          aria-label={`Montant pour ${pieceJointe.nomAffiche}`}
-                          type="number"
-                          min="0.01"
-                          step="0.01"
-                          placeholder="Montant (€) *"
-                          value={
-                            Number.isFinite(detailsDepenses[index]?.montant)
-                              ? detailsDepenses[index].montant
-                              : ""
-                          }
-                          onChange={(e) =>
-                            modifierDetailDepense(
-                              index,
-                              "montant",
-                              e.target.value,
-                            )
-                          }
-                          aria-invalid={
-                            afficherErreursValidation &&
-                            (!Number.isFinite(
-                              detailsDepenses[index]?.montant,
-                            ) ||
-                              detailsDepenses[index]?.montant <= 0)
-                          }
-                          aria-describedby={
-                            afficherErreursValidation &&
-                            (!Number.isFinite(
-                              detailsDepenses[index]?.montant,
-                            ) ||
-                              detailsDepenses[index]?.montant <= 0)
-                              ? `erreur-montant-${index}`
-                              : undefined
-                          }
-                          className={`p-2 border rounded-md bg-white text-sm text-zinc-900 ${
-                            afficherErreursValidation &&
-                            (!Number.isFinite(
-                              detailsDepenses[index]?.montant,
-                            ) ||
-                              detailsDepenses[index]?.montant <= 0)
-                              ? "border-rose-500"
-                              : "border-zinc-300"
-                          }`}
+                    ) : (
+                      <span className="w-14 h-14 rounded-md border border-zinc-200 bg-white flex items-center justify-center">
+                        <DocumentTextIcon
+                          className="w-8 h-8 text-zinc-500"
+                          aria-hidden="true"
                         />
-                        {afficherErreursValidation &&
-                          (!detailsDepenses[index]?.typeDepense ||
-                            !detailsDepenses[index]?.modePaiement ||
-                            !Number.isFinite(detailsDepenses[index]?.montant) ||
-                            detailsDepenses[index]?.montant <= 0) && (
-                            <div className="sm:col-span-3 space-y-1 text-sm text-rose-700">
-                              {!detailsDepenses[index]?.typeDepense && (
-                                <p id={`erreur-categorie-${index}`}>
-                                  Sélectionnez une catégorie.
-                                </p>
-                              )}
-                              {!detailsDepenses[index]?.modePaiement && (
-                                <p id={`erreur-mode-paiement-${index}`}>
-                                  Sélectionnez un mode de paiement.
-                                </p>
-                              )}
-                              {(!Number.isFinite(
-                                detailsDepenses[index]?.montant,
-                              ) ||
-                                detailsDepenses[index]?.montant <= 0) && (
-                                <p id={`erreur-montant-${index}`}>
-                                  Saisissez un montant supérieur à 0 €.
-                                </p>
-                              )}
-                            </div>
-                          )}
-                      </div>
+                      </span>
+                    )
+                  }
+                  total={totalLignesDetail(detail)}
+                  complet={detailSaisiComplet(detail)}
+                  ouvert={index === indexOuvertEffectif}
+                  onBasculer={() => setIndexOuvert(index)}
+                  onSupprimer={
+                    onSupprimerPieceJointe
+                      ? () => {
+                          setDetailsDepenses((precedents) =>
+                            precedents.filter(
+                              (_, detailIndex) => detailIndex !== index,
+                            ),
+                          );
+                          setIndexOuvert((ouvert) =>
+                            index < ouvert ? ouvert - 1 : ouvert,
+                          );
+                          onSupprimerPieceJointe(index);
+                        }
+                      : undefined
+                  }
+                >
+                  <div className="space-y-2">
+                    <label
+                      htmlFor={`${idAccordeon}-mode-paiement`}
+                      className="block text-sm font-medium text-zinc-700"
+                    >
+                      Mode de paiement *
+                    </label>
+                    <select
+                      id={`${idAccordeon}-mode-paiement`}
+                      value={detail.modePaiement}
+                      onChange={(e) =>
+                        modifierDetailDepense(index, {
+                          modePaiement: e.target.value,
+                        })
+                      }
+                      aria-invalid={erreurModePaiement}
+                      aria-describedby={
+                        erreurModePaiement
+                          ? `erreur-${idAccordeon}-mode-paiement`
+                          : undefined
+                      }
+                      className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-zinc-400 focus:border-zinc-400 bg-white text-zinc-900 ${erreurModePaiement ? "border-rose-500" : "border-zinc-300"}`}
+                    >
+                      <option value="">Sélectionner un mode</option>
+                      {MODES_PAIEMENT.map((mode) => (
+                        <option key={mode} value={mode}>
+                          {mode}
+                        </option>
+                      ))}
+                    </select>
+                    {erreurModePaiement && (
+                      <p
+                        id={`erreur-${idAccordeon}-mode-paiement`}
+                        className="text-sm text-rose-700"
+                      >
+                        Sélectionnez un mode de paiement.
+                      </p>
                     )}
                   </div>
-                  {onSupprimerPieceJointe && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setDetailsDepenses((precedents) =>
-                          precedents.filter(
-                            (_, detailIndex) => detailIndex !== index,
-                          ),
-                        );
-                        onSupprimerPieceJointe(index);
-                      }}
-                      className="p-2 rounded-md text-zinc-500 hover:bg-zinc-200 hover:text-zinc-700 transition-colors"
-                      aria-label={`Supprimer ${pieceJointe.nomAffiche}`}
-                    >
-                      <TrashIcon className="w-5 h-5" aria-hidden="true" />
-                    </button>
-                  )}
-                </div>
+                  <LignesCategories
+                    idPrefixe={idAccordeon}
+                    lignes={detail.lignes}
+                    onChange={(lignes) =>
+                      modifierDetailDepense(index, { lignes })
+                    }
+                    afficherErreurs={afficherErreursValidation}
+                  />
+                </AccordeonJustificatif>
               );
             })}
-          </div>
-        </div>
-      )}
-
-      {!plusieursDepenses && (
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-          <div className="space-y-2">
-            <label
-              htmlFor="typeDepense"
-              className="block text-sm font-medium text-zinc-700"
-            >
-              Type de dépense *
-            </label>
-            <select
-              id="typeDepense"
-              value={formulaire.typeDepense}
-              onChange={(e) => modifierChamp("typeDepense", e.target.value)}
-              aria-invalid={erreurTypeDepense}
-              aria-describedby={
-                erreurTypeDepense ? "erreur-type-depense" : undefined
-              }
-              className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-zinc-400 focus:border-zinc-400 bg-white text-zinc-900 ${erreurTypeDepense ? "border-rose-500" : "border-zinc-300"}`}
-            >
-              <option value="">Sélectionner un type</option>
-              {TYPES_DEPENSES.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
-            {erreurTypeDepense && (
-              <p id="erreur-type-depense" className="text-sm text-rose-700">
-                Sélectionnez un type de dépense.
-              </p>
-            )}
-          </div>
-          <div className="space-y-2">
-            <label
-              htmlFor="modePaiement"
-              className="block text-sm font-medium text-zinc-700"
-            >
-              Mode de paiement *
-            </label>
-            <select
-              id="modePaiement"
-              value={formulaire.modePaiement}
-              onChange={(e) => modifierChamp("modePaiement", e.target.value)}
-              aria-invalid={erreurModePaiement}
-              aria-describedby={
-                erreurModePaiement ? "erreur-mode-paiement" : undefined
-              }
-              className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-zinc-400 focus:border-zinc-400 bg-white text-zinc-900 ${erreurModePaiement ? "border-rose-500" : "border-zinc-300"}`}
-            >
-              <option value="">Sélectionner un mode</option>
-              {MODES_PAIEMENT.map((mode) => (
-                <option key={mode} value={mode}>
-                  {mode}
-                </option>
-              ))}
-            </select>
-            {erreurModePaiement && (
-              <p id="erreur-mode-paiement" className="text-sm text-rose-700">
-                Sélectionnez un mode de paiement.
-              </p>
-            )}
           </div>
         </div>
       )}
@@ -780,7 +583,7 @@ export function FormulaireDepense({
         )}
       </div>
 
-      {plusieursDepenses && (
+      {piecesJointes.length > 0 && (
         <div className="p-3 bg-zinc-50 border border-zinc-200 rounded-lg flex items-center justify-between">
           <span className="text-sm font-medium text-zinc-700">
             Total des dépenses
@@ -788,35 +591,6 @@ export function FormulaireDepense({
           <span className="text-lg font-bold text-zinc-900">
             {totalDepenses.toFixed(2)} €
           </span>
-        </div>
-      )}
-
-      {!plusieursDepenses && (
-        <div className="space-y-2">
-          <label
-            htmlFor="montant"
-            className="block text-sm font-medium text-zinc-700"
-          >
-            Montant (€) *
-          </label>
-          <input
-            id="montant"
-            type="number"
-            step="0.01"
-            placeholder="0.00"
-            value={formulaire.montant}
-            onChange={(e) => modifierChamp("montant", e.target.value)}
-            aria-invalid={erreurMontant}
-            aria-describedby={erreurMontant ? "erreur-montant" : undefined}
-            className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-zinc-400 focus:border-zinc-400 bg-white text-zinc-900 ${
-              erreurMontant ? "border-rose-500" : "border-zinc-300"
-            }`}
-          />
-          {erreurMontant && (
-            <p id="erreur-montant" className="text-sm text-rose-700">
-              Saisissez un montant supérieur à 0 €.
-            </p>
-          )}
         </div>
       )}
 
