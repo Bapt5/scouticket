@@ -100,7 +100,7 @@ export function EditeurNomenclature({
           branche: "Louveteaux",
           depenses: [
             {
-              typeDepense: "Carburants",
+              typeDepense: "Carburant",
               modePaiement: "Carte bancaire",
               montant: 28.5,
             },

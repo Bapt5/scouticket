@@ -11,10 +11,14 @@
 1. Connectez-vous et vérifiez que le bon groupe est sélectionné dans l’en-tête.
 2. Prenez une photo ou importez un fichier. Les formats pris en charge sont JPG, PNG, WEBP et PDF.
 3. Ajoutez si besoin d’autres justificatifs : jusqu’à 6 fichiers peuvent être envoyés ensemble.
-4. Renseignez la date, l’unité, le type, le mode de paiement, le montant et une description si elle est utile.
+4. Renseignez la date, l’unité et une description si elle est utile, puis complétez chaque justificatif : mode de paiement et une ou plusieurs lignes « montant + catégorie comptable ».
 5. Envoyez la note de frais.
 
-Le mode de paiement est obligatoire. Choisissez entre carte bancaire, chèque, virement et espèces. Lors de l’envoi de plusieurs justificatifs, indiquez le mode de paiement de chacun.
+Le mode de paiement est obligatoire. Choisissez entre carte bancaire, chèque, virement et espèces. Il se choisit pour chaque justificatif.
+
+Un justificatif peut couvrir plusieurs catégories comptables : cliquez sur **Ajouter une catégorie** pour ajouter une ligne (montant + catégorie), et sur la corbeille pour la retirer (la première ligne est toujours présente). La liste de catégories se filtre en tapant, et la description de la catégorie choisie s’affiche sous le champ. Le total du justificatif, puis le total général, se calculent automatiquement.
+
+Les justificatifs se traitent un par un : chacun est une section repliable qui indique s’il est **complet** ou **à compléter**. L’envoi se fait une fois tous les justificatifs complétés.
 
 ![Formulaire de dépense avec le mode de paiement](/guide/mode-paiement.png)
 

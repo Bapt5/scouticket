@@ -87,11 +87,10 @@ describe("POST /api/send-expense", () => {
         emailUtilisateur: "membre@example.test",
         date: "2026-01-01",
         branche: "farfadets",
-        typeDepense: "Transport",
-        modePaiement: "Carte",
         montant: 12,
         description: "",
         piecesJointes: [],
+        detailsDepenses: [],
       },
     });
     mocks.recupererGroupeActif.mockResolvedValue({
@@ -264,10 +263,14 @@ describe("POST /api/send-expense", () => {
           emailUtilisateur: "membre@example.test",
           date: "2026-03-05",
           branche: "farfadets",
-          typeDepense: "Transport",
-          modePaiement: "Carte",
           montant: 12,
           description: "",
+          detailsDepenses: [
+            {
+              modePaiement: "Carte bancaire",
+              lignes: [{ categorie: "Carburant", montant: 12 }],
+            },
+          ],
           piecesJointes: [
             {
               nomAffiche: "a.pdf",

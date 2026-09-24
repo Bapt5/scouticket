@@ -94,16 +94,7 @@ describe("FormulaireDepense", () => {
       "Il manque des informations pour envoyer la facture",
     );
     expect(screen.getByRole("alert")).toHaveTextContent("un justificatif");
-    expect(
-      screen.getByText("Sélectionnez un type de dépense."),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("Sélectionnez un mode de paiement."),
-    ).toBeInTheDocument();
     expect(screen.getByText("Sélectionnez une unité.")).toBeInTheDocument();
-    expect(
-      screen.getByText("Saisissez un montant supérieur à 0 €."),
-    ).toBeInTheDocument();
   });
 
   it("retire l’erreur d’un champ dès qu’il est corrigé", async () => {
@@ -121,24 +112,25 @@ describe("FormulaireDepense", () => {
     await utilisateur.click(
       screen.getByRole("button", { name: "Envoyer la facture" }),
     );
-    await utilisateur.selectOptions(
-      screen.getByLabelText("Type de dépense *"),
-      "Autres",
-    );
+    expect(
+      screen.getByText("Sélectionnez un mode de paiement."),
+    ).toBeInTheDocument();
+
     await utilisateur.selectOptions(
       screen.getByLabelText("Mode de paiement *"),
       "Carte bancaire",
     );
 
     expect(
-      screen.queryByText("Sélectionnez un type de dépense."),
+      screen.queryByText("Sélectionnez un mode de paiement."),
     ).not.toBeInTheDocument();
     expect(
       screen.getByText("Saisissez un montant supérieur à 0 €."),
     ).toBeInTheDocument();
+    expect(screen.getByText("Sélectionnez une catégorie.")).toBeInTheDocument();
   });
 
-  it("détaille les erreurs de chaque justificatif lors d’un envoi multiple", async () => {
+  it("détaille les erreurs de chaque justificatif et ouvre le premier incomplet", async () => {
     const utilisateur = userEvent.setup();
     render(
       <FormulaireDepense
@@ -157,15 +149,102 @@ describe("FormulaireDepense", () => {
       screen.getByRole("button", { name: "Envoyer la facture" }),
     );
 
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      "la catégorie du justificatif 1",
+    const alerte = screen.getByRole("alert");
+    expect(alerte).toHaveTextContent("le mode de paiement du justificatif 1");
+    expect(alerte).toHaveTextContent(
+      "la catégorie de la ligne 1 du justificatif 2",
     );
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      "le montant du justificatif 2",
+    expect(alerte).toHaveTextContent(
+      "le montant de la ligne 1 du justificatif 2",
     );
-    expect(screen.getAllByText("Sélectionnez une catégorie.")).toHaveLength(2);
+  });
+
+  it("n’ouvre qu’un justificatif à la fois", async () => {
+    const utilisateur = userEvent.setup();
+    render(
+      <FormulaireDepense
+        piecesJointes={[
+          pieceJointe,
+          { ...pieceJointe, nomAffiche: "ticket-2.jpg" },
+        ]}
+        emailUtilisateur="test@example.test"
+        units={UNITES_TEST}
+        treasuryVerified
+      />,
+    );
+
+    const premier = screen.getByRole("button", { name: /ticket\.jpg/ });
+    const second = screen.getByRole("button", { name: /ticket-2\.jpg/ });
+    expect(premier).toHaveAttribute("aria-expanded", "true");
+    expect(second).toHaveAttribute("aria-expanded", "false");
+
+    await utilisateur.click(second);
+
+    expect(premier).toHaveAttribute("aria-expanded", "false");
+    expect(second).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("ajoute et retire des lignes de catégorie en calculant le total", async () => {
+    const utilisateur = userEvent.setup();
+    render(
+      <FormulaireDepense
+        piecesJointes={[pieceJointe]}
+        emailUtilisateur="test@example.test"
+        units={UNITES_TEST}
+        uniteInitiale="groupe"
+        treasuryVerified
+      />,
+    );
+
+    // Une seule ligne par défaut, non supprimable
+    expect(screen.getAllByLabelText("Montant (€) *")).toHaveLength(1);
     expect(
-      screen.getAllByText("Sélectionnez un mode de paiement."),
-    ).toHaveLength(2);
+      screen.queryByRole("button", { name: /Supprimer la ligne/ }),
+    ).not.toBeInTheDocument();
+
+    await utilisateur.click(
+      screen.getByRole("button", { name: "Ajouter une catégorie" }),
+    );
+    const montants = screen.getAllByLabelText("Montant (€) *");
+    expect(montants).toHaveLength(2);
+
+    await utilisateur.type(montants[0], "12.5");
+    await utilisateur.type(montants[1], "7.25");
+    expect(screen.getByText("Total du justificatif :")).toHaveTextContent(
+      "19.75 €",
+    );
+
+    await utilisateur.click(
+      screen.getByRole("button", { name: "Supprimer la ligne 2" }),
+    );
+    expect(screen.getAllByLabelText("Montant (€) *")).toHaveLength(1);
+    expect(screen.getByText("Total du justificatif :")).toHaveTextContent(
+      "12.50 €",
+    );
+  });
+
+  it("choisit une catégorie par recherche et affiche sa description", async () => {
+    const utilisateur = userEvent.setup();
+    render(
+      <FormulaireDepense
+        piecesJointes={[pieceJointe]}
+        emailUtilisateur="test@example.test"
+        units={UNITES_TEST}
+        uniteInitiale="groupe"
+        treasuryVerified
+      />,
+    );
+
+    const categorie = screen.getByRole("combobox", {
+      name: "Catégorie comptable *",
+    });
+    await utilisateur.click(categorie);
+    await utilisateur.type(categorie, "bouteille");
+    await utilisateur.click(
+      screen.getByRole("option", { name: /^Gaz : achat de bouteille/ }),
+    );
+
+    expect(categorie).toHaveValue("Gaz : achat de bouteille");
+    expect(screen.getByText(/Uniquement bouteilles de gaz/)).toBeVisible();
   });
 });
