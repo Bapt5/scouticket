@@ -5,6 +5,7 @@ import {
   type FormatAnneeComptable,
   type ReservationNumeros,
 } from "./nomenclature";
+import type { ParametresGroupe } from "./parametresGroupe";
 import { pool } from "@/lib/baseDeDonnees";
 import type { PoolClient } from "pg";
 
@@ -17,12 +18,14 @@ export async function recupererGroupeActif(identifiantOrganisation: string) {
     annee_comptable_debut_mois: number | null;
     annee_comptable_debut_jour: number | null;
     annee_comptable_format: FormatAnneeComptable | null;
+    scan_justificatifs_actif: boolean | null;
   }>(
     `SELECT organization.name, donnees.treasury_email,
             donnees.treasury_verification, donnees.nomenclature_format,
             donnees.annee_comptable_debut_mois,
             donnees.annee_comptable_debut_jour,
-            donnees.annee_comptable_format
+            donnees.annee_comptable_format,
+            donnees.scan_justificatifs_actif
        FROM organization
        LEFT JOIN scouticket_group_data donnees
          ON donnees.organization_id = organization.id
@@ -59,6 +62,9 @@ export async function recupererGroupeActif(identifiantOrganisation: string) {
           PARAMETRES_ANNEE_COMPTABLE_PAR_DEFAUT.format,
       },
     },
+    parametres: {
+      scanJustificatifsActif: groupe.scan_justificatifs_actif ?? false,
+    } satisfies ParametresGroupe,
   };
 }
 

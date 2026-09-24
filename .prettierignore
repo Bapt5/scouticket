@@ -17,3 +17,7 @@ pnpm-lock.yaml
 package-lock.json
 
 .claude
+
+# Assets Scanic ML copies depuis scanic-ml
+public/assets/scanic
+public/assets/scanic-ml

@@ -62,3 +62,12 @@ Depuis la fiche d’un membre (clic sur son nom dans la liste), un responsable p
 Les membres invités n’ont pas accès à la configuration du groupe, à l’adresse de trésorerie ni à la gestion des invitations.
 
 ![Menu Administration de Scouticket](/guide/administration-groupe.png)
+
+## Scan automatique des justificatifs
+
+Les responsables peuvent activer le scan depuis **Administration** puis **Paramètres du groupe**. Il est désactivé par défaut. Une fois activé :
+
+- en **prenant une photo** ou en **important une image**, Scouticket détecte le ticket ou la facture et propose un aperçu du recadrage : vous pouvez l’utiliser, ajuster les quatre coins à la main, garder l’image d’origine ou annuler. Si rien n’est détecté, un message jaune vous invite à ajuster les coins, qui s’ouvrent directement ;
+- un **PDF** ou un autre fichier non image est ajouté tel quel.
+
+Le traitement se fait dans votre navigateur : aucune image n’est envoyée à un service externe.

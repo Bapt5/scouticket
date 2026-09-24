@@ -200,6 +200,12 @@ importers:
       react-dom:
         specifier: 19.3.0
         version: 19.3.0(react@19.3.0)
+      scanic:
+        specifier: ^1.6.0
+        version: 1.6.0
+      scanic-ml:
+        specifier: ^0.2.0
+        version: 0.2.0
       zod:
         specifier: ^4.6.5
         version: 4.6.5
@@ -3341,6 +3347,13 @@ packages:
   saxes@6.0.0:
     resolution: {integrity: sha512-xAg7SOnEhrm5zI3puOOKyy1OMcMlIJZYNJY7xLBwSze0UjhPLnWfj2GF2EpT0jmzaJKIWKHLsaSSajf35bcYnA==}
     engines: {node: '>=v12.22.7'}
+
+  scanic-ml@0.2.0:
+    resolution: {integrity: sha512-saBNPM6W7ubxJd9X3+5XEVal/YpBblfhBnU+Gkl7/QxIgVPWRrdVUnR10JC+nNYKQv2O9XQHBBdEMJWVB0tOgw==}
+
+  scanic@1.6.0:
+    resolution: {integrity: sha512-p9qYL9cITvQ/BOrafsJvhm++Y8NA8GfRnwngUASqAyKUTRHqMuJzcrCuHjveHxQg29tNuEORUBDAAcigvFigPg==}
+    engines: {node: '>=22'}
 
   scheduler@0.28.0:
     resolution: {integrity: sha512-juorfCmIkIw8tT+p5BXSm6PJjQF/ycEYmKyzURCIt/RaZIhL+PulbQ9Yu2z1HdOJDdqDTlxA1+xKBmHXJsczAw==}
@@ -6875,6 +6888,10 @@ snapshots:
   saxes@6.0.0:
     dependencies:
       xmlchars: 2.2.0
+
+  scanic-ml@0.2.0: {}
+
+  scanic@1.6.0: {}
 
   scheduler@0.28.0: {}
 
