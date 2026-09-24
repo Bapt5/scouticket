@@ -3,6 +3,7 @@ import {
   anneeComptableDebut,
   calculerReservation,
   dedoublonnerNomsFichiers,
+  erreurDebutAnneeComptable,
   genererNomsNomenclature,
   libelleAnneeComptable,
   validerFormatNomenclature,
@@ -209,5 +210,21 @@ describe("dedoublonnerNomsFichiers", () => {
       "image - 02.jpg",
       "x - 03",
     ]);
+  });
+});
+
+describe("erreurDebutAnneeComptable", () => {
+  it("accepte le 1er septembre et le 28 février", () => {
+    expect(erreurDebutAnneeComptable(9, 1)).toBeNull();
+    expect(erreurDebutAnneeComptable(2, 28)).toBeNull();
+  });
+
+  it("explique le refus du 29 février", () => {
+    expect(erreurDebutAnneeComptable(2, 29)).toMatch(/29 février/);
+  });
+
+  it("refuse un jour hors du mois ou vide", () => {
+    expect(erreurDebutAnneeComptable(4, 31)).toMatch(/30 jours/);
+    expect(erreurDebutAnneeComptable(4, Number.NaN)).not.toBeNull();
   });
 });

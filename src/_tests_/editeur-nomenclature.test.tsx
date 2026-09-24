@@ -106,4 +106,51 @@ describe("EditeurNomenclature", () => {
       }),
     );
   });
+
+  it("explique pourquoi le 29 février est refusé", () => {
+    render(
+      <EditeurNomenclature
+        valeur={{
+          ...valeur,
+          anneeComptable: { mois: 2, jour: 29, format: "debut-fin" },
+        }}
+        onChange={vi.fn()}
+        anneeComptableCourante={2025}
+      />,
+    );
+
+    expect(screen.getByText(/29 février n'est pas accepté/)).toBeTruthy();
+    expect(
+      screen
+        .getByLabelText("Jour de début de l'année comptable")
+        .getAttribute("max"),
+    ).toBe("28");
+  });
+
+  it("ramène le jour dans le mois quand on choisit février", async () => {
+    const onChange = vi.fn();
+    render(
+      <EditeurNomenclature
+        valeur={{
+          ...valeur,
+          anneeComptable: { mois: 1, jour: 31, format: "debut-fin" },
+        }}
+        onChange={onChange}
+        anneeComptableCourante={2025}
+      />,
+    );
+
+    await userEvent
+      .setup()
+      .selectOptions(
+        screen.getByLabelText("Mois de début de l'année comptable"),
+        "février",
+      );
+
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        anneeComptable: expect.objectContaining({ mois: 2, jour: 28 }),
+      }),
+    );
+  });
 });

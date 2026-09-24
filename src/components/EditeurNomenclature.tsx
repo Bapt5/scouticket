@@ -3,7 +3,9 @@
 import { useRef } from "react";
 import {
   VARIABLES_NOMENCLATURE,
+  erreurDebutAnneeComptable,
   genererNomsNomenclature,
+  joursMaxDuMois,
   libelleAnneeComptable,
   validerFormatNomenclature,
   type FormatAnneeComptable,
@@ -54,6 +56,11 @@ export function EditeurNomenclature({
     : null;
   const commenceEnJanvier =
     anneeComptable.mois === 1 && anneeComptable.jour === 1;
+
+  const erreurDebut = erreurDebutAnneeComptable(
+    anneeComptable.mois,
+    anneeComptable.jour,
+  );
 
   const modifierAnnee = (modification: Partial<ParametresAnneeComptable>) =>
     onChange({
@@ -176,8 +183,9 @@ export function EditeurNomenclature({
               <input
                 type="number"
                 min={1}
-                max={31}
+                max={joursMaxDuMois(anneeComptable.mois)}
                 aria-label="Jour de début de l'année comptable"
+                aria-invalid={Boolean(erreurDebut)}
                 value={anneeComptable.jour}
                 onChange={(e) =>
                   modifierAnnee({ jour: Number(e.target.value) })
@@ -187,9 +195,14 @@ export function EditeurNomenclature({
               <select
                 aria-label="Mois de début de l'année comptable"
                 value={anneeComptable.mois}
-                onChange={(e) =>
-                  modifierAnnee({ mois: Number(e.target.value) })
-                }
+                onChange={(e) => {
+                  const mois = Number(e.target.value);
+                  // Ramène le jour dans le mois choisi (ex. 31 → 28 en février).
+                  modifierAnnee({
+                    mois,
+                    jour: Math.min(anneeComptable.jour, joursMaxDuMois(mois)),
+                  });
+                }}
                 className="rounded-lg border border-zinc-300 bg-white p-2"
               >
                 {MOIS.map((mois, index) => (
@@ -199,6 +212,17 @@ export function EditeurNomenclature({
                 ))}
               </select>
             </div>
+            {erreurDebut ? (
+              <p className="text-sm text-rose-600" role="alert">
+                {erreurDebut}
+              </p>
+            ) : (
+              anneeComptable.mois === 2 && (
+                <p className="text-xs text-zinc-500">
+                  En février, le début ne peut pas dépasser le 28.
+                </p>
+              )
+            )}
             {!commenceEnJanvier && (
               <div>
                 <label

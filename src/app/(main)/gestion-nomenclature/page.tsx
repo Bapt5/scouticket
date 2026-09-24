@@ -9,6 +9,7 @@ import {
 import { clientAuth } from "@/lib/auth-client";
 import {
   PARAMETRES_ANNEE_COMPTABLE_PAR_DEFAUT,
+  erreurDebutAnneeComptable,
   validerFormatNomenclature,
   type ParametresAnneeComptable,
 } from "@/lib/nomenclature";
@@ -105,7 +106,12 @@ export default function PageGestionNomenclature() {
 
   if (!organisation) return <main className="p-6">Aucun groupe actif.</main>;
   const formatInvalide =
-    brouillon.personnalise && validerFormatNomenclature(brouillon.format);
+    brouillon.personnalise &&
+    (validerFormatNomenclature(brouillon.format) ||
+      erreurDebutAnneeComptable(
+        brouillon.anneeComptable.mois,
+        brouillon.anneeComptable.jour,
+      ));
   return (
     <main className="min-h-screen bg-zinc-50 p-4">
       <section className="mx-auto max-w-lg rounded-xl border border-zinc-200 bg-white p-6">

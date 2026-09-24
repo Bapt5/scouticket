@@ -121,13 +121,31 @@ export function validerParametresAnneeComptable(
   if (!Number.isInteger(mois) || !Number.isInteger(jour)) return false;
   if (!FORMATS_ANNEE_COMPTABLE.includes(format as FormatAnneeComptable))
     return false;
-  const moisNombre = mois as number;
-  const jourNombre = jour as number;
-  if (moisNombre < 1 || moisNombre > 12 || jourNombre < 1) return false;
-  // 28 jours pour février : le 29 février est refusé pour éviter des années
-  // comptables ambiguës selon les années bissextiles.
-  const joursParMois = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-  return jourNombre <= joursParMois[moisNombre - 1];
+  return erreurDebutAnneeComptable(mois as number, jour as number) === null;
+}
+
+// 28 jours pour février : le 29 février est refusé pour éviter des années
+// comptables ambiguës selon les années bissextiles.
+const JOURS_PAR_MOIS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+export function joursMaxDuMois(mois: number): number {
+  return JOURS_PAR_MOIS[mois - 1] ?? 31;
+}
+
+/** Message d'erreur pour un début d'année comptable invalide, sinon `null`. */
+export function erreurDebutAnneeComptable(
+  mois: number,
+  jour: number,
+): string | null {
+  if (!Number.isInteger(mois) || mois < 1 || mois > 12)
+    return "Choisissez un mois valide";
+  if (!Number.isInteger(jour) || jour < 1) return "Saisissez un jour valide";
+  const max = joursMaxDuMois(mois);
+  if (jour > max)
+    return mois === 2
+      ? "Le 29 février n'est pas accepté (les années bissextiles rendraient l'année comptable ambiguë) : choisissez le 28 février ou le 1er mars."
+      : `Ce mois compte ${max} jours au maximum`;
+  return null;
 }
 
 export function analyserDateIso(
