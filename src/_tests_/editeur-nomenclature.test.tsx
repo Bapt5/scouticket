@@ -153,4 +153,41 @@ describe("EditeurNomenclature", () => {
       }),
     );
   });
+
+  it("laisse effacer le jour puis retaper 31 sans « 0 » parasite", async () => {
+    const onChange = vi.fn();
+    const { rerender } = render(
+      <EditeurNomenclature
+        valeur={{
+          ...valeur,
+          anneeComptable: { mois: 1, jour: 1, format: "debut-fin" },
+        }}
+        onChange={onChange}
+        anneeComptableCourante={2025}
+      />,
+    );
+    const champ = screen.getByLabelText(
+      "Jour de début de l'année comptable",
+    ) as HTMLInputElement;
+
+    await userEvent.setup().clear(champ);
+    expect(onChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        anneeComptable: expect.objectContaining({ jour: Number.NaN }),
+      }),
+    );
+
+    rerender(
+      <EditeurNomenclature
+        valeur={{
+          ...valeur,
+          anneeComptable: { mois: 1, jour: Number.NaN, format: "debut-fin" },
+        }}
+        onChange={onChange}
+        anneeComptableCourante={2025}
+      />,
+    );
+    expect(champ.value).toBe("");
+    expect(screen.getByText("Saisissez un jour valide")).toBeTruthy();
+  });
 });

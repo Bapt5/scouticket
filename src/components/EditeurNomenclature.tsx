@@ -186,9 +186,16 @@ export function EditeurNomenclature({
                 max={joursMaxDuMois(anneeComptable.mois)}
                 aria-label="Jour de début de l'année comptable"
                 aria-invalid={Boolean(erreurDebut)}
-                value={anneeComptable.jour}
+                value={
+                  Number.isNaN(anneeComptable.jour) ? "" : anneeComptable.jour
+                }
                 onChange={(e) =>
-                  modifierAnnee({ jour: Number(e.target.value) })
+                  modifierAnnee({
+                    jour:
+                      e.target.value === ""
+                        ? Number.NaN
+                        : Number(e.target.value),
+                  })
                 }
                 className="w-20 rounded-lg border border-zinc-300 bg-white p-2"
               />
