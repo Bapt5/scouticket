@@ -16,6 +16,10 @@
 # production
 /build
 
+# assets Scanic ML copiés depuis scanic-ml (scripts/copier-assets-scanic.mjs)
+/public/assets/scanic/
+/public/assets/scanic-ml/
+
 # misc
 .DS_Store
 *.pem

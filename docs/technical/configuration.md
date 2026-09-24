@@ -25,3 +25,5 @@ Pour Gmail, activez la validation en deux étapes et créez un mot de passe d’
 Après le déploiement, le responsable crée son groupe dans l’application. Il configure alors l’adresse de trésorerie, les unités et leurs couleurs. L’adresse doit être confirmée depuis l’e-mail de validation avant le premier envoi de justificatif.
 
 Le format de nom des justificatifs (`/gestion-nomenclature`, `GET`/`PATCH /api/group/nomenclature`, responsables uniquement) est facultatif : sans format, le nom historique est conservé. Il n’y a aucune variable d’environnement à ajouter.
+
+La page **Paramètres du groupe** (`/parametres-groupe`, `GET`/`PATCH /api/group/parametres`, responsables uniquement) regroupe les fonctionnalités activables par groupe. Elle permet aujourd’hui d’activer le scan automatique des justificatifs et la conversion des justificatifs en PDF avant l’envoi ; voir [Scan automatique des justificatifs](/technical/scan-justificatifs). Ces paramètres n’ajoutent aucune variable d’environnement : il suffit d’appliquer la migration avec `pnpm db:migrate`.

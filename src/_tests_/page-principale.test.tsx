@@ -36,7 +36,11 @@ vi.mock("@/components/FeatureNotice", () => ({
 }));
 
 vi.mock("@/components/PhotoCapture", () => ({
-  CapturePhoto: () => <div>Ajout piece jointe</div>,
+  CapturePhoto: ({ scanActive }: { scanActive?: boolean }) => (
+    <div data-testid="capture-photo" data-scan={String(scanActive)}>
+      Ajout piece jointe
+    </div>
+  ),
 }));
 
 vi.mock("@/components/FormulaireDepense", () => ({
@@ -98,6 +102,38 @@ describe("Page principale", () => {
     expect(
       screen.getByRole("link", { name: "Gérer les membres" }),
     ).toHaveAttribute("href", "/gestion-membres");
+    expect(
+      screen.getByRole("link", { name: "Paramètres du groupe" }),
+    ).toHaveAttribute("href", "/parametres-groupe");
+  });
+
+  it("transmet les paramètres de scan du groupe à l'ajout de justificatifs", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            units: [{ id: "groupe", label: "Groupe", color: "#1E3A8A" }],
+            configured: true,
+            treasuryVerified: true,
+            isAdmin: false,
+            parametres: { scanJustificatifsActif: true },
+          }),
+      }),
+    );
+
+    render(<Home />);
+
+    const capture = await screen.findByTestId("capture-photo");
+    expect(capture).toHaveAttribute("data-scan", "true");
+  });
+
+  it("laisse le scan désactivé quand le groupe n'a pas de paramètres", async () => {
+    render(<Home />);
+
+    const capture = await screen.findByTestId("capture-photo");
+    expect(capture).not.toHaveAttribute("data-scan", "true");
   });
 
   it("masque les actions d'administration pour un membre", async () => {

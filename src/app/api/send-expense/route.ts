@@ -8,6 +8,7 @@ import {
   genererNomsNomenclature,
   type ParametresAnneeComptable,
 } from "@/lib/nomenclature";
+import { convertirPiecesJointesEnPdf } from "@/lib/conversionJustificatifs";
 import { pool } from "@/lib/baseDeDonnees";
 import { jsonError, verifierErreurSmtp } from "@/lib/api/utils";
 import { validerCorpsRequete } from "@/lib/api/validateBody";
@@ -167,6 +168,12 @@ export async function POST(req: NextRequest) {
       donneesEmail.groupe = group.organisation.name;
       donneesEmail.couleur = unit.color;
       donneesEmail.emailTresorerie = group.emailTresorerie;
+
+      // Avant le nommage : les extensions doivent refléter le format converti.
+      if (group.parametres.convertirJustificatifsEnPdf)
+        donneesEmail.piecesJointes = await convertirPiecesJointesEnPdf(
+          donneesEmail.piecesJointes,
+        );
 
       const { format, anneeComptable } = group.nomenclature;
       let resultat;

@@ -2,7 +2,15 @@
 
 import { useState, useRef, useEffect } from "react";
 import { CameraIcon, ArrowUpOnSquareIcon } from "@heroicons/react/24/outline";
+import type { CornerPoints } from "scanic";
 import { estTypeMimePieceJointeAutorise } from "@/lib/attachments";
+import {
+  chargerImage,
+  detecterCoins,
+  estErreurAnnulation,
+  prechaufferScanner,
+} from "@/lib/scanJustificatif";
+import { ApercuScan, type DecisionScan } from "@/components/ApercuScan";
 import {
   MAX_ATTACHMENT_COUNT,
   MAX_ATTACHMENT_SIZE_BYTES,
@@ -113,16 +121,43 @@ async function downscaleImage(
 interface CapturePhotoProps {
   readonly onAttachmentsAdd: (piecesJointes: PieceJointeDepense[]) => void;
   readonly currentCount: number;
+  /** Recadrage automatique des images avec Scanic (paramètre du groupe). */
+  readonly scanActive?: boolean;
+}
+
+interface RevueScan {
+  readonly fichier: File;
+  readonly image: HTMLImageElement;
+  readonly coins: CornerPoints | null;
+  readonly resoudre: (decision: DecisionScan) => void;
 }
 
 export function CapturePhoto({
   onAttachmentsAdd,
   currentCount,
+  scanActive = false,
 }: Readonly<CapturePhotoProps>) {
   const [errorMessages, setErrorMessages] = useState<string[]>([]);
   const [compressedInfo, setCompressedInfo] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fileBrowseInputRef = useRef<HTMLInputElement>(null);
+  const [scanEnCours, setScanEnCours] = useState(false);
+  const [revue, setRevue] = useState<RevueScan | null>(null);
+  const controleurRef = useRef<AbortController | null>(null);
+  const revueRef = useRef<RevueScan | null>(null);
+
+  useEffect(() => {
+    if (scanActive) prechaufferScanner();
+  }, [scanActive]);
+
+  // Annule un scan en cours et ferme l'aperçu si le composant disparaît.
+  useEffect(
+    () => () => {
+      controleurRef.current?.abort();
+      revueRef.current?.resoudre({ type: "annule" });
+    },
+    [],
+  );
 
   useEffect(() => {
     if (currentCount === 0) {
@@ -130,6 +165,62 @@ export function CapturePhoto({
       setErrorMessages([]);
     }
   }, [currentCount]);
+
+  const demanderRevue = (
+    fichier: File,
+    image: HTMLImageElement,
+    coins: CornerPoints | null,
+  ) =>
+    new Promise<DecisionScan>((resoudre) => {
+      const nouvelleRevue: RevueScan = {
+        fichier,
+        image,
+        coins,
+        resoudre: (decision) => {
+          revueRef.current = null;
+          setRevue(null);
+          resoudre(decision);
+        },
+      };
+      revueRef.current = nouvelleRevue;
+      setRevue(nouvelleRevue);
+    });
+
+  /**
+   * Recadre une image avec Scanic. Retourne le fichier à ajouter (recadré ou
+   * d'origine), ou `null` si l'utilisateur annule.
+   */
+  const scannerImage = async (
+    file: File,
+    signal: AbortSignal,
+    avertissements: string[],
+  ): Promise<File | null> => {
+    let image: HTMLImageElement;
+    try {
+      image = await chargerImage(file);
+    } catch (e) {
+      console.error("Erreur chargement justificatif pour le scan:", e);
+      avertissements.push(
+        `${file.name}: recadrage automatique impossible, image d'origine conservée.`,
+      );
+      return file;
+    }
+
+    // Le repli du détecteur ML vers le classique est géré par detecterCoins.
+    let coins: CornerPoints | null = null;
+    try {
+      coins = await detecterCoins(image, { signal });
+    } catch (e) {
+      if (estErreurAnnulation(e)) return null;
+      console.error("Erreur détection justificatif:", e);
+    }
+
+    // Photo comme import : l'aperçu (avec ajustement des coins) est toujours proposé.
+    setScanEnCours(false);
+    const decision = await demanderRevue(file, image, coins);
+    if (decision.type === "annule") return null;
+    return decision.type === "fichier" ? decision.fichier : file;
+  };
 
   const processFiles = async (files: FileList, fromCamera = false) => {
     const selectedFiles = Array.from(files);
@@ -156,7 +247,11 @@ export function CapturePhoto({
     const piecesJointesCreees: PieceJointeDepense[] = [];
     const compressionMessages: string[] = [];
 
+    const controleur = new AbortController();
+    controleurRef.current = controleur;
+
     for (const file of candidates) {
+      if (controleur.signal.aborted) break;
       if (!estTypeMimePieceJointeAutorise(file.type)) {
         nextErrors.push(
           `${file.name}: type non supporté (images JPG/PNG/WEBP ou PDF uniquement).`,
@@ -171,10 +266,24 @@ export function CapturePhoto({
       }
 
       try {
-        let processedBlob: Blob = file;
-        if (file.type.startsWith("image/")) {
-          processedBlob = await downscaleImage(file);
-          const originalKb = (file.size / 1024).toFixed(0);
+        let source: File = file;
+        // Les PDF et autres fichiers non image sont ajoutés tels quels.
+        if (scanActive && file.type.startsWith("image/")) {
+          setScanEnCours(true);
+          const scanne = await scannerImage(
+            file,
+            controleur.signal,
+            nextErrors,
+          );
+          setScanEnCours(false);
+          if (!scanne) continue;
+          source = scanne;
+        }
+
+        let processedBlob: Blob = source;
+        if (source.type.startsWith("image/")) {
+          processedBlob = await downscaleImage(source);
+          const originalKb = (source.size / 1024).toFixed(0);
           const newKb = (processedBlob.size / 1024).toFixed(0);
           if (originalKb !== newKb) {
             compressionMessages.push(
@@ -183,10 +292,10 @@ export function CapturePhoto({
           }
         }
 
-        const typeMime = processedBlob.type || file.type;
+        const typeMime = processedBlob.type || source.type;
         const donneesBase64 = await blobToBase64(processedBlob);
         piecesJointesCreees.push({
-          nomAffiche: file.name,
+          nomAffiche: source.name,
           typeMime,
           donneesBase64,
           nomFichierOriginal: file.name,
@@ -198,6 +307,9 @@ export function CapturePhoto({
       }
     }
 
+    setScanEnCours(false);
+    controleurRef.current = null;
+
     if (piecesJointesCreees.length > 0) {
       onAttachmentsAdd(piecesJointesCreees);
     }
@@ -205,7 +317,8 @@ export function CapturePhoto({
     if (
       fromCamera &&
       piecesJointesCreees.length === 0 &&
-      nextErrors.length === 0
+      nextErrors.length === 0 &&
+      !controleur.signal.aborted
     ) {
       nextErrors.push("Impossible de traiter la photo capturée.");
     }
@@ -285,6 +398,31 @@ export function CapturePhoto({
         onChange={handleFileSelect}
         className="hidden"
       />
+
+      {scanEnCours && (
+        <div
+          role="status"
+          className="flex items-center justify-between gap-3 rounded-md border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-700"
+        >
+          <span>Détection du justificatif…</span>
+          <button
+            type="button"
+            onClick={() => controleurRef.current?.abort()}
+            className="font-medium text-rose-700 hover:underline"
+          >
+            Annuler
+          </button>
+        </div>
+      )}
+
+      {revue && (
+        <ApercuScan
+          fichierOriginal={revue.fichier}
+          image={revue.image}
+          coinsDetectes={revue.coins}
+          onDecision={revue.resoudre}
+        />
+      )}
 
       {compressedInfo && errorMessages.length === 0 && (
         <p className="text-xs text-zinc-500">Optimisation: {compressedInfo}</p>

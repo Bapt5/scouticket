@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   reserverNumeros: vi.fn(),
   requeteClient: vi.fn(),
   liberer: vi.fn(),
+  convertirPiecesJointesEnPdf: vi.fn(),
 }));
 
 vi.mock("@/lib/sessionServeur", () => ({
@@ -48,6 +49,9 @@ vi.mock("@/lib/api/securiteRequetes", () => ({
 }));
 vi.mock("@/lib/api/validateBody", () => ({
   validerCorpsRequete: mocks.validerCorpsRequete,
+}));
+vi.mock("@/lib/conversionJustificatifs", () => ({
+  convertirPiecesJointesEnPdf: mocks.convertirPiecesJointesEnPdf,
 }));
 vi.mock("@/lib/email", () => ({
   envoyerEmailDepense: mocks.envoyerEmailDepense,
@@ -98,6 +102,10 @@ describe("POST /api/send-expense", () => {
       nomenclature: {
         format: null,
         anneeComptable: { mois: 9, jour: 1, format: "debut-fin" },
+      },
+      parametres: {
+        scanJustificatifsActif: false,
+        convertirJustificatifsEnPdf: false,
       },
     });
     mocks.envoyerEmailDepense.mockResolvedValue({ messageId: "abc" });
@@ -187,6 +195,52 @@ describe("POST /api/send-expense", () => {
     ).toBe("Ticket-1.pdf");
   });
 
+  it("convertit les justificatifs en PDF avant le nommage si le groupe l'a activé", async () => {
+    mocks.recupererRoleMembre.mockResolvedValue("owner");
+    const piece = {
+      nomAffiche: "photo.jpg",
+      typeMime: "image/jpeg",
+      donneesBase64: "QQ==",
+      nomFichierOriginal: "photo.jpg",
+      nomFichierNormalise: "photo.jpg",
+    };
+    const corps = mocks.validerCorpsRequete();
+    corps.donneesEmail.piecesJointes = [piece];
+    mocks.validerCorpsRequete.mockReturnValue(corps);
+    mocks.recupererGroupeActif.mockResolvedValue({
+      ...(await mocks.recupererGroupeActif()),
+      parametres: {
+        scanJustificatifsActif: false,
+        convertirJustificatifsEnPdf: true,
+      },
+    });
+    mocks.convertirPiecesJointesEnPdf.mockResolvedValue([
+      {
+        ...piece,
+        typeMime: "application/pdf",
+        nomFichierOriginal: "photo.pdf",
+        nomFichierNormalise: "photo.pdf",
+      },
+    ]);
+
+    const reponse = await POST(REQUETE_BASE() as never);
+
+    expect(reponse.status).toBe(200);
+    expect(mocks.convertirPiecesJointesEnPdf).toHaveBeenCalledWith([piece]);
+    expect(
+      mocks.envoyerEmailDepense.mock.calls[0][0].piecesJointes[0]
+        .nomFichierNormalise,
+    ).toBe("photo.pdf");
+  });
+
+  it("ne convertit pas les justificatifs par défaut", async () => {
+    mocks.recupererRoleMembre.mockResolvedValue("owner");
+
+    await POST(REQUETE_BASE() as never);
+
+    expect(mocks.convertirPiecesJointesEnPdf).not.toHaveBeenCalled();
+  });
+
   describe("avec une nomenclature de groupe", () => {
     const groupeAvecFormat = (format: string) => ({
       organisation: { id: "org_1", name: "Groupe test" },
@@ -196,6 +250,10 @@ describe("POST /api/send-expense", () => {
       nomenclature: {
         format,
         anneeComptable: { mois: 9, jour: 1, format: "debut-fin" },
+      },
+      parametres: {
+        scanJustificatifsActif: false,
+        convertirJustificatifsEnPdf: false,
       },
     });
 

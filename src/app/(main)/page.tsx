@@ -17,6 +17,7 @@ import {
 } from "@/constants/piecesJointes";
 import type { UniteGroupe } from "@/lib/group";
 import type { ParametresAnneeComptable } from "@/lib/nomenclature";
+import type { ParametresGroupe } from "@/lib/parametresGroupe";
 
 type Groupe = {
   units: UniteGroupe[];
@@ -24,6 +25,7 @@ type Groupe = {
     format: string | null;
     anneeComptable: ParametresAnneeComptable;
   };
+  parametres?: ParametresGroupe;
   configured: boolean;
   treasuryVerified: boolean;
   isAdmin: boolean;
@@ -496,6 +498,12 @@ export default function Home() {
                         >
                           Nom des justificatifs
                         </Link>
+                        <Link
+                          href="/parametres-groupe"
+                          className="block w-full rounded-lg bg-white px-4 py-3 text-center font-medium text-[#1E3A8A] shadow-sm ring-1 ring-zinc-200 transition-colors hover:bg-zinc-100"
+                        >
+                          Paramètres du groupe
+                        </Link>
                       </div>
                     )}
                   </>
@@ -511,6 +519,7 @@ export default function Home() {
                   )
                 }
                 currentCount={piecesJointes.length}
+                scanActive={groupe.parametres?.scanJustificatifsActif}
               />
               <FormulaireDepense
                 key={organisation.id}

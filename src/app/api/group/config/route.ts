@@ -59,6 +59,7 @@ export async function GET(requete: Request) {
       groupName: group.organisation.name,
       units: unitesVisibles,
       nomenclature: group.nomenclature,
+      parametres: group.parametres,
       configured: Boolean(group.emailTresorerie && group.unites.length),
       treasuryVerified: group.validation.status === "verified",
       isAdmin: isAdmin(role),
