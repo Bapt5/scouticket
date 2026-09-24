@@ -140,7 +140,7 @@ export function EditeurNomenclature({
           <div className="space-y-2">
             <label
               htmlFor="format-nomenclature"
-              className="block text-sm font-medium text-zinc-700"
+              className="block text-base font-semibold text-zinc-900"
             >
               Format du nom
             </label>
@@ -176,7 +176,7 @@ export function EditeurNomenclature({
           </div>
 
           <fieldset className="space-y-3">
-            <legend className="text-sm font-medium text-zinc-700">
+            <legend className="mb-1 text-base font-semibold text-zinc-900">
               Année comptable
             </legend>
             <div className="flex items-center gap-2 text-sm text-zinc-700">
@@ -264,7 +264,7 @@ export function EditeurNomenclature({
           </fieldset>
 
           <fieldset className="space-y-3">
-            <legend className="text-sm font-medium text-zinc-700">
+            <legend className="mb-1 text-base font-semibold text-zinc-900">
               Prochains numéros{" "}
               <InfoBulle texte="À modifier pour reprendre une numérotation existante. Les numéros ne sont consommés que si l'e-mail est bien parti." />
             </legend>
