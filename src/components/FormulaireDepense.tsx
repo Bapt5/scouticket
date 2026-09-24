@@ -11,7 +11,13 @@ import {
   DocumentTextIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
-import { construireNomsFichiersNormalises } from "@/lib/attachments";
+import { assainirSegmentNomFichier, devinerExtension } from "@/lib/attachments";
+import {
+  analyserDateIso,
+  dedoublonnerNomsFichiers,
+  genererNomsNomenclature,
+  type ParametresAnneeComptable,
+} from "@/lib/nomenclature";
 import {
   MAX_ATTACHMENT_COUNT,
   MAX_ATTACHMENT_SIZE_BYTES,
@@ -26,6 +32,10 @@ interface FormulaireDepenseProps {
   readonly piecesJointes: PieceJointeDepense[];
   readonly emailUtilisateur: string;
   readonly units: UniteGroupe[];
+  readonly nomenclature?: {
+    format: string | null;
+    anneeComptable: ParametresAnneeComptable;
+  };
   readonly uniteInitiale?: string;
   readonly treasuryVerified: boolean;
   readonly onChangementUnite?: (unitId: string) => void;
@@ -38,6 +48,7 @@ export function FormulaireDepense({
   piecesJointes,
   emailUtilisateur,
   units,
+  nomenclature,
   uniteInitiale = "",
   treasuryVerified,
   onChangementUnite,
@@ -194,30 +205,38 @@ export function FormulaireDepense({
 
   const genererNomsFichiers = () => {
     if (piecesJointes.length === 0) return [];
-    if (plusieursDepenses) {
-      return piecesJointes.map((pieceJointe, index) => {
-        const detail = detailsDepenses[index];
-        const [nom] = construireNomsFichiersNormalises([pieceJointe], {
+    if (nomenclature?.format && analyserDateIso(formulaire.date)) {
+      const depenses = plusieursDepenses
+        ? detailsDepenses
+        : [
+            {
+              typeDepense: formulaire.typeDepense,
+              modePaiement: formulaire.modePaiement,
+              montant: Number(normaliserMontant(formulaire.montant)),
+            },
+          ];
+      if (depenses.length === piecesJointes.length) {
+        return genererNomsNomenclature({
+          format: nomenclature.format,
+          parametresAnnee: nomenclature.anneeComptable,
           date: formulaire.date,
-          branch: uniteSelectionnee?.label ?? "",
-          expenseType: detail?.typeDepense ?? "",
-          paymentMethod: detail?.modePaiement ?? "",
-          amount: String(detail?.montant ?? ""),
+          branche: uniteSelectionnee?.label ?? "",
+          depenses: depenses.map((depense) => ({
+            ...depense,
+            montant: Number.isFinite(depense.montant) ? depense.montant : 0,
+          })),
+          extensions: piecesJointes.map((piece) =>
+            devinerExtension(piece.typeMime, piece.nomFichierOriginal),
+          ),
+          apercu: true,
         });
-        const suffixe = ` - ${String(index + 1).padStart(2, "0")}`;
-        const point = nom.lastIndexOf(".");
-        return point === -1
-          ? `${nom}${suffixe}`
-          : `${nom.slice(0, point)}${suffixe}${nom.slice(point)}`;
-      });
+      }
     }
-    return construireNomsFichiersNormalises(piecesJointes, {
-      date: formulaire.date,
-      branch: uniteSelectionnee?.label ?? "",
-      expenseType: formulaire.typeDepense,
-      paymentMethod: formulaire.modePaiement,
-      amount: normaliserMontant(formulaire.montant),
-    });
+    return dedoublonnerNomsFichiers(
+      piecesJointes.map((piece) =>
+        assainirSegmentNomFichier(piece.nomFichierOriginal),
+      ),
+    );
   };
 
   const envoyerDepense = async (evenement: FormEvent) => {
@@ -249,16 +268,11 @@ export function FormulaireDepense({
     setStatutEnvoi({ type: null, message: "" });
 
     try {
-      const nomsFichiersNormalises = genererNomsFichiers();
-      const piecesJointesPourApi = piecesJointes.map((pieceJointe, index) => ({
+      const piecesJointesPourApi = piecesJointes.map((pieceJointe) => ({
         displayName: pieceJointe.nomAffiche,
         mimeType: pieceJointe.typeMime,
         base64Data: pieceJointe.donneesBase64,
         originalFileName: pieceJointe.nomFichierOriginal,
-        normalizedFileName:
-          nomsFichiersNormalises[index] ||
-          pieceJointe.nomFichierNormalise ||
-          pieceJointe.nomFichierOriginal,
       }));
 
       const reponse = await fetch("/api/send-expense", {

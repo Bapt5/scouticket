@@ -1,5 +1,10 @@
 import type { UniteBrouillon, UniteGroupe } from "./group";
 import type { ValidationTresorerie } from "./treasuryVerification";
+import {
+  PARAMETRES_ANNEE_COMPTABLE_PAR_DEFAUT,
+  type FormatAnneeComptable,
+  type ReservationNumeros,
+} from "./nomenclature";
 import { pool } from "@/lib/baseDeDonnees";
 import type { PoolClient } from "pg";
 
@@ -8,9 +13,16 @@ export async function recupererGroupeActif(identifiantOrganisation: string) {
     name: string;
     treasury_email: string | null;
     treasury_verification: unknown;
+    nomenclature_format: string | null;
+    annee_comptable_debut_mois: number | null;
+    annee_comptable_debut_jour: number | null;
+    annee_comptable_format: FormatAnneeComptable | null;
   }>(
     `SELECT organization.name, donnees.treasury_email,
-            donnees.treasury_verification
+            donnees.treasury_verification, donnees.nomenclature_format,
+            donnees.annee_comptable_debut_mois,
+            donnees.annee_comptable_debut_jour,
+            donnees.annee_comptable_format
        FROM organization
        LEFT JOIN scouticket_group_data donnees
          ON donnees.organization_id = organization.id
@@ -33,7 +45,67 @@ export async function recupererGroupeActif(identifiantOrganisation: string) {
     validation: (groupe.treasury_verification ?? {
       status: "pending",
     }) as ValidationTresorerie,
+    nomenclature: {
+      format: groupe.nomenclature_format,
+      anneeComptable: {
+        mois:
+          groupe.annee_comptable_debut_mois ??
+          PARAMETRES_ANNEE_COMPTABLE_PAR_DEFAUT.mois,
+        jour:
+          groupe.annee_comptable_debut_jour ??
+          PARAMETRES_ANNEE_COMPTABLE_PAR_DEFAUT.jour,
+        format:
+          groupe.annee_comptable_format ??
+          PARAMETRES_ANNEE_COMPTABLE_PAR_DEFAUT.format,
+      },
+    },
   };
+}
+
+/**
+ * Réserve des numéros dans la transaction du client (verrou de ligne sur le
+ * groupe) et renvoie le premier numéro attribué pour chaque compteur. Les
+ * compteurs ne sont définitifs qu'au COMMIT : un envoi échoué ne crée donc
+ * aucun trou dans la numérotation.
+ */
+export async function reserverNumeros(
+  client: PoolClient,
+  identifiantOrganisation: string,
+  reservation: ReservationNumeros,
+): Promise<{ premierGlobal?: number; premierComptable?: number }> {
+  const resultat = await client.query<{
+    compteur_global: number;
+    compteurs_comptables: Record<string, number>;
+  }>(
+    `SELECT compteur_global, compteurs_comptables
+       FROM scouticket_group_data
+      WHERE organization_id = $1 FOR UPDATE`,
+    [identifiantOrganisation],
+  );
+  const ligne = resultat.rows[0];
+  if (!ligne) throw new Error("GROUPE_NON_CONFIGURE");
+
+  const compteurs = { ...ligne.compteurs_comptables };
+  let compteurGlobal = ligne.compteur_global;
+  const attribues: { premierGlobal?: number; premierComptable?: number } = {};
+
+  if (reservation.global > 0) {
+    attribues.premierGlobal = compteurGlobal + 1;
+    compteurGlobal += reservation.global;
+  }
+  if (reservation.comptable) {
+    const cle = String(reservation.comptable.annee);
+    const dernier = compteurs[cle] ?? 0;
+    attribues.premierComptable = dernier + 1;
+    compteurs[cle] = dernier + reservation.comptable.nombre;
+  }
+  await client.query(
+    `UPDATE scouticket_group_data
+        SET compteur_global = $2, compteurs_comptables = $3::jsonb
+      WHERE organization_id = $1`,
+    [identifiantOrganisation, compteurGlobal, JSON.stringify(compteurs)],
+  );
+  return attribues;
 }
 
 export async function recupererRoleMembre(
