@@ -190,4 +190,25 @@ describe("EditeurNomenclature", () => {
     expect(champ.value).toBe("");
     expect(screen.getByText("Saisissez un jour valide")).toBeTruthy();
   });
+
+  it("explique le chevauchement et la reprise de numérotation dans des infobulles", () => {
+    render(
+      <EditeurNomenclature
+        valeur={valeur}
+        onChange={vi.fn()}
+        anneeComptableCourante={2025}
+      />,
+    );
+
+    const infobulles = screen
+      .getAllByRole("tooltip", { hidden: true })
+      .map((infobulle) => infobulle.textContent);
+    expect(infobulles).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/chevauche deux années civiles/),
+        expect.stringMatching(/reprendre une numérotation existante/),
+      ]),
+    );
+    expect(screen.queryByText(/\(chevauchement/)).toBeNull();
+  });
 });

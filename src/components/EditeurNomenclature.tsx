@@ -11,6 +11,7 @@ import {
   type FormatAnneeComptable,
   type ParametresAnneeComptable,
 } from "@/lib/nomenclature";
+import { InfoBulle } from "@/components/InfoBulle";
 
 export interface BrouillonNomenclature {
   personnalise: boolean;
@@ -236,8 +237,8 @@ export function EditeurNomenclature({
                   htmlFor="format-annee-comptable"
                   className="block text-sm text-zinc-700"
                 >
-                  Affichage de {"{AnneeComptable}"} (chevauchement de deux
-                  années)
+                  Affichage de {"{AnneeComptable}"}{" "}
+                  <InfoBulle texte="Utile quand l'année comptable chevauche deux années civiles : choisissez l'année de début, l'année de fin ou les deux." />
                 </label>
                 <select
                   id="format-annee-comptable"
@@ -264,8 +265,8 @@ export function EditeurNomenclature({
 
           <fieldset className="space-y-3">
             <legend className="text-sm font-medium text-zinc-700">
-              Prochains numéros (à modifier pour reprendre une numérotation
-              existante)
+              Prochains numéros{" "}
+              <InfoBulle texte="À modifier pour reprendre une numérotation existante. Les numéros ne sont consommés que si l'e-mail est bien parti." />
             </legend>
             <label className="block text-sm text-zinc-700">
               {"{GlobalNumero}"}
@@ -298,7 +299,10 @@ export function EditeurNomenclature({
           </fieldset>
 
           <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-800">
-            <p className="font-medium">Aperçu (deux justificatifs)</p>
+            <p className="font-medium">
+              Aperçu{" "}
+              <InfoBulle texte="Exemple avec deux justificatifs envoyés ensemble le 5 mars 2026." />
+            </p>
             {apercu.length === 0 ? (
               <p className="text-zinc-500">Format invalide.</p>
             ) : (
