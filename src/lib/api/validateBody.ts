@@ -3,9 +3,11 @@ import { estTypeMimePieceJointeAutorise } from "@/lib/attachments";
 import {
   type PieceJointeDepense,
   type DetailDepense,
+  type LigneDepense,
 } from "@/constants/piecesJointes";
 import {
   MAX_ATTACHMENT_COUNT,
+  MAX_LIGNES_PAR_JUSTIFICATIF,
   MAX_ATTACHMENT_SIZE_BYTES,
   MAX_TOTAL_ATTACHMENTS_SIZE_BYTES,
 } from "@/constants/piecesJointes";
@@ -13,7 +15,11 @@ import {
 import type { DonneesEmailDepense } from "@/lib/email";
 import type { NextResponse } from "next/server";
 import { z } from "zod";
-import { MODES_PAIEMENT, TYPES_DEPENSES } from "@/constants/configDepenses";
+import {
+  LIBELLES_CATEGORIES_COMPTABLES,
+  MODES_PAIEMENT,
+} from "@/constants/configDepenses";
+import { totalDetails } from "@/lib/depenses";
 import { journal } from "@/lib/logger";
 
 export function validerCorpsRequete(body: unknown): {
@@ -25,19 +31,21 @@ export function validerCorpsRequete(body: unknown): {
       userEmail: z.string().email(),
       date: z.string(),
       unitId: z.string().min(1),
-      expenseType: z.string().optional(),
-      paymentMethod: z.string().optional(),
-      amount: z.union([z.string(), z.number()]).optional(),
       description: z.string().optional(),
-      expenseDetails: z
-        .array(
-          z.object({
-            expenseType: z.string(),
-            paymentMethod: z.string(),
-            amount: z.union([z.string(), z.number()]),
-          }),
-        )
-        .optional(),
+      expenses: z.array(
+        z.object({
+          paymentMethod: z.string(),
+          lines: z
+            .array(
+              z.object({
+                category: z.string(),
+                amount: z.union([z.string(), z.number()]),
+              }),
+            )
+            .min(1)
+            .max(MAX_LIGNES_PAR_JUSTIFICATIF),
+        }),
+      ),
       attachments: z.array(z.any()).optional(),
       imageBase64: z.string().optional(),
       fileName: z.string().optional(),
@@ -177,69 +185,37 @@ export function validerCorpsRequete(body: unknown): {
     });
   }
 
-  const estTypeDepenseValide = (typeDepense: string) =>
-    TYPES_DEPENSES.includes(typeDepense as (typeof TYPES_DEPENSES)[number]);
+  const estCategorieValide = (categorie: string) =>
+    LIBELLES_CATEGORIES_COMPTABLES.includes(categorie);
   const estModePaiementValide = (modePaiement: string) =>
     MODES_PAIEMENT.includes(modePaiement as (typeof MODES_PAIEMENT)[number]);
-  let montant: number;
-  let typeDepense: string;
-  let modePaiement: string;
-  let detailsDepenses: DetailDepense[] | undefined;
 
-  if (b.expenseDetails && piecesJointesNormalisees.length < 2) {
-    return {
-      error: jsonError(
-        "Une dépense unique doit contenir un type et un montant, sans détails de dépenses.",
-        400,
-      ),
-    };
+  // Un élément de `expenses` par justificatif, dans le même ordre.
+  if (b.expenses.length !== piecesJointesNormalisees.length) {
+    return { error: jsonError("Détails des dépenses incomplets", 400) };
   }
 
-  if (piecesJointesNormalisees.length > 1) {
-    if (
-      !b.expenseDetails ||
-      b.expenseDetails.length !== piecesJointesNormalisees.length
-    ) {
-      return { error: jsonError("Détails des dépenses incomplets", 400) };
+  const detailsDepenses: DetailDepense[] = [];
+  for (let i = 0; i < b.expenses.length; i++) {
+    const depense = b.expenses[i];
+    if (!estModePaiementValide(depense.paymentMethod)) {
+      return {
+        error: jsonError(`Mode de paiement invalide (#${i + 1})`, 400),
+      };
     }
-
-    detailsDepenses = [];
-    for (let i = 0; i < b.expenseDetails.length; i++) {
-      const detail = b.expenseDetails[i];
-      const montantDetail = Number(detail.amount);
+    const lignes: LigneDepense[] = [];
+    for (const ligne of depense.lines) {
+      const montantLigne = Number(ligne.amount);
       if (
-        !estTypeDepenseValide(detail.expenseType) ||
-        !estModePaiementValide(detail.paymentMethod) ||
-        !Number.isFinite(montantDetail) ||
-        montantDetail <= 0
+        !estCategorieValide(ligne.category) ||
+        !Number.isFinite(montantLigne) ||
+        montantLigne <= 0
       ) {
         return { error: jsonError(`Dépense invalide (#${i + 1})`, 400) };
       }
-      detailsDepenses.push({
-        typeDepense: detail.expenseType,
-        modePaiement: detail.paymentMethod,
-        montant: montantDetail,
-      });
+      lignes.push({ categorie: ligne.category, montant: montantLigne });
     }
-    montant = detailsDepenses.reduce(
-      (total, detail) => total + detail.montant,
-      0,
-    );
-    typeDepense = "Dépenses multiples";
-    modePaiement = "Modes de paiement multiples";
-  } else {
-    montant = Number(b.amount);
-    typeDepense = b.expenseType?.trim() ?? "";
-    modePaiement = b.paymentMethod?.trim() ?? "";
-    if (!Number.isFinite(montant) || montant <= 0) {
-      return { error: jsonError("Montant invalide", 400) };
-    }
-    if (!estTypeDepenseValide(typeDepense)) {
-      return { error: jsonError("Type de dépense invalide", 400) };
-    }
-    if (!estModePaiementValide(modePaiement)) {
-      return { error: jsonError("Mode de paiement invalide", 400) };
-    }
+    detailsDepenses.push({ modePaiement: depense.paymentMethod, lignes });
   }
 
   return {
@@ -247,9 +223,7 @@ export function validerCorpsRequete(body: unknown): {
       emailUtilisateur: b.userEmail,
       date: b.date,
       branche: b.unitId,
-      typeDepense,
-      modePaiement,
-      montant,
+      montant: totalDetails(detailsDepenses),
       description: b.description ?? "",
       piecesJointes: piecesJointesNormalisees,
       detailsDepenses,
