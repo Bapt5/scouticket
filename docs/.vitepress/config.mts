@@ -35,6 +35,11 @@ const metadonneesPages: Record<string, { titre: string; description: string }> =
       description:
         "Architecture, fonctionnalités et choix techniques de Scouticket : Next.js, Clerk, SMTP et PWA.",
     },
+    "technical/scan-justificatifs.md": {
+      titre: "Scan automatique des justificatifs",
+      description:
+        "Activez et comprenez le recadrage automatique des justificatifs avec Scanic : paramètres du groupe, ML auto-hébergé et fonctionnement.",
+    },
     "technical/local-installation.md": {
       titre: "Installation locale",
       description:
@@ -160,6 +165,10 @@ export default defineConfig({
             link: "/technical/local-installation",
           },
           { text: "Configuration", link: "/technical/configuration" },
+          {
+            text: "Scan des justificatifs",
+            link: "/technical/scan-justificatifs",
+          },
           {
             text: "Variables d'environnement",
             link: "/technical/environment-variables",

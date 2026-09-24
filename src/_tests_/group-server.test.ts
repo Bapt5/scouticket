@@ -55,6 +55,34 @@ describe("recupererGroupeActif", () => {
     expect(mocks.query.mock.calls[1][1]).toEqual(["org_1"]);
   });
 
+  it("lit les paramètres du groupe avec des défauts désactivés", async () => {
+    mocks.query
+      .mockResolvedValueOnce({ rows: [{ name: "Sans paramètres" }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            name: "Avec scan",
+            scan_justificatifs_actif: true,
+            convertir_justificatifs_pdf: true,
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ rows: [] });
+
+    const sans = await recupererGroupeActif("org_1");
+    const avec = await recupererGroupeActif("org_2");
+
+    expect(sans.parametres).toEqual({
+      scanJustificatifsActif: false,
+      convertirJustificatifsEnPdf: false,
+    });
+    expect(avec.parametres).toEqual({
+      scanJustificatifsActif: true,
+      convertirJustificatifsEnPdf: true,
+    });
+  });
+
   it("lève une erreur si l’organisation est introuvable", async () => {
     mocks.query.mockResolvedValueOnce({ rows: [] });
 
