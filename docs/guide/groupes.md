@@ -30,7 +30,7 @@ Conservez au moins une unité : un justificatif doit toujours être rattaché à
 
 ## Nom des justificatifs
 
-Par défaut, les pièces jointes envoyées à la trésorerie sont nommées `date - unité - type - mode de paiement - montant`. Les responsables peuvent définir leur propre format depuis **Administration** puis **Nom des justificatifs**.
+Par défaut, les pièces jointes envoyées à la trésorerie gardent le nom du fichier importé par le membre. Les responsables peuvent définir un format de nom depuis **Administration** puis **Nom des justificatifs** ; en cochant l’option, le format est pré-rempli avec `date - unité - type - mode de paiement - montant` et reste modifiable.
 
 Le format mélange du texte fixe et des variables entre accolades, par exemple `{YYYY}-{MM}-{DD} - {Branche} - {Type} - {Montant} - {Numero}` donne `2026-03-05 - Louveteaux - Carburants - 28.50 - 01.pdf`. Les boutons de la page insèrent les variables, et un aperçu montre le résultat. L’extension du fichier est ajoutée automatiquement.
 
@@ -47,7 +47,7 @@ Le format mélange du texte fixe et des variables entre accolades, par exemple `
 
 **Numéros.** Un numéro n’est consommé que si l’e-mail est bien parti : un envoi en échec ne crée pas de trou. Pour reprendre une numérotation existante, saisissez le prochain numéro à attribuer dans la page. Si deux justificatifs d’un même envoi devaient porter le même nom, un ` - 01`, ` - 02`… est ajouté.
 
-Décochez la personnalisation pour revenir au nom par défaut.
+Décochez la personnalisation pour revenir au nom du fichier importé. Dans les deux cas, si deux pièces jointes d’un même envoi portent le même nom, un ` - 01`, ` - 02`… est ajouté.
 
 ## Inviter les membres
 

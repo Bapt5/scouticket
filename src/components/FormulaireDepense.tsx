@@ -11,12 +11,10 @@ import {
   DocumentTextIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
-import {
-  construireNomsFichiersNormalises,
-  devinerExtension,
-} from "@/lib/attachments";
+import { assainirSegmentNomFichier, devinerExtension } from "@/lib/attachments";
 import {
   analyserDateIso,
+  dedoublonnerNomsFichiers,
   genererNomsNomenclature,
   type ParametresAnneeComptable,
 } from "@/lib/nomenclature";
@@ -234,30 +232,11 @@ export function FormulaireDepense({
         });
       }
     }
-    if (plusieursDepenses) {
-      return piecesJointes.map((pieceJointe, index) => {
-        const detail = detailsDepenses[index];
-        const [nom] = construireNomsFichiersNormalises([pieceJointe], {
-          date: formulaire.date,
-          branch: uniteSelectionnee?.label ?? "",
-          expenseType: detail?.typeDepense ?? "",
-          paymentMethod: detail?.modePaiement ?? "",
-          amount: String(detail?.montant ?? ""),
-        });
-        const suffixe = ` - ${String(index + 1).padStart(2, "0")}`;
-        const point = nom.lastIndexOf(".");
-        return point === -1
-          ? `${nom}${suffixe}`
-          : `${nom.slice(0, point)}${suffixe}${nom.slice(point)}`;
-      });
-    }
-    return construireNomsFichiersNormalises(piecesJointes, {
-      date: formulaire.date,
-      branch: uniteSelectionnee?.label ?? "",
-      expenseType: formulaire.typeDepense,
-      paymentMethod: formulaire.modePaiement,
-      amount: normaliserMontant(formulaire.montant),
-    });
+    return dedoublonnerNomsFichiers(
+      piecesJointes.map((piece) =>
+        assainirSegmentNomFichier(piece.nomFichierOriginal),
+      ),
+    );
   };
 
   const envoyerDepense = async (evenement: FormEvent) => {
@@ -289,16 +268,11 @@ export function FormulaireDepense({
     setStatutEnvoi({ type: null, message: "" });
 
     try {
-      const nomsFichiersNormalises = genererNomsFichiers();
-      const piecesJointesPourApi = piecesJointes.map((pieceJointe, index) => ({
+      const piecesJointesPourApi = piecesJointes.map((pieceJointe) => ({
         displayName: pieceJointe.nomAffiche,
         mimeType: pieceJointe.typeMime,
         base64Data: pieceJointe.donneesBase64,
         originalFileName: pieceJointe.nomFichierOriginal,
-        normalizedFileName:
-          nomsFichiersNormalises[index] ||
-          pieceJointe.nomFichierNormalise ||
-          pieceJointe.nomFichierOriginal,
       }));
 
       const reponse = await fetch("/api/send-expense", {

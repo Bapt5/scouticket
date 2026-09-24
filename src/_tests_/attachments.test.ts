@@ -1,21 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { construireNomsFichiersNormalises } from "@/lib/attachments";
+import { assainirSegmentNomFichier, devinerExtension } from "@/lib/attachments";
 
-describe("construireNomsFichiersNormalises", () => {
-  it("inclut le mode de paiement dans le nom du justificatif", () => {
-    const [nom] = construireNomsFichiersNormalises(
-      [{ typeMime: "image/jpeg", nomFichierOriginal: "ticket.jpg" }],
-      {
-        date: "2026-09-13",
-        branch: "Groupe",
-        expenseType: "Carburants",
-        paymentMethod: "Carte bancaire",
-        amount: "28,50",
-      },
-    );
+describe("assainirSegmentNomFichier", () => {
+  it("remplace les caractères interdits et compacte les espaces", () => {
+    expect(assainirSegmentNomFichier('  a/b:c  "d" ')).toBe("a-b-c -d-");
+  });
+});
 
-    expect(nom).toBe(
-      "2026-09-13 - Groupe - Carburants - Carte bancaire - 28.50.jpg",
+describe("devinerExtension", () => {
+  it("privilégie le type MIME, puis l'extension du nom, sinon bin", () => {
+    expect(devinerExtension("application/pdf", "x.doc")).toBe("pdf");
+    expect(devinerExtension("application/x-inconnu", "Photo.JPG")).toBe("jpg");
+    expect(devinerExtension("application/x-inconnu", "sans-extension")).toBe(
+      "bin",
     );
   });
 });

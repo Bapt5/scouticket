@@ -310,3 +310,15 @@ export function genererNomsNomenclature(
     return limiterLongueur(base, parametres.extensions[index] ?? "bin");
   });
 }
+
+/** Ajoute ` - 01`, ` - 02`… avant l'extension quand plusieurs noms sont identiques. */
+export function dedoublonnerNomsFichiers(noms: string[]): string[] {
+  if (new Set(noms).size === noms.length) return noms;
+  return noms.map((nom, index) => {
+    const suffixe = ` - ${remplirNumero(index + 1, 2)}`;
+    const point = nom.lastIndexOf(".");
+    return point <= 0
+      ? `${nom}${suffixe}`
+      : `${nom.slice(0, point)}${suffixe}${nom.slice(point)}`;
+  });
+}

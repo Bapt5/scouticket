@@ -113,7 +113,7 @@ export function EditeurNomenclature({
               personnalise: e.target.checked,
               format:
                 e.target.checked && !valeur.format
-                  ? "{YYYY}-{MM}-{DD} - {Branche} - {Type} - {Montant}"
+                  ? "{YYYY}-{MM}-{DD} - {Branche} - {Type} - {ModePaiement} - {Montant}"
                   : valeur.format,
             })
           }
@@ -122,7 +122,7 @@ export function EditeurNomenclature({
         <span>
           Personnaliser le nom des justificatifs envoyés à la trésorerie
           <span className="block text-zinc-500">
-            Sinon, le nom par défaut est conservé.
+            Sinon, chaque fichier garde le nom du fichier importé.
           </span>
         </span>
       </label>

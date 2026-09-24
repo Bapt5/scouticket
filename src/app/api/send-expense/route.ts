@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { envoyerEmailDepense, type DonneesEmailDepense } from "@/lib/email";
-import { devinerExtension } from "@/lib/attachments";
+import { assainirSegmentNomFichier, devinerExtension } from "@/lib/attachments";
 import {
   analyserDateIso,
   calculerReservation,
+  dedoublonnerNomsFichiers,
   genererNomsNomenclature,
   type ParametresAnneeComptable,
 } from "@/lib/nomenclature";
@@ -179,6 +180,14 @@ export async function POST(req: NextRequest) {
           anneeComptable,
         );
       } else {
+        const noms = dedoublonnerNomsFichiers(
+          donneesEmail.piecesJointes.map((piece) =>
+            assainirSegmentNomFichier(piece.nomFichierOriginal),
+          ),
+        );
+        donneesEmail.piecesJointes = donneesEmail.piecesJointes.map(
+          (piece, index) => ({ ...piece, nomFichierNormalise: noms[index] }),
+        );
         resultat = await envoyerEmailDepense(donneesEmail);
       }
       return NextResponse.json({

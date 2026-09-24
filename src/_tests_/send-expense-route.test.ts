@@ -139,6 +139,54 @@ describe("POST /api/send-expense", () => {
     },
   );
 
+  it("sans format, garde le nom du fichier importé et dédoublonne", async () => {
+    mocks.recupererRoleMembre.mockResolvedValue("owner");
+    const piece = (nom: string) => ({
+      nomAffiche: nom,
+      typeMime: "image/jpeg",
+      donneesBase64: "QQ==",
+      nomFichierOriginal: nom,
+      nomFichierNormalise: nom,
+    });
+    const corps = mocks.validerCorpsRequete();
+    corps.donneesEmail.piecesJointes = [piece("image.jpg"), piece("image.jpg")];
+    mocks.validerCorpsRequete.mockReturnValue(corps);
+
+    const reponse = await POST(REQUETE_BASE() as never);
+
+    expect(reponse.status).toBe(200);
+    const envoye = mocks.envoyerEmailDepense.mock.calls[0][0];
+    expect(
+      envoye.piecesJointes.map(
+        (p: { nomFichierNormalise: string }) => p.nomFichierNormalise,
+      ),
+    ).toEqual(["image - 01.jpg", "image - 02.jpg"]);
+    expect(mocks.reserverNumeros).not.toHaveBeenCalled();
+    expect(mocks.requeteClient).not.toHaveBeenCalled();
+  });
+
+  it("sans format, conserve le nom d'un fichier unique", async () => {
+    mocks.recupererRoleMembre.mockResolvedValue("owner");
+    const corps = mocks.validerCorpsRequete();
+    corps.donneesEmail.piecesJointes = [
+      {
+        nomAffiche: "Ticket.pdf",
+        typeMime: "application/pdf",
+        donneesBase64: "QQ==",
+        nomFichierOriginal: "Ticket:1.pdf",
+        nomFichierNormalise: "Ticket:1.pdf",
+      },
+    ];
+    mocks.validerCorpsRequete.mockReturnValue(corps);
+
+    await POST(REQUETE_BASE() as never);
+
+    expect(
+      mocks.envoyerEmailDepense.mock.calls[0][0].piecesJointes[0]
+        .nomFichierNormalise,
+    ).toBe("Ticket-1.pdf");
+  });
+
   describe("avec une nomenclature de groupe", () => {
     const groupeAvecFormat = (format: string) => ({
       organisation: { id: "org_1", name: "Groupe test" },

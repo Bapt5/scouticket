@@ -85,4 +85,25 @@ describe("EditeurNomenclature", () => {
 
     expect(screen.queryByLabelText("Format du nom")).toBeNull();
   });
+
+  it("pré-remplit l'ancien nom à l'activation de la personnalisation", async () => {
+    const onChange = vi.fn();
+    render(
+      <EditeurNomenclature
+        valeur={{ ...valeur, personnalise: false, format: "" }}
+        onChange={onChange}
+        anneeComptableCourante={2025}
+      />,
+    );
+
+    await userEvent.setup().click(screen.getByRole("checkbox"));
+
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        personnalise: true,
+        format:
+          "{YYYY}-{MM}-{DD} - {Branche} - {Type} - {ModePaiement} - {Montant}",
+      }),
+    );
+  });
 });

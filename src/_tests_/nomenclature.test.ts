@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   anneeComptableDebut,
   calculerReservation,
+  dedoublonnerNomsFichiers,
   genererNomsNomenclature,
   libelleAnneeComptable,
   validerFormatNomenclature,
@@ -191,5 +192,22 @@ describe("calculerReservation", () => {
         septembre,
       ),
     ).toEqual({ global: 2, comptable: { annee: 2024, nombre: 2 } });
+  });
+});
+
+describe("dedoublonnerNomsFichiers", () => {
+  it("laisse intacts des noms distincts", () => {
+    expect(dedoublonnerNomsFichiers(["a.pdf", "b.pdf"])).toEqual([
+      "a.pdf",
+      "b.pdf",
+    ]);
+  });
+
+  it("numérote tous les noms quand il y a un doublon", () => {
+    expect(dedoublonnerNomsFichiers(["image.jpg", "image.jpg", "x"])).toEqual([
+      "image - 01.jpg",
+      "image - 02.jpg",
+      "x - 03",
+    ]);
   });
 });

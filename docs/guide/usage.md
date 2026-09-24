@@ -18,7 +18,7 @@ Le mode de paiement est obligatoire. Choisissez entre carte bancaire, chèque, v
 
 ![Formulaire de dépense avec le mode de paiement](/guide/mode-paiement.png)
 
-La trésorerie reçoit l’e-mail avec les pièces jointes et vous recevez une copie pour assurer votre suivi. Le nom des pièces jointes suit le format choisi par votre groupe ; les numéros globaux (affichés `###` dans l’aperçu) sont attribués au moment de l’envoi.
+La trésorerie reçoit l’e-mail avec les pièces jointes et vous recevez une copie pour assurer votre suivi. Les pièces jointes gardent le nom de votre fichier, sauf si votre groupe a défini un format de nom ; les numéros globaux (affichés `###` dans l’aperçu) sont attribués au moment de l’envoi.
 
 ![Page de connexion](./page_connexion.png)
 
