@@ -50,7 +50,10 @@ describe("/api/group/parametres", () => {
     mocks.recupererRoleMembre.mockResolvedValue("admin");
     mocks.verifierOrigineRequete.mockReturnValue(null);
     mocks.recupererGroupeActif.mockResolvedValue({
-      parametres: { scanJustificatifsActif: false },
+      parametres: {
+        scanJustificatifsActif: false,
+        convertirJustificatifsEnPdf: false,
+      },
     });
     mocks.query.mockResolvedValue({ rowCount: 1, rows: [] });
   });
@@ -64,7 +67,10 @@ describe("/api/group/parametres", () => {
 
     expect(reponse.status).toBe(200);
     await expect(reponse.json()).resolves.toEqual({
-      parametres: { scanJustificatifsActif: false },
+      parametres: {
+        scanJustificatifsActif: false,
+        convertirJustificatifsEnPdf: false,
+      },
     });
   });
 
@@ -107,23 +113,44 @@ describe("/api/group/parametres", () => {
     expect(reponse.status).toBe(200);
     await expect(reponse.json()).resolves.toEqual({
       success: true,
-      parametres: { scanJustificatifsActif: true },
+      parametres: {
+        scanJustificatifsActif: true,
+        convertirJustificatifsEnPdf: false,
+      },
     });
     expect(mocks.query.mock.calls[0][0]).toMatch(/ON CONFLICT/);
-    expect(mocks.query.mock.calls[0][1]).toEqual(["org_1", true]);
+    expect(mocks.query.mock.calls[0][1]).toEqual(["org_1", true, false]);
   });
 
   it("PATCH désactive le scan", async () => {
     mocks.recupererGroupeActif.mockResolvedValue({
-      parametres: { scanJustificatifsActif: true },
+      parametres: {
+        scanJustificatifsActif: true,
+        convertirJustificatifsEnPdf: false,
+      },
     });
 
     const reponse = await patch({ scanJustificatifsActif: false });
 
     await expect(reponse.json()).resolves.toMatchObject({
-      parametres: { scanJustificatifsActif: false },
+      parametres: {
+        scanJustificatifsActif: false,
+        convertirJustificatifsEnPdf: false,
+      },
     });
-    expect(mocks.query.mock.calls[0][1]).toEqual(["org_1", false]);
+    expect(mocks.query.mock.calls[0][1]).toEqual(["org_1", false, false]);
+  });
+
+  it("PATCH enregistre la conversion en PDF sans toucher au scan", async () => {
+    const reponse = await patch({ convertirJustificatifsEnPdf: true });
+
+    await expect(reponse.json()).resolves.toMatchObject({
+      parametres: {
+        scanJustificatifsActif: false,
+        convertirJustificatifsEnPdf: true,
+      },
+    });
+    expect(mocks.query.mock.calls[0][1]).toEqual(["org_1", false, true]);
   });
 
   it("PATCH relaie le refus de l'origine de la requête", async () => {

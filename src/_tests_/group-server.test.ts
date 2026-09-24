@@ -64,6 +64,7 @@ describe("recupererGroupeActif", () => {
           {
             name: "Avec scan",
             scan_justificatifs_actif: true,
+            convertir_justificatifs_pdf: true,
           },
         ],
       })
@@ -72,8 +73,14 @@ describe("recupererGroupeActif", () => {
     const sans = await recupererGroupeActif("org_1");
     const avec = await recupererGroupeActif("org_2");
 
-    expect(sans.parametres).toEqual({ scanJustificatifsActif: false });
-    expect(avec.parametres).toEqual({ scanJustificatifsActif: true });
+    expect(sans.parametres).toEqual({
+      scanJustificatifsActif: false,
+      convertirJustificatifsEnPdf: false,
+    });
+    expect(avec.parametres).toEqual({
+      scanJustificatifsActif: true,
+      convertirJustificatifsEnPdf: true,
+    });
   });
 
   it("lève une erreur si l’organisation est introuvable", async () => {

@@ -19,13 +19,15 @@ export async function recupererGroupeActif(identifiantOrganisation: string) {
     annee_comptable_debut_jour: number | null;
     annee_comptable_format: FormatAnneeComptable | null;
     scan_justificatifs_actif: boolean | null;
+    convertir_justificatifs_pdf: boolean | null;
   }>(
     `SELECT organization.name, donnees.treasury_email,
             donnees.treasury_verification, donnees.nomenclature_format,
             donnees.annee_comptable_debut_mois,
             donnees.annee_comptable_debut_jour,
             donnees.annee_comptable_format,
-            donnees.scan_justificatifs_actif
+            donnees.scan_justificatifs_actif,
+            donnees.convertir_justificatifs_pdf
        FROM organization
        LEFT JOIN scouticket_group_data donnees
          ON donnees.organization_id = organization.id
@@ -64,6 +66,7 @@ export async function recupererGroupeActif(identifiantOrganisation: string) {
     },
     parametres: {
       scanJustificatifsActif: groupe.scan_justificatifs_actif ?? false,
+      convertirJustificatifsEnPdf: groupe.convertir_justificatifs_pdf ?? false,
     } satisfies ParametresGroupe,
   };
 }

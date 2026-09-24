@@ -14,8 +14,14 @@ vi.mock("@/lib/auth-client", () => ({
 const reponse = (corps: unknown, ok = true) =>
   Promise.resolve({ ok, json: () => Promise.resolve(corps) });
 
-const groupeAdmin = (scanJustificatifsActif: boolean) =>
-  reponse({ isAdmin: true, parametres: { scanJustificatifsActif } });
+const groupeAdmin = (
+  scanJustificatifsActif: boolean,
+  convertirJustificatifsEnPdf = false,
+) =>
+  reponse({
+    isAdmin: true,
+    parametres: { scanJustificatifsActif, convertirJustificatifsEnPdf },
+  });
 
 describe("Page Paramètres du groupe", () => {
   const fetchMock = vi.fn();
@@ -45,7 +51,7 @@ describe("Page Paramètres du groupe", () => {
       name: "Scan automatique des justificatifs",
     });
     expect(scan).toHaveAttribute("aria-checked", "false");
-    expect(screen.getAllByRole("switch")).toHaveLength(1);
+    expect(screen.getAllByRole("switch")).toHaveLength(2);
     expect(screen.queryByText(/ML/)).not.toBeInTheDocument();
   });
 
@@ -55,7 +61,10 @@ describe("Page Paramètres du groupe", () => {
         options?.method === "PATCH"
           ? reponse({
               success: true,
-              parametres: { scanJustificatifsActif: true },
+              parametres: {
+                scanJustificatifsActif: true,
+                convertirJustificatifsEnPdf: false,
+              },
             })
           : groupeAdmin(false),
     );
@@ -74,6 +83,36 @@ describe("Page Paramètres du groupe", () => {
     expect(appel?.[0]).toBe("/api/group/parametres");
     expect(JSON.parse(appel?.[1].body)).toEqual({
       scanJustificatifsActif: true,
+    });
+  });
+
+  it("enregistre l'activation de la conversion en PDF", async () => {
+    fetchMock.mockImplementation(
+      (_url: string, options?: { method?: string }) =>
+        options?.method === "PATCH"
+          ? reponse({
+              success: true,
+              parametres: {
+                scanJustificatifsActif: false,
+                convertirJustificatifsEnPdf: true,
+              },
+            })
+          : groupeAdmin(false),
+    );
+
+    render(<PageParametresGroupe />);
+    const conversion = await screen.findByRole("switch", {
+      name: "Conversion des justificatifs en PDF",
+    });
+    await userEvent.click(conversion);
+
+    expect(await screen.findByText("Paramètres enregistrés.")).toBeVisible();
+    expect(conversion).toHaveAttribute("aria-checked", "true");
+    const appel = fetchMock.mock.calls.find(
+      ([, options]) => options?.method === "PATCH",
+    );
+    expect(JSON.parse(appel?.[1].body)).toEqual({
+      convertirJustificatifsEnPdf: true,
     });
   });
 

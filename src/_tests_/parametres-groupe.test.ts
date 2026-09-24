@@ -8,6 +8,7 @@ describe("parametresGroupe", () => {
   it("désactive tout par défaut", () => {
     expect(PARAMETRES_GROUPE_PAR_DEFAUT).toEqual({
       scanJustificatifsActif: false,
+      convertirJustificatifsEnPdf: false,
     });
   });
 
@@ -15,6 +16,8 @@ describe("parametresGroupe", () => {
     const valide = (corps: unknown) =>
       schemaMiseAJourParametresGroupe.safeParse(corps).success;
     expect(valide({ scanJustificatifsActif: true })).toBe(true);
+    expect(valide({ convertirJustificatifsEnPdf: true })).toBe(true);
+    expect(valide({ convertirJustificatifsEnPdf: "oui" })).toBe(false);
     expect(valide({})).toBe(false);
     expect(valide({ scanJustificatifsMl: true })).toBe(false);
     expect(valide({ scanJustificatifsActif: 1 })).toBe(false);

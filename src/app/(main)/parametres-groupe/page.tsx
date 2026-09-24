@@ -92,6 +92,16 @@ export default function PageParametresGroupe() {
               desactive={enregistrement}
               onChange={(actif) => modifier({ scanJustificatifsActif: actif })}
             />
+            <InterrupteurParametre
+              id="convertir-justificatifs-pdf"
+              titre="Conversion des justificatifs en PDF"
+              description="Convertit toutes les photos et images en PDF avant l’envoi par e-mail à la trésorerie (un PDF par justificatif). Désactivé, les justificatifs sont envoyés dans leur format d’origine."
+              actif={parametres.convertirJustificatifsEnPdf}
+              desactive={enregistrement}
+              onChange={(actif) =>
+                modifier({ convertirJustificatifsEnPdf: actif })
+              }
+            />
             {message && (
               <p role="status" className="text-sm text-zinc-600">
                 {message}

@@ -71,3 +71,7 @@ Les responsables peuvent activer le scan depuis **Administration** puis **Param�
 - un **PDF** ou un autre fichier non image est ajouté tel quel.
 
 Le traitement se fait dans votre navigateur : aucune image n’est envoyée à un service externe.
+
+## Conversion des justificatifs en PDF
+
+Depuis **Paramètres du groupe**, les responsables peuvent activer la conversion des justificatifs en PDF. Désactivée par défaut, les justificatifs sont envoyés à la trésorerie dans leur format d’origine. Activée, chaque photo ou image est convertie en PDF (un PDF par justificatif) avant l’envoi par e-mail ; les PDF sont envoyés tels quels. Rien n’est conservé par Scouticket.
