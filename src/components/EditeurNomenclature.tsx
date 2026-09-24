@@ -42,6 +42,13 @@ const MOIS = [
   "décembre",
 ];
 
+function dateDuJourIso(): string {
+  const maintenant = new Date();
+  const mois = String(maintenant.getMonth() + 1).padStart(2, "0");
+  const jour = String(maintenant.getDate()).padStart(2, "0");
+  return `${maintenant.getFullYear()}-${mois}-${jour}`;
+}
+
 const classeChamp =
   "w-full rounded-lg border border-zinc-300 bg-white p-3 text-zinc-900 focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]";
 
@@ -89,7 +96,7 @@ export function EditeurNomenclature({
       ? genererNomsNomenclature({
           format: valeur.format,
           parametresAnnee: anneeComptable,
-          date: "2026-03-05",
+          date: dateDuJourIso(),
           branche: "Louveteaux",
           depenses: [
             {
@@ -301,7 +308,7 @@ export function EditeurNomenclature({
           <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-800">
             <p className="font-medium">
               Aperçu{" "}
-              <InfoBulle texte="Exemple avec deux justificatifs envoyés ensemble le 5 mars 2026." />
+              <InfoBulle texte="Exemple avec deux justificatifs envoyés ensemble, daté d'aujourd'hui." />
             </p>
             {apercu.length === 0 ? (
               <p className="text-zinc-500">Format invalide.</p>

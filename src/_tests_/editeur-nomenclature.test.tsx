@@ -15,7 +15,9 @@ const valeur: BrouillonNomenclature = {
 };
 
 describe("EditeurNomenclature", () => {
-  it("affiche un aperçu du format saisi", () => {
+  it("affiche un aperçu du format saisi, daté d'aujourd'hui", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2027, 10, 20, 12));
     render(
       <EditeurNomenclature
         valeur={valeur}
@@ -24,8 +26,9 @@ describe("EditeurNomenclature", () => {
       />,
     );
 
-    expect(screen.getByText("2026 - Louveteaux - 01.pdf")).toBeTruthy();
-    expect(screen.getByText("2026 - Louveteaux - 02.jpg")).toBeTruthy();
+    expect(screen.getByText("2027 - Louveteaux - 01.pdf")).toBeTruthy();
+    expect(screen.getByText("2027 - Louveteaux - 02.jpg")).toBeTruthy();
+    vi.useRealTimers();
   });
 
   it("signale un format invalide", () => {
