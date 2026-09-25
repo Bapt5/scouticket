@@ -170,6 +170,17 @@ export async function POST(req: NextRequest) {
           donneesEmail.piecesJointes,
         );
 
+      // Le RIB n'est jamais converti ni renommé par la nomenclature :
+      // « RIB - {nom du demandeur} ».
+      if (donneesEmail.rib) {
+        const nomDemandeur =
+          session.user.name?.trim() || userEmail.split("@")[0];
+        donneesEmail.rib = {
+          ...donneesEmail.rib,
+          nomFichierNormalise: `RIB - ${assainirSegmentNomFichier(nomDemandeur)}.${devinerExtension(donneesEmail.rib.typeMime, donneesEmail.rib.nomFichierOriginal)}`,
+        };
+      }
+
       const { format, anneeComptable } = group.nomenclature;
       let resultat;
       if (format) {

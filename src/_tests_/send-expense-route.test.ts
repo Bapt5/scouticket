@@ -73,22 +73,26 @@ describe("POST /api/send-expense", () => {
     process.env.SMTP_PASSWORD = "password";
 
     mocks.recupererContexteGroupe.mockResolvedValue({
-      session: { user: { email: "membre@example.test" } },
+      session: { user: { email: "membre@example.test", name: "Jean Dupont" } },
       identifiantUtilisateur: "user_1",
       identifiantOrganisation: "org_1",
     });
     mocks.recupererSession.mockResolvedValue({
-      user: { id: "user_1", email: "membre@example.test" },
+      user: {
+        id: "user_1",
+        email: "membre@example.test",
+        name: "Jean Dupont",
+      },
     });
     mocks.verifierOrigineRequete.mockReturnValue(null);
     mocks.verifierRateLimit.mockReturnValue({ autorise: true });
     mocks.validerCorpsRequete.mockReturnValue({
       donneesEmail: {
+        typeEnvoi: "depense-groupe",
         emailUtilisateur: "membre@example.test",
         date: "2026-01-01",
         branche: "farfadets",
         montant: 12,
-        description: "",
         piecesJointes: [],
         detailsDepenses: [],
       },
@@ -232,6 +236,45 @@ describe("POST /api/send-expense", () => {
     ).toBe("photo.pdf");
   });
 
+  it("ne convertit ni ne renomme le RIB selon la nomenclature, il porte le nom du demandeur", async () => {
+    mocks.recupererRoleMembre.mockResolvedValue("owner");
+    const piece = {
+      nomAffiche: "photo.jpg",
+      typeMime: "image/jpeg",
+      donneesBase64: "QQ==",
+      nomFichierOriginal: "photo.jpg",
+      nomFichierNormalise: "photo.jpg",
+    };
+    const rib = {
+      nomAffiche: "mon:rib.jpg",
+      typeMime: "image/jpeg",
+      donneesBase64: "QQ==",
+      nomFichierOriginal: "mon:rib.jpg",
+      nomFichierNormalise: "mon:rib.jpg",
+    };
+    const corps = mocks.validerCorpsRequete();
+    corps.donneesEmail.typeEnvoi = "note-de-frais";
+    corps.donneesEmail.piecesJointes = [piece];
+    corps.donneesEmail.rib = rib;
+    mocks.validerCorpsRequete.mockReturnValue(corps);
+    mocks.recupererGroupeActif.mockResolvedValue({
+      ...(await mocks.recupererGroupeActif()),
+      parametres: {
+        scanJustificatifsActif: false,
+        convertirJustificatifsEnPdf: true,
+      },
+    });
+    mocks.convertirPiecesJointesEnPdf.mockResolvedValue([piece]);
+
+    const reponse = await POST(REQUETE_BASE() as never);
+
+    expect(reponse.status).toBe(200);
+    expect(mocks.convertirPiecesJointesEnPdf).toHaveBeenCalledWith([piece]);
+    const envoye = mocks.envoyerEmailDepense.mock.calls[0][0];
+    expect(envoye.rib.typeMime).toBe("image/jpeg");
+    expect(envoye.rib.nomFichierNormalise).toBe("RIB - Jean Dupont.jpg");
+  });
+
   it("ne convertit pas les justificatifs par défaut", async () => {
     mocks.recupererRoleMembre.mockResolvedValue("owner");
 
@@ -260,14 +303,17 @@ describe("POST /api/send-expense", () => {
       mocks.recupererRoleMembre.mockResolvedValue("owner");
       mocks.validerCorpsRequete.mockReturnValue({
         donneesEmail: {
+          typeEnvoi: "depense-groupe",
           emailUtilisateur: "membre@example.test",
           date: "2026-03-05",
           branche: "farfadets",
           montant: 12,
-          description: "",
           detailsDepenses: [
             {
-              modePaiement: "Carte bancaire",
+              date: "2026-03-05",
+              description: "",
+              activite: "",
+              modePaiement: "Carte de procurement",
               lignes: [{ categorie: "Carburant", montant: 12 }],
             },
           ],

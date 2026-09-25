@@ -4,6 +4,7 @@ import {
   type PieceJointeDepense,
   type DetailDepense,
   type LigneDepense,
+  TYPES_ENVOI,
 } from "@/constants/piecesJointes";
 import {
   MAX_ATTACHMENT_COUNT,
@@ -17,10 +18,66 @@ import type { NextResponse } from "next/server";
 import { z } from "zod";
 import {
   LIBELLES_CATEGORIES_COMPTABLES,
-  MODES_PAIEMENT,
+  MOYENS_PAIEMENT_GROUPE,
 } from "@/constants/configDepenses";
 import { totalDetails } from "@/lib/depenses";
+import { analyserDateIso } from "@/lib/nomenclature";
 import { journal } from "@/lib/logger";
+
+const expressionBase64Sure = /^[A-Za-z0-9+/=]+$/;
+
+type ResultatPiece =
+  { piece: PieceJointeDepense; taille: number } | { error: NextResponse };
+
+// Valide une pièce jointe brute (justificatif ou RIB) ; `nom` sert aux messages.
+function validerPieceJointe(brute: unknown, nom: string): ResultatPiece {
+  if (!brute || typeof brute !== "object") {
+    return { error: jsonError(`${nom} invalide`, 400) };
+  }
+  const pieceJointe = brute as Record<string, unknown>;
+  const nomAffiche = String(pieceJointe.displayName ?? "").trim();
+  const typeMime = String(pieceJointe.mimeType ?? "")
+    .trim()
+    .toLowerCase();
+  const donneesBase64 = String(pieceJointe.base64Data ?? "")
+    .trim()
+    .replace(/\s+/g, "");
+  const nomFichierOriginal = String(
+    pieceJointe.originalFileName ?? pieceJointe.displayName ?? "",
+  ).trim();
+
+  if (!nomAffiche || !typeMime || !donneesBase64 || !nomFichierOriginal) {
+    return { error: jsonError(`${nom} incomplet`, 400) };
+  }
+  if (!estTypeMimePieceJointeAutorise(typeMime)) {
+    return { error: jsonError(`Type de fichier non supporté (${nom})`, 400) };
+  }
+  if (!expressionBase64Sure.test(donneesBase64)) {
+    return { error: jsonError(`Fichier encodé invalide (${nom})`, 400) };
+  }
+  let taille: number;
+  try {
+    taille = Buffer.from(donneesBase64, "base64").length;
+  } catch {
+    return { error: jsonError(`Fichier corrompu (${nom})`, 400) };
+  }
+  if (taille <= 0) {
+    return { error: jsonError(`Fichier vide (${nom})`, 400) };
+  }
+  if (taille > MAX_ATTACHMENT_SIZE_BYTES) {
+    return { error: jsonError(`Fichier trop volumineux (${nom})`, 400) };
+  }
+  return {
+    piece: {
+      nomAffiche,
+      typeMime,
+      donneesBase64,
+      nomFichierOriginal,
+      nomFichierNormalise: nomFichierOriginal,
+    },
+    taille,
+  };
+}
 
 export function validerCorpsRequete(body: unknown): {
   donneesEmail?: DonneesEmailDepense;
@@ -29,12 +86,14 @@ export function validerCorpsRequete(body: unknown): {
   const bodyParsed = z
     .object({
       userEmail: z.string().email(),
-      date: z.string(),
       unitId: z.string().min(1),
-      description: z.string().optional(),
+      envoiType: z.enum(TYPES_ENVOI),
       expenses: z.array(
         z.object({
-          paymentMethod: z.string(),
+          date: z.string(),
+          paymentMethod: z.string().optional(),
+          activity: z.string().optional(),
+          description: z.string().optional(),
           lines: z
             .array(
               z.object({
@@ -47,8 +106,7 @@ export function validerCorpsRequete(body: unknown): {
         }),
       ),
       attachments: z.array(z.any()).optional(),
-      imageBase64: z.string().optional(),
-      fileName: z.string().optional(),
+      rib: z.any().optional(),
     })
     .safeParse(body);
 
@@ -64,29 +122,16 @@ export function validerCorpsRequete(body: unknown): {
   }
 
   const b = bodyParsed.data;
+  const estNoteDeFrais = b.envoiType === "note-de-frais";
 
   // ─── Pièces jointes ───
-  let piecesJointesBrutes: unknown[] = b.attachments ?? [];
-
-  // ─── Si il y a des images dans attachements ───
-  if (piecesJointesBrutes.length === 0 && b.imageBase64 && b.fileName) {
-    piecesJointesBrutes = [
-      {
-        displayName: b.fileName,
-        mimeType: "image/jpeg",
-        base64Data: b.imageBase64.includes(",")
-          ? b.imageBase64.slice(b.imageBase64.indexOf(",") + 1)
-          : b.imageBase64,
-        originalFileName: b.fileName,
-      },
-    ];
-  }
+  const piecesJointesBrutes: unknown[] = b.attachments ?? [];
 
   if (piecesJointesBrutes.length === 0) {
     return { error: jsonError("Aucun justificatif fourni", 400) };
   }
 
-  if (piecesJointesBrutes.length > MAX_ATTACHMENT_COUNT) {
+  if (estNoteDeFrais && piecesJointesBrutes.length > MAX_ATTACHMENT_COUNT) {
     return {
       error: jsonError(
         `Trop de fichiers (maximum ${MAX_ATTACHMENT_COUNT})`,
@@ -94,101 +139,56 @@ export function validerCorpsRequete(body: unknown): {
       ),
     };
   }
+  if (!estNoteDeFrais && piecesJointesBrutes.length > 1) {
+    return {
+      error: jsonError(
+        "Une dépense avec moyen de paiement du groupe ne comporte qu'un seul justificatif",
+        400,
+      ),
+    };
+  }
 
   // ─── Validation de chaque pièce jointe ───
   let tailleTotale = 0;
-  const expressionBase64Sure = /^[A-Za-z0-9+/=]+$/;
   const piecesJointesNormalisees: PieceJointeDepense[] = [];
+  const volumeAutorise = (taille: number) => {
+    tailleTotale += taille;
+    return tailleTotale <= MAX_TOTAL_ATTACHMENTS_SIZE_BYTES;
+  };
+  const erreurVolume = () =>
+    jsonError("Volume total des pièces jointes trop élevé", 400);
 
   for (let i = 0; i < piecesJointesBrutes.length; i++) {
-    const pieceJointeBrute = piecesJointesBrutes[i];
-    const numeroPieceJointe = i + 1;
+    const resultat = validerPieceJointe(
+      piecesJointesBrutes[i],
+      `Justificatif #${i + 1}`,
+    );
+    if ("error" in resultat) return { error: resultat.error };
+    if (!volumeAutorise(resultat.taille)) return { error: erreurVolume() };
+    piecesJointesNormalisees.push(resultat.piece);
+  }
 
-    if (!pieceJointeBrute || typeof pieceJointeBrute !== "object") {
-      return {
-        error: jsonError(`Justificatif invalide (#${numeroPieceJointe})`, 400),
-      };
-    }
-
-    const pieceJointe = pieceJointeBrute as Record<string, unknown>;
-
-    const nomAffiche = String(pieceJointe.displayName ?? "").trim();
-    const typeMime = String(pieceJointe.mimeType ?? "")
-      .trim()
-      .toLowerCase();
-    const donneesBase64 = String(pieceJointe.base64Data ?? "")
-      .trim()
-      .replace(/\s+/g, "");
-    const nomFichierOriginal = String(
-      pieceJointe.originalFileName ?? pieceJointe.displayName ?? "",
-    ).trim();
-
-    if (!nomAffiche || !typeMime || !donneesBase64 || !nomFichierOriginal) {
-      return {
-        error: jsonError(`Justificatif incomplet (#${numeroPieceJointe})`, 400),
-      };
-    }
-
-    if (!estTypeMimePieceJointeAutorise(typeMime)) {
+  // ─── RIB (note de frais uniquement, facultatif) ───
+  let rib: PieceJointeDepense | undefined;
+  if (b.rib !== undefined && b.rib !== null) {
+    if (!estNoteDeFrais) {
       return {
         error: jsonError(
-          `Type de fichier non supporté (#${numeroPieceJointe})`,
+          "Le RIB n'est accepté que pour une note de frais",
           400,
         ),
       };
     }
-
-    if (!expressionBase64Sure.test(donneesBase64)) {
-      return {
-        error: jsonError(
-          `Fichier encodé invalide (#${numeroPieceJointe})`,
-          400,
-        ),
-      };
-    }
-
-    let size: number;
-    try {
-      size = Buffer.from(donneesBase64, "base64").length;
-    } catch {
-      return {
-        error: jsonError(`Fichier corrompu (#${numeroPieceJointe})`, 400),
-      };
-    }
-
-    if (size <= 0) {
-      return { error: jsonError(`Fichier vide (#${numeroPieceJointe})`, 400) };
-    }
-
-    if (size > MAX_ATTACHMENT_SIZE_BYTES) {
-      return {
-        error: jsonError(
-          `Fichier trop volumineux (#${numeroPieceJointe})`,
-          400,
-        ),
-      };
-    }
-
-    tailleTotale += size;
-    if (tailleTotale > MAX_TOTAL_ATTACHMENTS_SIZE_BYTES) {
-      return {
-        error: jsonError("Volume total des pièces jointes trop élevé", 400),
-      };
-    }
-
-    piecesJointesNormalisees.push({
-      nomAffiche,
-      typeMime,
-      donneesBase64,
-      nomFichierOriginal,
-      nomFichierNormalise: nomFichierOriginal,
-    });
+    const resultat = validerPieceJointe(b.rib, "RIB");
+    if ("error" in resultat) return { error: resultat.error };
+    if (!volumeAutorise(resultat.taille)) return { error: erreurVolume() };
+    rib = resultat.piece;
   }
 
   const estCategorieValide = (categorie: string) =>
     LIBELLES_CATEGORIES_COMPTABLES.includes(categorie);
-  const estModePaiementValide = (modePaiement: string) =>
-    MODES_PAIEMENT.includes(modePaiement as (typeof MODES_PAIEMENT)[number]);
+  const estMoyenPaiementValide = (moyen: string) =>
+    (MOYENS_PAIEMENT_GROUPE as readonly string[]).includes(moyen);
 
   // Un élément de `expenses` par justificatif, dans le même ordre.
   if (b.expenses.length !== piecesJointesNormalisees.length) {
@@ -198,9 +198,26 @@ export function validerCorpsRequete(body: unknown): {
   const detailsDepenses: DetailDepense[] = [];
   for (let i = 0; i < b.expenses.length; i++) {
     const depense = b.expenses[i];
-    if (!estModePaiementValide(depense.paymentMethod)) {
+    if (!analyserDateIso(depense.date)) {
+      return { error: jsonError(`Date invalide (#${i + 1})`, 400) };
+    }
+    const modePaiement = depense.paymentMethod ?? "";
+    const activite = (depense.activity ?? "").trim();
+    if (estNoteDeFrais) {
+      if (modePaiement) {
+        return {
+          error: jsonError(
+            `Moyen de paiement non autorisé pour une note de frais (#${i + 1})`,
+            400,
+          ),
+        };
+      }
+      if (!activite) {
+        return { error: jsonError(`Activité liée manquante (#${i + 1})`, 400) };
+      }
+    } else if (!estMoyenPaiementValide(modePaiement)) {
       return {
-        error: jsonError(`Mode de paiement invalide (#${i + 1})`, 400),
+        error: jsonError(`Moyen de paiement invalide (#${i + 1})`, 400),
       };
     }
     const lignes: LigneDepense[] = [];
@@ -215,18 +232,32 @@ export function validerCorpsRequete(body: unknown): {
       }
       lignes.push({ categorie: ligne.category, montant: montantLigne });
     }
-    detailsDepenses.push({ modePaiement: depense.paymentMethod, lignes });
+    detailsDepenses.push({
+      date: depense.date,
+      modePaiement,
+      activite: estNoteDeFrais ? activite : "",
+      description: (depense.description ?? "").trim(),
+      lignes,
+    });
   }
+
+  // Date de référence (objet du mail, nomenclature) : la plus ancienne.
+  const dateReference = detailsDepenses
+    .map((detail) => detail.date)
+    .reduce((plusAncienne, date) =>
+      date < plusAncienne ? date : plusAncienne,
+    );
 
   return {
     donneesEmail: {
+      typeEnvoi: b.envoiType,
       emailUtilisateur: b.userEmail,
-      date: b.date,
+      date: dateReference,
       branche: b.unitId,
       montant: totalDetails(detailsDepenses),
-      description: b.description ?? "",
       piecesJointes: piecesJointesNormalisees,
       detailsDepenses,
+      rib,
     },
   };
 }

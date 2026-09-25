@@ -3,7 +3,7 @@
 ## Fonctionnalités principales
 
 - Capture photo et import de justificatifs (images/PDF)
-- Saisie guidée des dépenses : un justificatif par section repliable, avec une ou plusieurs lignes (montant + catégorie comptable)
+- Deux types d’envoi : **note de frais** (plusieurs justificatifs avec date, activité liée et description, RIB facultatif joint au mail) et **dépense avec moyen de paiement du groupe** (un seul justificatif, moyen de paiement du groupe) ; chaque justificatif est une section repliable avec une ou plusieurs lignes (montant + catégorie comptable). Le RIB, comme les justificatifs, n’est jamais stocké
 - Envoi automatique par email (trésorerie + utilisateur)
 - Groupes indépendants : unités, couleurs et adresse de trésorerie propres à chaque groupe
 - Validation de l’adresse de trésorerie avant le premier envoi

@@ -12,7 +12,10 @@ import {
 } from "@/components/GroupSetup";
 import { useStatutEnLigne } from "@/lib/useOnlineStatus";
 import {
-  MAX_ATTACHMENT_COUNT,
+  LIBELLES_TYPES_ENVOI,
+  TYPES_ENVOI,
+  nombreMaxJustificatifs,
+  type TypeEnvoi,
   type PieceJointeDepense,
 } from "@/constants/piecesJointes";
 import type { UniteGroupe } from "@/lib/group";
@@ -82,6 +85,7 @@ export default function Home() {
   const { data: organisation } = clientAuth.useActiveOrganization();
   const { data: organisations } = clientAuth.useListOrganizations();
   const [piecesJointes, setPiecesJointes] = useState<PieceJointeDepense[]>([]);
+  const [typeEnvoi, setTypeEnvoi] = useState<TypeEnvoi>("note-de-frais");
   const [groupe, setGroupe] = useState<Groupe | null>(null);
   const [chargementGroupe, setChargementGroupe] = useState(true);
   const [nomGroupe, setNomGroupe] = useState("");
@@ -509,20 +513,89 @@ export default function Home() {
                   </>
                 )}
               </div>
+              <fieldset className="space-y-2">
+                <legend className="text-sm font-medium text-zinc-700">
+                  Type d’envoi
+                </legend>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {TYPES_ENVOI.map((type) => {
+                    const selectionne = typeEnvoi === type;
+                    return (
+                      <label
+                        key={type}
+                        className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 text-left shadow-sm transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-zinc-400 has-[:focus-visible]:ring-offset-2 ${
+                          selectionne
+                            ? "border-zinc-900 bg-zinc-900"
+                            : "border-zinc-200 bg-white hover:bg-zinc-50"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="type-envoi"
+                          value={type}
+                          checked={selectionne}
+                          onChange={() => {
+                            setTypeEnvoi(type);
+                            setPiecesJointes((precedentes) =>
+                              precedentes.slice(
+                                0,
+                                nombreMaxJustificatifs(type),
+                              ),
+                            );
+                          }}
+                          className="sr-only"
+                        />
+                        <span
+                          aria-hidden="true"
+                          className={`mt-0.5 flex h-5 w-5 flex-none items-center justify-center rounded-full border-2 ${
+                            selectionne
+                              ? "border-white"
+                              : "border-zinc-400 bg-white"
+                          }`}
+                        >
+                          {selectionne && (
+                            <span className="h-2.5 w-2.5 rounded-full bg-white" />
+                          )}
+                        </span>
+                        <span className="min-w-0">
+                          <span
+                            className={`block text-sm font-semibold ${
+                              selectionne ? "text-white" : "text-zinc-900"
+                            }`}
+                          >
+                            {LIBELLES_TYPES_ENVOI[type]}
+                          </span>
+                          <span
+                            className={`mt-0.5 block text-xs ${
+                              selectionne ? "text-zinc-300" : "text-zinc-600"
+                            }`}
+                          >
+                            {type === "note-de-frais"
+                              ? "Dépense avancée à faire rembourser par le groupe."
+                              : "Un envoi par justificatif, sans remboursement."}
+                          </span>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </fieldset>
               <CapturePhoto
                 onAttachmentsAdd={(nouvelles) =>
                   setPiecesJointes((precedentes) =>
                     [...precedentes, ...nouvelles].slice(
                       0,
-                      MAX_ATTACHMENT_COUNT,
+                      nombreMaxJustificatifs(typeEnvoi),
                     ),
                   )
                 }
+                maxFichiers={nombreMaxJustificatifs(typeEnvoi)}
                 currentCount={piecesJointes.length}
                 scanActive={groupe.parametres?.scanJustificatifsActif}
               />
               <FormulaireDepense
                 key={organisation.id}
+                typeEnvoi={typeEnvoi}
                 piecesJointes={piecesJointes}
                 emailUtilisateur={session.user.email}
                 units={groupe.units}

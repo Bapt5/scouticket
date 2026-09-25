@@ -31,9 +31,25 @@ export interface LigneDepense {
   montant: number;
 }
 
-// Dépenses d'un justificatif : un mode de paiement et une ou plusieurs
-// lignes (catégorie comptable + montant).
+export const TYPES_ENVOI = ["note-de-frais", "depense-groupe"] as const;
+export type TypeEnvoi = (typeof TYPES_ENVOI)[number];
+
+export const LIBELLES_TYPES_ENVOI: Record<TypeEnvoi, string> = {
+  "note-de-frais": "Note de frais",
+  "depense-groupe": "Dépense avec moyen de paiement du groupe",
+};
+
+// Une dépense avec moyen de paiement du groupe = un seul justificatif.
+export const nombreMaxJustificatifs = (typeEnvoi: TypeEnvoi) =>
+  typeEnvoi === "depense-groupe" ? 1 : MAX_ATTACHMENT_COUNT;
+
+// Dépenses d'un justificatif : date, lignes (catégorie comptable + montant),
+// description ; note de frais : activité liée ; dépense du groupe : moyen de
+// paiement du groupe (vide pour une note de frais).
 export interface DetailDepense {
+  date: string;
   modePaiement: string;
+  activite: string;
+  description: string;
   lignes: LigneDepense[];
 }

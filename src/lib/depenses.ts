@@ -1,7 +1,14 @@
-import type { DetailDepense, LigneDepense } from "@/constants/piecesJointes";
+import type {
+  DetailDepense,
+  LigneDepense,
+  TypeEnvoi,
+} from "@/constants/piecesJointes";
 import type { DepenseNomenclature } from "@/lib/nomenclature";
 
 export const TYPE_DEPENSE_MULTIPLE = "Multiples";
+// Une note de frais n'a pas de moyen de paiement : la variable {ModePaiement}
+// de la nomenclature prend cette valeur.
+export const MODE_PAIEMENT_NOTE_DE_FRAIS = "NDF";
 
 // Ligne telle que saisie dans le formulaire (le montant reste une chaîne).
 export interface LigneSaisie {
@@ -10,12 +17,20 @@ export interface LigneSaisie {
 }
 
 export interface DetailSaisie {
+  date: string;
   modePaiement: string;
+  activite: string;
+  description: string;
   lignes: LigneSaisie[];
 }
 
+export const dateDuJour = () => new Date().toISOString().split("T")[0];
+
 export const detailSaisieVide = (): DetailSaisie => ({
+  date: dateDuJour(),
   modePaiement: "",
+  activite: "",
+  description: "",
   lignes: [{ categorie: "", montant: "" }],
 });
 
@@ -27,15 +42,27 @@ export const montantSaisiValide = (montant: string) => {
   return Number.isFinite(valeur) && valeur > 0;
 };
 
-export const detailSaisiComplet = (detail: DetailSaisie) =>
-  Boolean(detail.modePaiement) &&
+export const detailSaisiComplet = (
+  detail: DetailSaisie,
+  typeEnvoi: TypeEnvoi,
+) =>
+  Boolean(detail.date) &&
+  (typeEnvoi === "depense-groupe"
+    ? Boolean(detail.modePaiement)
+    : Boolean(detail.activite.trim())) &&
   detail.lignes.length > 0 &&
   detail.lignes.every(
     (ligne) => ligne.categorie && montantSaisiValide(ligne.montant),
   );
 
-export const versDetailDepense = (detail: DetailSaisie): DetailDepense => ({
-  modePaiement: detail.modePaiement,
+export const versDetailDepense = (
+  detail: DetailSaisie,
+  typeEnvoi: TypeEnvoi,
+): DetailDepense => ({
+  date: detail.date,
+  modePaiement: typeEnvoi === "depense-groupe" ? detail.modePaiement : "",
+  activite: typeEnvoi === "note-de-frais" ? detail.activite.trim() : "",
+  description: detail.description.trim(),
   lignes: detail.lignes.map((ligne) => ({
     categorie: ligne.categorie,
     montant: analyserMontantSaisi(ligne.montant),
@@ -71,7 +98,23 @@ export const versDepenseNomenclature = (
       categories.size > 1
         ? TYPE_DEPENSE_MULTIPLE
         : (categories.values().next().value ?? ""),
-    modePaiement: detail.modePaiement,
+    modePaiement: detail.modePaiement || MODE_PAIEMENT_NOTE_DE_FRAIS,
     montant: totalLignes(detail.lignes),
   };
+};
+
+// Total par catégorie comptable sur tous les justificatifs, dans l'ordre de
+// première apparition.
+export const ventilerParCategorie = (details: readonly DetailDepense[]) => {
+  const totaux = new Map<string, number>();
+  for (const ligne of details.flatMap((detail) => detail.lignes)) {
+    totaux.set(
+      ligne.categorie,
+      (totaux.get(ligne.categorie) ?? 0) + ligne.montant,
+    );
+  }
+  return [...totaux].map(([categorie, montant]) => ({
+    categorie,
+    montant: totalLignes([{ montant }]),
+  }));
 };

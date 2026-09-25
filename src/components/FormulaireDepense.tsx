@@ -1,6 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef, type FormEvent } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  type ChangeEvent,
+  type FormEvent,
+} from "react";
 import Image from "next/image";
 import {
   ClipboardDocumentListIcon,
@@ -17,14 +23,17 @@ import {
   type ParametresAnneeComptable,
 } from "@/lib/nomenclature";
 import {
+  ALLOWED_ATTACHMENT_MIME_TYPES,
   MAX_ATTACHMENT_COUNT,
   MAX_ATTACHMENT_SIZE_BYTES,
   MAX_TOTAL_ATTACHMENTS_SIZE_BYTES,
   type PieceJointeDepense,
+  type TypeEnvoi,
 } from "@/constants/piecesJointes";
-import { MODES_PAIEMENT } from "@/constants/configDepenses";
+import { MOYENS_PAIEMENT_GROUPE } from "@/constants/configDepenses";
 import {
   analyserMontantSaisi,
+  dateDuJour,
   detailSaisiComplet,
   detailSaisieVide,
   montantSaisiValide,
@@ -37,7 +46,19 @@ import { AccordeonJustificatif } from "@/components/AccordeonJustificatif";
 import { LignesCategories } from "@/components/LignesCategories";
 import type { UniteGroupe } from "@/lib/group";
 
+const lireFichierBase64 = (fichier: File) =>
+  new Promise<string>((resoudre, rejeter) => {
+    const lecteur = new FileReader();
+    lecteur.onload = () => {
+      const resultat = String(lecteur.result ?? "");
+      resoudre(resultat.slice(resultat.indexOf(",") + 1));
+    };
+    lecteur.onerror = () => rejeter(lecteur.error);
+    lecteur.readAsDataURL(fichier);
+  });
+
 interface FormulaireDepenseProps {
+  readonly typeEnvoi: TypeEnvoi;
   readonly piecesJointes: PieceJointeDepense[];
   readonly emailUtilisateur: string;
   readonly units: UniteGroupe[];
@@ -54,6 +75,7 @@ interface FormulaireDepenseProps {
 }
 
 export function FormulaireDepense({
+  typeEnvoi,
   piecesJointes,
   emailUtilisateur,
   units,
@@ -66,11 +88,12 @@ export function FormulaireDepense({
   onSupprimerPieceJointe,
   estEnLigne = true,
 }: FormulaireDepenseProps & { estEnLigne?: boolean }) {
+  const estNoteDeFrais = typeEnvoi === "note-de-frais";
   const [formulaire, setFormulaire] = useState({
-    date: new Date().toISOString().split("T")[0],
     branche: uniteInitiale || "",
-    description: "",
   });
+  const [rib, setRib] = useState<PieceJointeDepense | null>(null);
+  const [erreurRib, setErreurRib] = useState("");
   const [detailsDepenses, setDetailsDepenses] = useState<DetailSaisie[]>([]);
   const [indexOuvert, setIndexOuvert] = useState(0);
   const [erreurUnite, setErreurUnite] = useState("");
@@ -86,10 +109,7 @@ export function FormulaireDepense({
     message: string;
   }>({ type: null, message: "" });
 
-  const modifierChamp = (
-    champ: "date" | "branche" | "description",
-    valeur: string,
-  ) => {
+  const modifierChamp = (champ: "branche", valeur: string) => {
     if (
       champ === "branche" &&
       valeur !== "" &&
@@ -147,23 +167,35 @@ export function FormulaireDepense({
   const detailsDepensesValides =
     piecesJointes.length > 0 &&
     piecesJointes.every((_, index) =>
-      detailSaisiComplet(detailPourIndex(index)),
+      detailSaisiComplet(detailPourIndex(index), typeEnvoi),
     );
+  // Date de référence (nomenclature) : la plus ancienne des dates saisies.
+  const dateReference =
+    piecesJointes
+      .map((_, index) => detailPourIndex(index).date)
+      .filter(Boolean)
+      .sort()[0] ?? dateDuJour();
   const erreurJustificatif =
     afficherErreursValidation && piecesJointes.length === 0;
-  const erreurDate = afficherErreursValidation && !formulaire.date;
   const erreurUniteObligatoire =
     afficherErreursValidation && !formulaire.branche;
   const champsManquants = [
     ...(piecesJointes.length === 0 ? ["un justificatif"] : []),
-    ...(!formulaire.date ? ["la date"] : []),
     ...(!formulaire.branche ? ["l’unité"] : []),
     ...piecesJointes.flatMap((_, index) => {
       const detail = detailPourIndex(index);
       const numero = index + 1;
       return [
-        ...(!detail.modePaiement
-          ? [`le mode de paiement du justificatif ${numero}`]
+        ...(!detail.date
+          ? [
+              `la date ${estNoteDeFrais ? "de la dépense" : "du justificatif"} ${numero}`,
+            ]
+          : []),
+        ...(estNoteDeFrais && !detail.activite.trim()
+          ? [`l’activité liée du justificatif ${numero}`]
+          : []),
+        ...(!estNoteDeFrais && !detail.modePaiement
+          ? [`le moyen de paiement du justificatif ${numero}`]
           : []),
         ...detail.lignes.flatMap((ligne, indexLigne) => [
           ...(!ligne.categorie
@@ -188,14 +220,16 @@ export function FormulaireDepense({
 
   const genererNomsFichiers = () => {
     if (piecesJointes.length === 0) return [];
-    if (nomenclature?.format && analyserDateIso(formulaire.date)) {
+    if (nomenclature?.format && analyserDateIso(dateReference)) {
       return genererNomsNomenclature({
         format: nomenclature.format,
         parametresAnnee: nomenclature.anneeComptable,
-        date: formulaire.date,
+        date: dateReference,
         branche: uniteSelectionnee?.label ?? "",
         depenses: piecesJointes.map((_, index) =>
-          versDepenseNomenclature(versDetailDepense(detailPourIndex(index))),
+          versDepenseNomenclature(
+            versDetailDepense(detailPourIndex(index), typeEnvoi),
+          ),
         ),
         extensions: piecesJointes.map((piece) =>
           devinerExtension(piece.typeMime, piece.nomFichierOriginal),
@@ -227,7 +261,7 @@ export function FormulaireDepense({
     if (!formulaireEstValide) {
       // Ouvre le premier justificatif incomplet pour que ses erreurs soient visibles.
       const premierIncomplet = piecesJointes.findIndex(
-        (_, index) => !detailSaisiComplet(detailPourIndex(index)),
+        (_, index) => !detailSaisiComplet(detailPourIndex(index), typeEnvoi),
       );
       if (premierIncomplet >= 0) setIndexOuvert(premierIncomplet);
       requestAnimationFrame(() => {
@@ -258,12 +292,25 @@ export function FormulaireDepense({
         },
         body: JSON.stringify({
           userEmail: emailUtilisateur,
-          date: formulaire.date,
+          envoiType: typeEnvoi,
           unitId: formulaire.branche,
-          description: formulaire.description,
           attachments: piecesJointesPourApi,
+          ...(estNoteDeFrais && rib
+            ? {
+                rib: {
+                  displayName: rib.nomAffiche,
+                  mimeType: rib.typeMime,
+                  base64Data: rib.donneesBase64,
+                  originalFileName: rib.nomFichierOriginal,
+                },
+              }
+            : {}),
           expenses: detailsDepenses.map((detail) => ({
-            paymentMethod: detail.modePaiement,
+            date: detail.date,
+            description: detail.description,
+            ...(estNoteDeFrais
+              ? { activity: detail.activite }
+              : { paymentMethod: detail.modePaiement }),
             lines: detail.lignes.map((ligne) => ({
               category: ligne.categorie,
               amount: analyserMontantSaisi(ligne.montant),
@@ -290,11 +337,9 @@ export function FormulaireDepense({
             "Email envoyé avec succès ! La facture a été transmise à la trésorerie et une copie vous a été envoyée.",
         });
         // Réinitialise les champs variables, garde la branche, puis vide les fichiers côté parent.
-        setFormulaire((prev) => ({
-          date: new Date().toISOString().split("T")[0],
-          branche: prev.branche,
-          description: "",
-        }));
+        setFormulaire((prev) => ({ branche: prev.branche }));
+        setRib(null);
+        setErreurRib("");
         setAfficherErreursValidation(false);
         setDetailsDepenses([]);
         setIndexOuvert(0);
@@ -345,20 +390,47 @@ export function FormulaireDepense({
   };
 
   const formulaireEstValide = Boolean(
-    piecesJointes.length > 0 &&
-    formulaire.date &&
-    formulaire.branche &&
-    detailsDepensesValides,
+    piecesJointes.length > 0 && formulaire.branche && detailsDepensesValides,
   );
+  const choisirRib = async (evenement: ChangeEvent<HTMLInputElement>) => {
+    const fichier = evenement.target.files?.[0];
+    evenement.target.value = "";
+    if (!fichier) return;
+    if (
+      !(ALLOWED_ATTACHMENT_MIME_TYPES as readonly string[]).includes(
+        fichier.type,
+      )
+    ) {
+      setErreurRib("Le RIB doit être un PDF ou une image (JPG, PNG, WEBP).");
+      return;
+    }
+    if (fichier.size > MAX_ATTACHMENT_SIZE_BYTES) {
+      setErreurRib(
+        `Le RIB dépasse ${(MAX_ATTACHMENT_SIZE_BYTES / (1024 * 1024)).toFixed(0)}MB.`,
+      );
+      return;
+    }
+    try {
+      setRib({
+        nomAffiche: fichier.name,
+        typeMime: fichier.type,
+        donneesBase64: await lireFichierBase64(fichier),
+        nomFichierOriginal: fichier.name,
+        nomFichierNormalise: fichier.name,
+      });
+      setErreurRib("");
+    } catch {
+      setErreurRib("Impossible de lire le fichier du RIB.");
+    }
+  };
+
   const nomsFichiersApercu = formulaireEstValide ? genererNomsFichiers() : [];
 
   const creerNouvelleNote = () => {
     // Vide le formulaire, garde la branche et demande au parent de retirer les fichiers.
-    setFormulaire((prev) => ({
-      date: new Date().toISOString().split("T")[0],
-      branche: prev.branche,
-      description: "",
-    }));
+    setFormulaire((prev) => ({ branche: prev.branche }));
+    setRib(null);
+    setErreurRib("");
     setStatutEnvoi({ type: null, message: "" });
     setAfficherErreursValidation(false);
     setDetailsDepenses([]);
@@ -414,6 +486,9 @@ export function FormulaireDepense({
               const estImage = pieceJointe.typeMime.startsWith("image/");
               const detail = detailPourIndex(index);
               const idAccordeon = `justificatif-${index}`;
+              const erreurDate = afficherErreursValidation && !detail.date;
+              const erreurActivite =
+                afficherErreursValidation && !detail.activite.trim();
               const erreurModePaiement =
                 afficherErreursValidation && !detail.modePaiement;
               return (
@@ -443,7 +518,7 @@ export function FormulaireDepense({
                     )
                   }
                   total={totalLignesDetail(detail)}
-                  complet={detailSaisiComplet(detail)}
+                  complet={detailSaisiComplet(detail, typeEnvoi)}
                   ouvert={index === indexOuvertEffectif}
                   onBasculer={() => setIndexOuvert(index)}
                   onSupprimer={
@@ -464,42 +539,116 @@ export function FormulaireDepense({
                 >
                   <div className="space-y-2">
                     <label
-                      htmlFor={`${idAccordeon}-mode-paiement`}
+                      htmlFor={`${idAccordeon}-date`}
                       className="block text-sm font-medium text-zinc-700"
                     >
-                      Mode de paiement *
+                      {estNoteDeFrais
+                        ? "Date de la dépense *"
+                        : "Date du justificatif *"}
                     </label>
-                    <select
-                      id={`${idAccordeon}-mode-paiement`}
-                      value={detail.modePaiement}
+                    <input
+                      id={`${idAccordeon}-date`}
+                      type="date"
+                      value={detail.date}
                       onChange={(e) =>
-                        modifierDetailDepense(index, {
-                          modePaiement: e.target.value,
-                        })
+                        modifierDetailDepense(index, { date: e.target.value })
                       }
-                      aria-invalid={erreurModePaiement}
-                      aria-describedby={
-                        erreurModePaiement
-                          ? `erreur-${idAccordeon}-mode-paiement`
-                          : undefined
-                      }
-                      className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-zinc-400 focus:border-zinc-400 bg-white text-zinc-900 ${erreurModePaiement ? "border-rose-500" : "border-zinc-300"}`}
-                    >
-                      <option value="">Sélectionner un mode</option>
-                      {MODES_PAIEMENT.map((mode) => (
-                        <option key={mode} value={mode}>
-                          {mode}
-                        </option>
-                      ))}
-                    </select>
-                    {erreurModePaiement && (
-                      <p
-                        id={`erreur-${idAccordeon}-mode-paiement`}
-                        className="text-sm text-rose-700"
-                      >
-                        Sélectionnez un mode de paiement.
+                      aria-invalid={erreurDate}
+                      className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-zinc-400 focus:border-zinc-400 bg-white text-zinc-900 ${erreurDate ? "border-rose-500" : "border-zinc-300"}`}
+                    />
+                    {erreurDate && (
+                      <p className="text-sm text-rose-700">
+                        Saisissez une date.
                       </p>
                     )}
+                  </div>
+                  {estNoteDeFrais ? (
+                    <div className="space-y-2">
+                      <label
+                        htmlFor={`${idAccordeon}-activite`}
+                        className="block text-sm font-medium text-zinc-700"
+                      >
+                        Activité liée *
+                      </label>
+                      <input
+                        id={`${idAccordeon}-activite`}
+                        type="text"
+                        placeholder="Journée, week-end, camp…"
+                        value={detail.activite}
+                        onChange={(e) =>
+                          modifierDetailDepense(index, {
+                            activite: e.target.value,
+                          })
+                        }
+                        aria-invalid={erreurActivite}
+                        className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-zinc-400 focus:border-zinc-400 bg-white text-zinc-900 ${erreurActivite ? "border-rose-500" : "border-zinc-300"}`}
+                      />
+                      {erreurActivite && (
+                        <p className="text-sm text-rose-700">
+                          Indiquez l’activité liée à la dépense.
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <label
+                        htmlFor={`${idAccordeon}-mode-paiement`}
+                        className="block text-sm font-medium text-zinc-700"
+                      >
+                        Moyen de paiement *
+                      </label>
+                      <select
+                        id={`${idAccordeon}-mode-paiement`}
+                        value={detail.modePaiement}
+                        onChange={(e) =>
+                          modifierDetailDepense(index, {
+                            modePaiement: e.target.value,
+                          })
+                        }
+                        aria-invalid={erreurModePaiement}
+                        aria-describedby={
+                          erreurModePaiement
+                            ? `erreur-${idAccordeon}-mode-paiement`
+                            : undefined
+                        }
+                        className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-zinc-400 focus:border-zinc-400 bg-white text-zinc-900 ${erreurModePaiement ? "border-rose-500" : "border-zinc-300"}`}
+                      >
+                        <option value="">Sélectionner un moyen</option>
+                        {MOYENS_PAIEMENT_GROUPE.map((moyen) => (
+                          <option key={moyen} value={moyen}>
+                            {moyen}
+                          </option>
+                        ))}
+                      </select>
+                      {erreurModePaiement && (
+                        <p
+                          id={`erreur-${idAccordeon}-mode-paiement`}
+                          className="text-sm text-rose-700"
+                        >
+                          Sélectionnez un moyen de paiement.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    <label
+                      htmlFor={`${idAccordeon}-description`}
+                      className="block text-sm font-medium text-zinc-700"
+                    >
+                      Description (optionnel)
+                    </label>
+                    <textarea
+                      id={`${idAccordeon}-description`}
+                      placeholder="Détails sur la dépense..."
+                      value={detail.description}
+                      onChange={(e) =>
+                        modifierDetailDepense(index, {
+                          description: e.target.value,
+                        })
+                      }
+                      rows={2}
+                      className="w-full p-3 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-zinc-400 focus:border-zinc-400 resize-none bg-white text-zinc-900"
+                    />
                   </div>
                   <LignesCategories
                     idPrefixe={idAccordeon}
@@ -515,31 +664,6 @@ export function FormulaireDepense({
           </div>
         </div>
       )}
-
-      <div className="space-y-2">
-        <label
-          htmlFor="date"
-          className="block text-sm font-medium text-zinc-700"
-        >
-          Date *
-        </label>
-        <input
-          id="date"
-          type="date"
-          value={formulaire.date}
-          onChange={(e) => modifierChamp("date", e.target.value)}
-          aria-invalid={erreurDate}
-          aria-describedby={erreurDate ? "erreur-date" : undefined}
-          className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-zinc-400 focus:border-zinc-400 bg-white text-zinc-900 ${
-            erreurDate ? "border-rose-500" : "border-zinc-300"
-          }`}
-        />
-        {erreurDate && (
-          <p id="erreur-date" className="text-sm text-rose-700">
-            Saisissez une date.
-          </p>
-        )}
-      </div>
 
       <div className="space-y-2">
         <label
@@ -594,22 +718,36 @@ export function FormulaireDepense({
         </div>
       )}
 
-      <div className="space-y-2">
-        <label
-          htmlFor="description"
-          className="block text-sm font-medium text-zinc-700"
-        >
-          Description (optionnel)
-        </label>
-        <textarea
-          id="description"
-          placeholder="Description de la dépense..."
-          value={formulaire.description}
-          onChange={(e) => modifierChamp("description", e.target.value)}
-          rows={3}
-          className="w-full p-3 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-zinc-400 focus:border-zinc-400 resize-none bg-white text-zinc-900"
-        />
-      </div>
+      {estNoteDeFrais && (
+        <div className="space-y-2">
+          <label
+            htmlFor="rib"
+            className="block text-sm font-medium text-zinc-700"
+          >
+            RIB pour le remboursement (optionnel)
+          </label>
+          <input
+            id="rib"
+            type="file"
+            accept="application/pdf,image/jpeg,image/png,image/webp"
+            onChange={(e) => void choisirRib(e)}
+            className="w-full p-3 border border-zinc-300 rounded-lg bg-white text-zinc-900 text-sm"
+          />
+          {rib && (
+            <p className="text-sm text-zinc-700 flex items-center justify-between gap-2">
+              <span>RIB : {rib.nomAffiche}</span>
+              <button
+                type="button"
+                onClick={() => setRib(null)}
+                className="text-rose-700 underline"
+              >
+                Retirer
+              </button>
+            </p>
+          )}
+          {erreurRib && <p className="text-sm text-rose-700">{erreurRib}</p>}
+        </div>
+      )}
 
       {/* Messages de statut */}
       {statutEnvoi.type && (

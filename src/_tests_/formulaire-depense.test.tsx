@@ -29,6 +29,7 @@ describe("FormulaireDepense", () => {
 
     render(
       <FormulaireDepense
+        typeEnvoi="depense-groupe"
         piecesJointes={[]}
         emailUtilisateur="test@example.test"
         units={UNITES_TEST}
@@ -48,6 +49,7 @@ describe("FormulaireDepense", () => {
     const onChangementUnite = vi.fn();
     render(
       <FormulaireDepense
+        typeEnvoi="depense-groupe"
         piecesJointes={[]}
         emailUtilisateur="test@example.test"
         units={UNITES_TEST}
@@ -76,6 +78,7 @@ describe("FormulaireDepense", () => {
     const utilisateur = userEvent.setup();
     render(
       <FormulaireDepense
+        typeEnvoi="depense-groupe"
         piecesJointes={[]}
         emailUtilisateur="test@example.test"
         units={UNITES_TEST}
@@ -101,6 +104,7 @@ describe("FormulaireDepense", () => {
     const utilisateur = userEvent.setup();
     render(
       <FormulaireDepense
+        typeEnvoi="depense-groupe"
         piecesJointes={[pieceJointe]}
         emailUtilisateur="test@example.test"
         units={UNITES_TEST}
@@ -113,16 +117,16 @@ describe("FormulaireDepense", () => {
       screen.getByRole("button", { name: "Envoyer la facture" }),
     );
     expect(
-      screen.getByText("Sélectionnez un mode de paiement."),
+      screen.getByText("Sélectionnez un moyen de paiement."),
     ).toBeInTheDocument();
 
     await utilisateur.selectOptions(
-      screen.getByLabelText("Mode de paiement *"),
-      "Carte bancaire",
+      screen.getByLabelText("Moyen de paiement *"),
+      "Carte de procurement",
     );
 
     expect(
-      screen.queryByText("Sélectionnez un mode de paiement."),
+      screen.queryByText("Sélectionnez un moyen de paiement."),
     ).not.toBeInTheDocument();
     expect(
       screen.getByText("Saisissez un montant supérieur à 0 €."),
@@ -134,6 +138,7 @@ describe("FormulaireDepense", () => {
     const utilisateur = userEvent.setup();
     render(
       <FormulaireDepense
+        typeEnvoi="depense-groupe"
         piecesJointes={[
           pieceJointe,
           { ...pieceJointe, nomAffiche: "ticket-2.jpg" },
@@ -150,7 +155,7 @@ describe("FormulaireDepense", () => {
     );
 
     const alerte = screen.getByRole("alert");
-    expect(alerte).toHaveTextContent("le mode de paiement du justificatif 1");
+    expect(alerte).toHaveTextContent("le moyen de paiement du justificatif 1");
     expect(alerte).toHaveTextContent(
       "la catégorie de la ligne 1 du justificatif 2",
     );
@@ -163,6 +168,7 @@ describe("FormulaireDepense", () => {
     const utilisateur = userEvent.setup();
     render(
       <FormulaireDepense
+        typeEnvoi="depense-groupe"
         piecesJointes={[
           pieceJointe,
           { ...pieceJointe, nomAffiche: "ticket-2.jpg" },
@@ -188,6 +194,7 @@ describe("FormulaireDepense", () => {
     const utilisateur = userEvent.setup();
     render(
       <FormulaireDepense
+        typeEnvoi="depense-groupe"
         piecesJointes={[pieceJointe]}
         emailUtilisateur="test@example.test"
         units={UNITES_TEST}
@@ -227,6 +234,7 @@ describe("FormulaireDepense", () => {
     const utilisateur = userEvent.setup();
     render(
       <FormulaireDepense
+        typeEnvoi="depense-groupe"
         piecesJointes={[pieceJointe]}
         emailUtilisateur="test@example.test"
         units={UNITES_TEST}
@@ -246,5 +254,55 @@ describe("FormulaireDepense", () => {
 
     expect(categorie).toHaveValue("Gaz : achat de bouteille");
     expect(screen.getByText(/Uniquement bouteilles de gaz/)).toBeVisible();
+  });
+
+  it("propose activité liée et RIB, sans moyen de paiement, pour une note de frais", async () => {
+    const utilisateur = userEvent.setup();
+    render(
+      <FormulaireDepense
+        typeEnvoi="note-de-frais"
+        piecesJointes={[pieceJointe]}
+        emailUtilisateur="test@example.test"
+        units={UNITES_TEST}
+        uniteInitiale="groupe"
+        treasuryVerified
+      />,
+    );
+
+    expect(screen.getByLabelText("Date de la dépense *")).toBeInTheDocument();
+    expect(screen.getByLabelText("Activité liée *")).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Description (optionnel)"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/RIB pour le remboursement/),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Moyen de paiement *")).toBeNull();
+
+    await utilisateur.click(
+      screen.getByRole("button", { name: "Envoyer la facture" }),
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "l’activité liée du justificatif 1",
+    );
+  });
+
+  it("propose moyen de paiement du groupe, sans activité ni RIB, pour une dépense du groupe", () => {
+    render(
+      <FormulaireDepense
+        typeEnvoi="depense-groupe"
+        piecesJointes={[pieceJointe]}
+        emailUtilisateur="test@example.test"
+        units={UNITES_TEST}
+        uniteInitiale="groupe"
+        treasuryVerified
+      />,
+    );
+
+    expect(screen.getByLabelText("Date du justificatif *")).toBeInTheDocument();
+    const moyen = screen.getByLabelText("Moyen de paiement *");
+    expect(moyen).toHaveTextContent("Chèque du groupe");
+    expect(screen.queryByLabelText("Activité liée *")).toBeNull();
+    expect(screen.queryByLabelText(/RIB/)).toBeNull();
   });
 });
