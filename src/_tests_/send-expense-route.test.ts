@@ -162,6 +162,40 @@ describe("POST /api/send-expense", () => {
     },
   );
 
+  it("refuse un membre déclarant une dépense sans justificatif", async () => {
+    mocks.recupererRoleMembre.mockResolvedValue("member");
+    mocks.recupererUnitesAutoriseesMembre.mockResolvedValue(
+      new Set(["farfadets"]),
+    );
+    const corps = mocks.validerCorpsRequete();
+    corps.donneesEmail.sansJustificatifAttesteParResponsable = true;
+    mocks.validerCorpsRequete.mockReturnValue(corps);
+
+    const reponse = await POST(REQUETE_BASE() as never);
+
+    expect(reponse.status).toBe(403);
+    expect(mocks.envoyerEmailDepense).not.toHaveBeenCalled();
+  });
+
+  it.each(["admin", "owner"])(
+    "laisse un responsable (%s) déclarer une dépense sans justificatif",
+    async (role) => {
+      mocks.recupererRoleMembre.mockResolvedValue(role);
+      const corps = mocks.validerCorpsRequete();
+      corps.donneesEmail.sansJustificatifAttesteParResponsable = true;
+      mocks.validerCorpsRequete.mockReturnValue(corps);
+
+      const reponse = await POST(REQUETE_BASE() as never);
+
+      expect(reponse.status).toBe(200);
+      expect(mocks.envoyerEmailDepense).toHaveBeenCalled();
+      expect(
+        mocks.envoyerEmailDepense.mock.calls[0][0]
+          .sansJustificatifAttesteParResponsable,
+      ).toBe(true);
+    },
+  );
+
   it("sans format, garde le nom du fichier importé et dédoublonne", async () => {
     mocks.recupererRoleMembre.mockResolvedValue("owner");
     const piece = (nom: string) => ({

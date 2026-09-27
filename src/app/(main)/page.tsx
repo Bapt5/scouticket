@@ -655,6 +655,7 @@ export default function Home() {
                     moyensPaiement={groupe.parametres?.moyensPaiement}
                     uniteInitiale={groupe.unitPreference}
                     treasuryVerified={groupe.treasuryVerified}
+                    estAdmin={groupe.isAdmin}
                     onChangementUnite={(unitId) =>
                       void fetch("/api/user/unit-preference", {
                         method: "POST",

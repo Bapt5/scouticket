@@ -58,10 +58,13 @@ async function envoyerAvecNomenclature(
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
+    // Un numéro par dépense, pas par pièce jointe : une dépense sans
+    // justificatif (attestée par un responsable) réserve tout de même un
+    // numéro, comme une recette envoyée sans pièce jointe.
     const reservation = calculerReservation(
       format,
       donneesEmail.date,
-      donneesEmail.piecesJointes.length,
+      depenses.length,
       anneeComptable,
     );
     const numeros =
@@ -169,6 +172,17 @@ export async function POST(req: NextRequest) {
         identifiantUtilisateur,
         identifiantOrganisation,
       );
+      // Envoyer une dépense sans justificatif est réservé aux responsables :
+      // ce n'est pas un simple confort, l'attestation qui l'accompagne
+      // n'a de sens que pour eux (ex. virement inter-structure SGDF).
+      if (
+        donneesEmail.sansJustificatifAttesteParResponsable &&
+        !estResponsable(role)
+      )
+        return jsonError(
+          "Seuls les responsables du groupe peuvent envoyer une dépense sans justificatif",
+          403,
+        );
       if (!estResponsable(role)) {
         const unitesAutorisees = await recupererUnitesAutoriseesMembre(
           identifiantUtilisateur,

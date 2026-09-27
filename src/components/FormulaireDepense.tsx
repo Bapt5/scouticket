@@ -73,6 +73,9 @@ interface FormulaireDepenseProps {
   readonly erreurEnregistrementUnite?: string;
   readonly onCreerNouvelleNote?: () => void;
   readonly onSupprimerPieceJointe?: (index: number) => void;
+  /** Responsable du groupe (owner/admin) : seul rôle pouvant déclarer une
+   * dépense avec moyen de paiement du groupe sans justificatif. */
+  readonly estAdmin?: boolean;
 }
 
 export function FormulaireDepense({
@@ -88,9 +91,11 @@ export function FormulaireDepense({
   erreurEnregistrementUnite,
   onCreerNouvelleNote,
   onSupprimerPieceJointe,
+  estAdmin = false,
   estEnLigne = true,
 }: FormulaireDepenseProps & { estEnLigne?: boolean }) {
   const estNoteDeFrais = typeEnvoi === "note-de-frais";
+  const estDepenseGroupe = typeEnvoi === "depense-groupe";
   const [formulaire, setFormulaire] = useState({
     branche: uniteInitiale || "",
   });
@@ -99,6 +104,21 @@ export function FormulaireDepense({
   const [detailsDepenses, setDetailsDepenses] = useState<DetailSaisie[]>([]);
   const [indexOuvert, setIndexOuvert] = useState(0);
   const [erreurUnite, setErreurUnite] = useState("");
+  // Attestation du responsable qu'aucun justificatif n'est nécessaire pour
+  // cette dépense (ex. virement inter-structure SGDF) : seuls les
+  // responsables du groupe peuvent la cocher, et uniquement sans pièce jointe.
+  const [sansJustificatifDeclare, setSansJustificatifDeclare] = useState(false);
+  const peutDeclarerSansJustificatif = estDepenseGroupe && estAdmin;
+  const declarationSansJustificatifActive =
+    peutDeclarerSansJustificatif &&
+    sansJustificatifDeclare &&
+    piecesJointes.length === 0;
+  const nombreEmplacements =
+    piecesJointes.length > 0
+      ? piecesJointes.length
+      : declarationSansJustificatifActive
+        ? 1
+        : 0;
   const uniteSelectionnee = units.find(
     (unit) => unit.id === formulaire.branche,
   );
@@ -133,9 +153,12 @@ export function FormulaireDepense({
 
   useEffect(() => {
     setDetailsDepenses((precedents) =>
-      piecesJointes.map((_, index) => precedents[index] ?? detailSaisieVide()),
+      Array.from(
+        { length: nombreEmplacements },
+        (_, index) => precedents[index] ?? detailSaisieVide(),
+      ),
     );
-  }, [piecesJointes]);
+  }, [nombreEmplacements]);
 
   // Si la liste des moyens de paiement du groupe change (paramètres modifiés
   // ailleurs) et qu'une sélection en cours n'y figure plus, on la réinitialise.
@@ -149,6 +172,16 @@ export function FormulaireDepense({
     );
   }, [moyensPaiement]);
 
+  // La déclaration sans justificatif n'a de sens que sans pièce jointe et
+  // pour un responsable : on la réinitialise dès que l'une de ces conditions
+  // n'est plus vraie (changement de type d'envoi, perte du rôle, ajout d'un
+  // fichier après avoir cochée la case).
+  useEffect(() => {
+    if (!peutDeclarerSansJustificatif || piecesJointes.length > 0) {
+      setSansJustificatifDeclare(false);
+    }
+  }, [peutDeclarerSansJustificatif, piecesJointes.length]);
+
   const detailPourIndex = (index: number) =>
     detailsDepenses[index] ?? detailSaisieVide();
 
@@ -157,7 +190,7 @@ export function FormulaireDepense({
     modification: Partial<DetailSaisie>,
   ) => {
     setDetailsDepenses((precedents) =>
-      piecesJointes.map((_, detailIndex) => {
+      Array.from({ length: nombreEmplacements }, (_, detailIndex) => {
         const detail = precedents[detailIndex] ?? detailSaisieVide();
         return detailIndex === index ? { ...detail, ...modification } : detail;
       }),
@@ -173,53 +206,62 @@ export function FormulaireDepense({
     );
   const totalDepenses =
     Math.round(
-      piecesJointes.reduce(
-        (total, _, index) => total + totalLignesDetail(detailPourIndex(index)),
+      Array.from({ length: nombreEmplacements }).reduce(
+        (total: number, _, index) =>
+          total + totalLignesDetail(detailPourIndex(index)),
         0,
       ) * 100,
     ) / 100;
   const detailsDepensesValides =
-    piecesJointes.length > 0 &&
-    piecesJointes.every((_, index) =>
+    nombreEmplacements > 0 &&
+    Array.from({ length: nombreEmplacements }).every((_, index) =>
       detailSaisiComplet(detailPourIndex(index), typeEnvoi),
     );
   // Date de référence (nomenclature) : la plus ancienne des dates saisies.
   const dateReference =
-    piecesJointes
+    Array.from({ length: nombreEmplacements })
       .map((_, index) => detailPourIndex(index).date)
       .filter(Boolean)
       .sort()[0] ?? dateDuJour();
   const erreurJustificatif =
-    afficherErreursValidation && piecesJointes.length === 0;
+    afficherErreursValidation &&
+    piecesJointes.length === 0 &&
+    !declarationSansJustificatifActive;
   const erreurUniteObligatoire =
     afficherErreursValidation && !formulaire.branche;
   const champsManquants = [
-    ...(piecesJointes.length === 0 ? ["un justificatif"] : []),
+    ...(piecesJointes.length === 0 && !declarationSansJustificatifActive
+      ? ["un justificatif"]
+      : []),
     ...(!formulaire.branche ? ["l’unité"] : []),
-    ...piecesJointes.flatMap((_, index) => {
+    ...Array.from({ length: nombreEmplacements }).flatMap((_, index) => {
       const detail = detailPourIndex(index);
       const numero = index + 1;
+      const aPieceJointe = index < piecesJointes.length;
+      const libelleJustificatif = aPieceJointe
+        ? `du justificatif ${numero}`
+        : "de la dépense";
       return [
         ...(!detail.date
           ? [
-              `la date ${estNoteDeFrais ? "de la dépense" : "du justificatif"} ${numero}`,
+              `la date ${estNoteDeFrais ? "de la dépense" : libelleJustificatif}`,
             ]
           : []),
         ...(estNoteDeFrais && !detail.activite.trim()
           ? [`l’activité liée du justificatif ${numero}`]
           : []),
         ...(!estNoteDeFrais && !detail.modePaiement
-          ? [`le moyen de paiement du justificatif ${numero}`]
+          ? [`le moyen de paiement ${libelleJustificatif}`]
           : []),
         ...detail.lignes.flatMap((ligne, indexLigne) => [
           ...(!ligne.categorie
             ? [
-                `la catégorie de la ligne ${indexLigne + 1} du justificatif ${numero}`,
+                `la catégorie de la ligne ${indexLigne + 1} ${libelleJustificatif}`,
               ]
             : []),
           ...(!montantSaisiValide(ligne.montant)
             ? [
-                `le montant de la ligne ${indexLigne + 1} du justificatif ${numero}`,
+                `le montant de la ligne ${indexLigne + 1} ${libelleJustificatif}`,
               ]
             : []),
         ]),
@@ -263,7 +305,7 @@ export function FormulaireDepense({
 
     setAfficherErreursValidation(true);
 
-    if (detailsDepenses.length !== piecesJointes.length) {
+    if (detailsDepenses.length !== nombreEmplacements) {
       setStatutEnvoi({
         type: "erreur",
         message:
@@ -274,7 +316,9 @@ export function FormulaireDepense({
 
     if (!formulaireEstValide) {
       // Ouvre le premier justificatif incomplet pour que ses erreurs soient visibles.
-      const premierIncomplet = piecesJointes.findIndex(
+      const premierIncomplet = Array.from({
+        length: nombreEmplacements,
+      }).findIndex(
         (_, index) => !detailSaisiComplet(detailPourIndex(index), typeEnvoi),
       );
       if (premierIncomplet >= 0) setIndexOuvert(premierIncomplet);
@@ -309,6 +353,9 @@ export function FormulaireDepense({
           envoiType: typeEnvoi,
           unitId: formulaire.branche,
           attachments: piecesJointesPourApi,
+          ...(declarationSansJustificatifActive
+            ? { withoutReceipt: true }
+            : {}),
           ...(estNoteDeFrais && rib
             ? {
                 rib: {
@@ -357,6 +404,7 @@ export function FormulaireDepense({
         setAfficherErreursValidation(false);
         setDetailsDepenses([]);
         setIndexOuvert(0);
+        setSansJustificatifDeclare(false);
         onCreerNouvelleNote?.();
       } else {
         const piecesJointesTropLourdes =
@@ -404,7 +452,9 @@ export function FormulaireDepense({
   };
 
   const formulaireEstValide = Boolean(
-    piecesJointes.length > 0 && formulaire.branche && detailsDepensesValides,
+    (piecesJointes.length > 0 || declarationSansJustificatifActive) &&
+    formulaire.branche &&
+    detailsDepensesValides,
   );
   const choisirRib = async (evenement: ChangeEvent<HTMLInputElement>) => {
     const fichier = evenement.target.files?.[0];
@@ -440,6 +490,136 @@ export function FormulaireDepense({
 
   const nomsFichiersApercu = formulaireEstValide ? genererNomsFichiers() : [];
 
+  // Champs de saisie d'une dépense (date, mode de paiement ou activité,
+  // description, lignes) : partagés entre un justificatif joint (accordéon)
+  // et la dépense déclarée sans justificatif (aucune pièce jointe).
+  const champsDetailDepense = (
+    index: number,
+    idPrefixe: string,
+    aPieceJointe: boolean,
+  ) => {
+    const detail = detailPourIndex(index);
+    const erreurDate = afficherErreursValidation && !detail.date;
+    const erreurActivite = afficherErreursValidation && !detail.activite.trim();
+    const erreurModePaiement =
+      afficherErreursValidation && !detail.modePaiement;
+    return (
+      <>
+        <div className="space-y-2">
+          <label
+            htmlFor={`${idPrefixe}-date`}
+            className="block text-sm font-medium text-zinc-700"
+          >
+            {estNoteDeFrais || !aPieceJointe
+              ? "Date de la dépense *"
+              : "Date du justificatif *"}
+          </label>
+          <input
+            id={`${idPrefixe}-date`}
+            type="date"
+            value={detail.date}
+            onChange={(e) =>
+              modifierDetailDepense(index, { date: e.target.value })
+            }
+            aria-invalid={erreurDate}
+            className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-zinc-400 focus:border-zinc-400 bg-white text-zinc-900 ${erreurDate ? "border-rose-500" : "border-zinc-300"}`}
+          />
+          {erreurDate && (
+            <p className="text-sm text-rose-700">Saisissez une date.</p>
+          )}
+        </div>
+        {estNoteDeFrais ? (
+          <div className="space-y-2">
+            <label
+              htmlFor={`${idPrefixe}-activite`}
+              className="block text-sm font-medium text-zinc-700"
+            >
+              Activité liée *
+            </label>
+            <input
+              id={`${idPrefixe}-activite`}
+              type="text"
+              placeholder="Journée, week-end, camp…"
+              value={detail.activite}
+              onChange={(e) =>
+                modifierDetailDepense(index, { activite: e.target.value })
+              }
+              aria-invalid={erreurActivite}
+              className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-zinc-400 focus:border-zinc-400 bg-white text-zinc-900 ${erreurActivite ? "border-rose-500" : "border-zinc-300"}`}
+            />
+            {erreurActivite && (
+              <p className="text-sm text-rose-700">
+                Indiquez l’activité liée à la dépense.
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <label
+              htmlFor={`${idPrefixe}-mode-paiement`}
+              className="block text-sm font-medium text-zinc-700"
+            >
+              Moyen de paiement *
+            </label>
+            <select
+              id={`${idPrefixe}-mode-paiement`}
+              value={detail.modePaiement}
+              onChange={(e) =>
+                modifierDetailDepense(index, { modePaiement: e.target.value })
+              }
+              aria-invalid={erreurModePaiement}
+              aria-describedby={
+                erreurModePaiement
+                  ? `erreur-${idPrefixe}-mode-paiement`
+                  : undefined
+              }
+              className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-zinc-400 focus:border-zinc-400 bg-white text-zinc-900 ${erreurModePaiement ? "border-rose-500" : "border-zinc-300"}`}
+            >
+              <option value="">Sélectionner un moyen</option>
+              {moyensPaiement.map((moyen) => (
+                <option key={moyen} value={moyen}>
+                  {moyen}
+                </option>
+              ))}
+            </select>
+            {erreurModePaiement && (
+              <p
+                id={`erreur-${idPrefixe}-mode-paiement`}
+                className="text-sm text-rose-700"
+              >
+                Sélectionnez un moyen de paiement.
+              </p>
+            )}
+          </div>
+        )}
+        <div className="space-y-2">
+          <label
+            htmlFor={`${idPrefixe}-description`}
+            className="block text-sm font-medium text-zinc-700"
+          >
+            Description (optionnel)
+          </label>
+          <textarea
+            id={`${idPrefixe}-description`}
+            placeholder="Détails sur la dépense..."
+            value={detail.description}
+            onChange={(e) =>
+              modifierDetailDepense(index, { description: e.target.value })
+            }
+            rows={2}
+            className="w-full p-3 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-zinc-400 focus:border-zinc-400 resize-none bg-white text-zinc-900"
+          />
+        </div>
+        <LignesCategories
+          idPrefixe={idPrefixe}
+          lignes={detail.lignes}
+          onChange={(lignes) => modifierDetailDepense(index, { lignes })}
+          afficherErreurs={afficherErreursValidation}
+        />
+      </>
+    );
+  };
+
   const creerNouvelleNote = () => {
     // Vide le formulaire, garde la branche et demande au parent de retirer les fichiers.
     setFormulaire((prev) => ({ branche: prev.branche }));
@@ -449,6 +629,7 @@ export function FormulaireDepense({
     setAfficherErreursValidation(false);
     setDetailsDepenses([]);
     setIndexOuvert(0);
+    setSansJustificatifDeclare(false);
     if (onCreerNouvelleNote) onCreerNouvelleNote();
   };
 
@@ -500,11 +681,6 @@ export function FormulaireDepense({
               const estImage = pieceJointe.typeMime.startsWith("image/");
               const detail = detailPourIndex(index);
               const idAccordeon = `justificatif-${index}`;
-              const erreurDate = afficherErreursValidation && !detail.date;
-              const erreurActivite =
-                afficherErreursValidation && !detail.activite.trim();
-              const erreurModePaiement =
-                afficherErreursValidation && !detail.modePaiement;
               return (
                 <AccordeonJustificatif
                   key={`${pieceJointe.nomAffiche}-${index}`}
@@ -551,131 +727,36 @@ export function FormulaireDepense({
                       : undefined
                   }
                 >
-                  <div className="space-y-2">
-                    <label
-                      htmlFor={`${idAccordeon}-date`}
-                      className="block text-sm font-medium text-zinc-700"
-                    >
-                      {estNoteDeFrais
-                        ? "Date de la dépense *"
-                        : "Date du justificatif *"}
-                    </label>
-                    <input
-                      id={`${idAccordeon}-date`}
-                      type="date"
-                      value={detail.date}
-                      onChange={(e) =>
-                        modifierDetailDepense(index, { date: e.target.value })
-                      }
-                      aria-invalid={erreurDate}
-                      className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-zinc-400 focus:border-zinc-400 bg-white text-zinc-900 ${erreurDate ? "border-rose-500" : "border-zinc-300"}`}
-                    />
-                    {erreurDate && (
-                      <p className="text-sm text-rose-700">
-                        Saisissez une date.
-                      </p>
-                    )}
-                  </div>
-                  {estNoteDeFrais ? (
-                    <div className="space-y-2">
-                      <label
-                        htmlFor={`${idAccordeon}-activite`}
-                        className="block text-sm font-medium text-zinc-700"
-                      >
-                        Activité liée *
-                      </label>
-                      <input
-                        id={`${idAccordeon}-activite`}
-                        type="text"
-                        placeholder="Journée, week-end, camp…"
-                        value={detail.activite}
-                        onChange={(e) =>
-                          modifierDetailDepense(index, {
-                            activite: e.target.value,
-                          })
-                        }
-                        aria-invalid={erreurActivite}
-                        className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-zinc-400 focus:border-zinc-400 bg-white text-zinc-900 ${erreurActivite ? "border-rose-500" : "border-zinc-300"}`}
-                      />
-                      {erreurActivite && (
-                        <p className="text-sm text-rose-700">
-                          Indiquez l’activité liée à la dépense.
-                        </p>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <label
-                        htmlFor={`${idAccordeon}-mode-paiement`}
-                        className="block text-sm font-medium text-zinc-700"
-                      >
-                        Moyen de paiement *
-                      </label>
-                      <select
-                        id={`${idAccordeon}-mode-paiement`}
-                        value={detail.modePaiement}
-                        onChange={(e) =>
-                          modifierDetailDepense(index, {
-                            modePaiement: e.target.value,
-                          })
-                        }
-                        aria-invalid={erreurModePaiement}
-                        aria-describedby={
-                          erreurModePaiement
-                            ? `erreur-${idAccordeon}-mode-paiement`
-                            : undefined
-                        }
-                        className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-zinc-400 focus:border-zinc-400 bg-white text-zinc-900 ${erreurModePaiement ? "border-rose-500" : "border-zinc-300"}`}
-                      >
-                        <option value="">Sélectionner un moyen</option>
-                        {moyensPaiement.map((moyen) => (
-                          <option key={moyen} value={moyen}>
-                            {moyen}
-                          </option>
-                        ))}
-                      </select>
-                      {erreurModePaiement && (
-                        <p
-                          id={`erreur-${idAccordeon}-mode-paiement`}
-                          className="text-sm text-rose-700"
-                        >
-                          Sélectionnez un moyen de paiement.
-                        </p>
-                      )}
-                    </div>
-                  )}
-                  <div className="space-y-2">
-                    <label
-                      htmlFor={`${idAccordeon}-description`}
-                      className="block text-sm font-medium text-zinc-700"
-                    >
-                      Description (optionnel)
-                    </label>
-                    <textarea
-                      id={`${idAccordeon}-description`}
-                      placeholder="Détails sur la dépense..."
-                      value={detail.description}
-                      onChange={(e) =>
-                        modifierDetailDepense(index, {
-                          description: e.target.value,
-                        })
-                      }
-                      rows={2}
-                      className="w-full p-3 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-zinc-400 focus:border-zinc-400 resize-none bg-white text-zinc-900"
-                    />
-                  </div>
-                  <LignesCategories
-                    idPrefixe={idAccordeon}
-                    lignes={detail.lignes}
-                    onChange={(lignes) =>
-                      modifierDetailDepense(index, { lignes })
-                    }
-                    afficherErreurs={afficherErreursValidation}
-                  />
+                  {champsDetailDepense(index, idAccordeon, true)}
                 </AccordeonJustificatif>
               );
             })}
           </div>
+        </div>
+      )}
+
+      {peutDeclarerSansJustificatif && piecesJointes.length === 0 && (
+        <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          <input
+            type="checkbox"
+            checked={sansJustificatifDeclare}
+            onChange={(e) => setSansJustificatifDeclare(e.target.checked)}
+            className="mt-0.5 h-4 w-4 flex-none rounded border-amber-400 text-zinc-900 focus:ring-2 focus:ring-zinc-400"
+          />
+          <span>
+            Je déclare cette dépense sans justificatif (par exemple un virement
+            inter-structure SGDF) et j’ai conscience de l’envoyer sans aucune
+            pièce jointe.
+          </span>
+        </label>
+      )}
+
+      {declarationSansJustificatifActive && (
+        <div className="space-y-4 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+          <p className="block text-sm font-medium text-zinc-700">
+            Détails de la dépense
+          </p>
+          {champsDetailDepense(0, "depense-sans-justificatif", false)}
         </div>
       )}
 
@@ -721,7 +802,7 @@ export function FormulaireDepense({
         )}
       </div>
 
-      {piecesJointes.length > 0 && (
+      {nombreEmplacements > 0 && (
         <div className="p-3 bg-zinc-50 border border-zinc-200 rounded-lg flex items-center justify-between">
           <span className="text-sm font-medium text-zinc-700">
             Total des dépenses
@@ -818,12 +899,16 @@ export function FormulaireDepense({
                 Pièce(s) jointe(s) :
               </span>
               <br />
-              {nomsFichiersApercu.map((nom, index) => (
-                <span key={`${nom}-${index}`}>
-                  • {nom}
-                  <br />
-                </span>
-              ))}
+              {declarationSansJustificatifActive ? (
+                <span>Aucune (dépense déclarée sans justificatif)</span>
+              ) : (
+                nomsFichiersApercu.map((nom, index) => (
+                  <span key={`${nom}-${index}`}>
+                    • {nom}
+                    <br />
+                  </span>
+                ))
+              )}
             </p>
           </div>
         )}

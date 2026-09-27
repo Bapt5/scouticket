@@ -139,6 +139,37 @@ describe("templates HTML des e-mails", () => {
     expect(mail.attachments).toHaveLength(1);
   });
 
+  it("affiche le détail et un avertissement pour une dépense sans justificatif attestée", async () => {
+    await envoyerEmailDepense({
+      typeEnvoi: "depense-groupe",
+      emailUtilisateur: "membre@example.test",
+      date: "2026-01-01",
+      branche: "Groupe",
+      emailTresorerie: "tresorerie@example.test",
+      montant: 30,
+      piecesJointes: [],
+      sansJustificatifAttesteParResponsable: true,
+      detailsDepenses: [
+        {
+          date: "2026-01-01",
+          description: "Virement inter-structure SGDF",
+          activite: "",
+          modePaiement: "Virement du groupe",
+          lignes: [{ categorie: "Autres cotisations", montant: 30 }],
+        },
+      ],
+    });
+
+    const mail = dernierMail();
+    expect(mail.text).toContain("Date du justificatif : 2026-01-01");
+    expect(mail.text).toContain(
+      "un responsable du groupe a attesté qu'aucun justificatif n'était nécessaire",
+    );
+    expect(mail.html).toContain("Dépense envoyée sans justificatif");
+    expect(mail.text).toContain("Pièce(s) jointe(s) (0)");
+    expect(mail.attachments).toHaveLength(0);
+  });
+
   it("détaille chaque justificatif d’une note de frais et joint le RIB", async () => {
     await envoyerEmailDepense({
       typeEnvoi: "note-de-frais",
