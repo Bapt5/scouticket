@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { validerCorpsRequete } from "@/lib/api/validateBody";
 
+const moyensPaiementGroupe = ["Carte de procurement", "Espèces du groupe"];
+const valider = (body: unknown) =>
+  validerCorpsRequete(body, moyensPaiementGroupe);
+
 const attachment = (name: string) => ({
   displayName: name,
   mimeType: "image/jpeg",
@@ -39,7 +43,7 @@ const depenseGroupe = (extra: Record<string, unknown> = {}) => ({
 
 describe("validerCorpsRequete : note de frais", () => {
   it("calcule le total et garde les champs de chaque justificatif", () => {
-    const resultat = validerCorpsRequete(
+    const resultat = valider(
       noteDeFrais({
         attachments: [attachment("ticket-1.jpg"), attachment("ticket-2.jpg")],
         expenses: [
@@ -89,12 +93,12 @@ describe("validerCorpsRequete : note de frais", () => {
     const dateInvalide = noteDeFrais({
       expenses: [{ date: "16/08/2026", activity: "Camp", lines: [ligne] }],
     });
-    expect(validerCorpsRequete(sansActivite).error?.status).toBe(400);
-    expect(validerCorpsRequete(dateInvalide).error?.status).toBe(400);
+    expect(valider(sansActivite).error?.status).toBe(400);
+    expect(valider(dateInvalide).error?.status).toBe(400);
   });
 
   it("refuse un moyen de paiement du groupe sur une note de frais", () => {
-    const resultat = validerCorpsRequete(
+    const resultat = valider(
       noteDeFrais({
         expenses: [
           {
@@ -110,20 +114,18 @@ describe("validerCorpsRequete : note de frais", () => {
   });
 
   it("accepte un RIB facultatif et le refuse s'il est invalide", () => {
-    const avecRib = validerCorpsRequete(
-      noteDeFrais({ rib: attachment("rib.pdf") }),
-    );
+    const avecRib = valider(noteDeFrais({ rib: attachment("rib.pdf") }));
     expect(avecRib.error).toBeUndefined();
     expect(avecRib.donneesEmail?.rib?.nomFichierOriginal).toBe("rib.pdf");
 
-    const ribInvalide = validerCorpsRequete(
+    const ribInvalide = valider(
       noteDeFrais({ rib: { ...attachment("rib.exe"), mimeType: "text/x" } }),
     );
     expect(ribInvalide.error?.status).toBe(400);
   });
 
   it("refuse un nombre de dépenses différent du nombre de justificatifs", () => {
-    const resultat = validerCorpsRequete(
+    const resultat = valider(
       noteDeFrais({
         attachments: [attachment("ticket-1.jpg"), attachment("ticket-2.jpg")],
       }),
@@ -133,7 +135,7 @@ describe("validerCorpsRequete : note de frais", () => {
 
   it("refuse une catégorie inconnue, un montant nul ou une liste de lignes vide", () => {
     const requete = (lines: unknown[]) =>
-      validerCorpsRequete(
+      valider(
         noteDeFrais({
           expenses: [{ date: "2026-08-16", activity: "Camp", lines }],
         }),
@@ -154,7 +156,7 @@ describe("validerCorpsRequete : note de frais", () => {
 
 describe("validerCorpsRequete : dépense avec moyen de paiement du groupe", () => {
   it("accepte un justificatif avec un moyen de paiement du groupe", () => {
-    const resultat = validerCorpsRequete(depenseGroupe());
+    const resultat = valider(depenseGroupe());
     expect(resultat.error).toBeUndefined();
     expect(resultat.donneesEmail).toMatchObject({
       typeEnvoi: "depense-groupe",
@@ -165,7 +167,7 @@ describe("validerCorpsRequete : dépense avec moyen de paiement du groupe", () =
 
   it("refuse un moyen de paiement absent, inconnu ou personnel", () => {
     const requete = (paymentMethod?: string) =>
-      validerCorpsRequete(
+      valider(
         depenseGroupe({
           expenses: [{ date: "2026-08-16", paymentMethod, lines: [ligne] }],
         }),
@@ -176,7 +178,7 @@ describe("validerCorpsRequete : dépense avec moyen de paiement du groupe", () =
   });
 
   it("refuse plusieurs justificatifs", () => {
-    const resultat = validerCorpsRequete(
+    const resultat = valider(
       depenseGroupe({
         attachments: [attachment("a.jpg"), attachment("b.jpg")],
         expenses: [
@@ -197,19 +199,16 @@ describe("validerCorpsRequete : dépense avec moyen de paiement du groupe", () =
   });
 
   it("refuse un RIB", () => {
-    const resultat = validerCorpsRequete(
-      depenseGroupe({ rib: attachment("rib.pdf") }),
-    );
+    const resultat = valider(depenseGroupe({ rib: attachment("rib.pdf") }));
     expect(resultat.error?.status).toBe(400);
   });
 
   it("refuse un type d'envoi absent ou inconnu", () => {
     expect(
-      validerCorpsRequete({ ...depenseGroupe(), envoiType: undefined }).error
-        ?.status,
+      valider({ ...depenseGroupe(), envoiType: undefined }).error?.status,
     ).toBe(400);
-    expect(
-      validerCorpsRequete(depenseGroupe({ envoiType: "autre" })).error?.status,
-    ).toBe(400);
+    expect(valider(depenseGroupe({ envoiType: "autre" })).error?.status).toBe(
+      400,
+    );
   });
 });

@@ -216,11 +216,10 @@ export const CATEGORIES_COMPTABLES: readonly CategorieComptable[] = [
 export const LIBELLES_CATEGORIES_COMPTABLES: readonly string[] =
   CATEGORIES_COMPTABLES.map((categorie) => categorie.libelle);
 
-export const MOYENS_PAIEMENT_GROUPE = [
+/** Liste par défaut des moyens de paiement du groupe, tant qu'aucune n'a été personnalisée. */
+export const MOYENS_PAIEMENT_PAR_DEFAUT: readonly string[] = [
   "Carte de procurement",
   "Espèces du groupe",
   "Virement du groupe",
   "Chèque du groupe",
-] as const;
-
-export type MoyenPaiementGroupe = (typeof MOYENS_PAIEMENT_GROUPE)[number];
+];

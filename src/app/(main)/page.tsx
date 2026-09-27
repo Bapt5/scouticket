@@ -600,6 +600,7 @@ export default function Home() {
                 emailUtilisateur={session.user.email}
                 units={groupe.units}
                 nomenclature={groupe.nomenclature}
+                moyensPaiement={groupe.parametres?.moyensPaiement}
                 uniteInitiale={groupe.unitPreference}
                 treasuryVerified={groupe.treasuryVerified}
                 onChangementUnite={(unitId) =>

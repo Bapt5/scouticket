@@ -135,9 +135,12 @@ export async function POST(req: NextRequest) {
       if (!body) return jsonError("Corps de requête invalide", 400);
       if (body.userEmail !== userEmail) return jsonError("Email invalide", 403);
 
-      const { donneesEmail, error } = validerCorpsRequete(body);
-      if (error || !donneesEmail) return error as NextResponse;
       const group = await recupererGroupeActif(identifiantOrganisation);
+      const { donneesEmail, error } = validerCorpsRequete(
+        body,
+        group.parametres.moyensPaiement,
+      );
+      if (error || !donneesEmail) return error as NextResponse;
       if (group.validation.status !== "verified" || !group.emailTresorerie)
         return jsonError(
           "La trésorerie doit confirmer son adresse avant les envois",

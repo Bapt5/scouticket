@@ -75,3 +75,12 @@ Le traitement se fait dans votre navigateur : aucune image n’est envoyée à u
 ## Conversion des justificatifs en PDF
 
 Depuis **Paramètres du groupe**, les responsables peuvent activer la conversion des justificatifs en PDF. Désactivée par défaut, les justificatifs sont envoyés à la trésorerie dans leur format d’origine. Activée, chaque photo ou image est convertie en PDF (un PDF par justificatif) avant l’envoi par e-mail ; les PDF sont envoyés tels quels. Rien n’est conservé par Scouticket.
+
+## Moyens de paiement du groupe
+
+Depuis **Paramètres du groupe**, les responsables gèrent la liste des moyens de paiement proposés lors d’une dépense avec un moyen de paiement du groupe (par exemple « Carte de procurement » ou « Espèces du groupe ») :
+
+- pour **ajouter** un moyen, tapez son nom dans le champ puis cliquez sur **Ajouter** (le bouton reste désactivé si le moyen existe déjà ou si le champ est vide) ;
+- pour **retirer** un moyen, cliquez sur l’icône poubelle à côté de son nom. Il doit toujours en rester au moins un.
+
+Cette liste est propre à chaque groupe ; elle n’a aucun impact sur les notes de frais, qui ne demandent pas de moyen de paiement.

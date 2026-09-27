@@ -30,7 +30,7 @@ import {
   type PieceJointeDepense,
   type TypeEnvoi,
 } from "@/constants/piecesJointes";
-import { MOYENS_PAIEMENT_GROUPE } from "@/constants/configDepenses";
+import { MOYENS_PAIEMENT_PAR_DEFAUT } from "@/constants/configDepenses";
 import {
   analyserMontantSaisi,
   dateDuJour,
@@ -62,6 +62,7 @@ interface FormulaireDepenseProps {
   readonly piecesJointes: PieceJointeDepense[];
   readonly emailUtilisateur: string;
   readonly units: UniteGroupe[];
+  readonly moyensPaiement?: string[];
   readonly nomenclature?: {
     format: string | null;
     anneeComptable: ParametresAnneeComptable;
@@ -79,6 +80,7 @@ export function FormulaireDepense({
   piecesJointes,
   emailUtilisateur,
   units,
+  moyensPaiement = MOYENS_PAIEMENT_PAR_DEFAUT as string[],
   nomenclature,
   uniteInitiale = "",
   treasuryVerified,
@@ -134,6 +136,18 @@ export function FormulaireDepense({
       piecesJointes.map((_, index) => precedents[index] ?? detailSaisieVide()),
     );
   }, [piecesJointes]);
+
+  // Si la liste des moyens de paiement du groupe change (paramètres modifiés
+  // ailleurs) et qu'une sélection en cours n'y figure plus, on la réinitialise.
+  useEffect(() => {
+    setDetailsDepenses((precedents) =>
+      precedents.map((detail) =>
+        detail.modePaiement && !moyensPaiement.includes(detail.modePaiement)
+          ? { ...detail, modePaiement: "" }
+          : detail,
+      ),
+    );
+  }, [moyensPaiement]);
 
   const detailPourIndex = (index: number) =>
     detailsDepenses[index] ?? detailSaisieVide();
@@ -614,7 +628,7 @@ export function FormulaireDepense({
                         className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-zinc-400 focus:border-zinc-400 bg-white text-zinc-900 ${erreurModePaiement ? "border-rose-500" : "border-zinc-300"}`}
                       >
                         <option value="">Sélectionner un moyen</option>
-                        {MOYENS_PAIEMENT_GROUPE.map((moyen) => (
+                        {moyensPaiement.map((moyen) => (
                           <option key={moyen} value={moyen}>
                             {moyen}
                           </option>

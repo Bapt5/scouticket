@@ -65,6 +65,7 @@ describe("recupererGroupeActif", () => {
             name: "Avec scan",
             scan_justificatifs_actif: true,
             convertir_justificatifs_pdf: true,
+            moyens_paiement: ["Espèces du groupe"],
           },
         ],
       })
@@ -76,10 +77,17 @@ describe("recupererGroupeActif", () => {
     expect(sans.parametres).toEqual({
       scanJustificatifsActif: false,
       convertirJustificatifsEnPdf: false,
+      moyensPaiement: [
+        "Carte de procurement",
+        "Espèces du groupe",
+        "Virement du groupe",
+        "Chèque du groupe",
+      ],
     });
     expect(avec.parametres).toEqual({
       scanJustificatifsActif: true,
       convertirJustificatifsEnPdf: true,
+      moyensPaiement: ["Espèces du groupe"],
     });
   });
 

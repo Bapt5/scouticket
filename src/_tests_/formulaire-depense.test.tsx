@@ -305,4 +305,22 @@ describe("FormulaireDepense", () => {
     expect(screen.queryByLabelText("Activité liée *")).toBeNull();
     expect(screen.queryByLabelText(/RIB/)).toBeNull();
   });
+
+  it("propose les moyens de paiement personnalisés du groupe", () => {
+    render(
+      <FormulaireDepense
+        typeEnvoi="depense-groupe"
+        piecesJointes={[pieceJointe]}
+        emailUtilisateur="test@example.test"
+        units={UNITES_TEST}
+        moyensPaiement={["Cagnotte en ligne"]}
+        uniteInitiale="groupe"
+        treasuryVerified
+      />,
+    );
+
+    const moyen = screen.getByLabelText("Moyen de paiement *");
+    expect(moyen).toHaveTextContent("Cagnotte en ligne");
+    expect(moyen).not.toHaveTextContent("Chèque du groupe");
+  });
 });

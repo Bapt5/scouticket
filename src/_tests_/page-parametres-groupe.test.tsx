@@ -17,10 +17,15 @@ const reponse = (corps: unknown, ok = true) =>
 const groupeAdmin = (
   scanJustificatifsActif: boolean,
   convertirJustificatifsEnPdf = false,
+  moyensPaiement = ["Espèces du groupe"],
 ) =>
   reponse({
     isAdmin: true,
-    parametres: { scanJustificatifsActif, convertirJustificatifsEnPdf },
+    parametres: {
+      scanJustificatifsActif,
+      convertirJustificatifsEnPdf,
+      moyensPaiement,
+    },
   });
 
 describe("Page Paramètres du groupe", () => {
@@ -64,6 +69,7 @@ describe("Page Paramètres du groupe", () => {
               parametres: {
                 scanJustificatifsActif: true,
                 convertirJustificatifsEnPdf: false,
+                moyensPaiement: ["Espèces du groupe"],
               },
             })
           : groupeAdmin(false),
@@ -95,6 +101,7 @@ describe("Page Paramètres du groupe", () => {
               parametres: {
                 scanJustificatifsActif: false,
                 convertirJustificatifsEnPdf: true,
+                moyensPaiement: ["Espèces du groupe"],
               },
             })
           : groupeAdmin(false),
@@ -134,5 +141,68 @@ describe("Page Paramètres du groupe", () => {
       ),
     ).toBeInTheDocument();
     expect(scan).toHaveAttribute("aria-checked", "false");
+  });
+
+  it("ajoute un moyen de paiement via le champ texte", async () => {
+    fetchMock.mockImplementation(
+      (_url: string, options?: { method?: string }) =>
+        options?.method === "PATCH"
+          ? reponse({
+              success: true,
+              parametres: {
+                scanJustificatifsActif: false,
+                convertirJustificatifsEnPdf: false,
+                moyensPaiement: ["Espèces du groupe", "Virement du groupe"],
+              },
+            })
+          : groupeAdmin(false),
+    );
+
+    render(<PageParametresGroupe />);
+    const champ = await screen.findByLabelText("Moyens de paiement du groupe");
+    await userEvent.type(champ, "Virement du groupe");
+    await userEvent.click(screen.getByRole("button", { name: "Ajouter" }));
+
+    expect(await screen.findByText("Paramètres enregistrés.")).toBeVisible();
+    expect(screen.getByText("Virement du groupe")).toBeInTheDocument();
+    const appel = fetchMock.mock.calls.find(
+      ([, options]) => options?.method === "PATCH",
+    );
+    expect(JSON.parse(appel?.[1].body)).toEqual({
+      moyensPaiement: ["Espèces du groupe", "Virement du groupe"],
+    });
+  });
+
+  it("retire un moyen de paiement via la poubelle", async () => {
+    fetchMock.mockImplementation(
+      (_url: string, options?: { method?: string }) =>
+        options?.method === "PATCH"
+          ? reponse({
+              success: true,
+              parametres: {
+                scanJustificatifsActif: false,
+                convertirJustificatifsEnPdf: false,
+                moyensPaiement: [],
+              },
+            })
+          : groupeAdmin(false, false, [
+              "Espèces du groupe",
+              "Virement du groupe",
+            ]),
+    );
+
+    render(<PageParametresGroupe />);
+    await screen.findByText("Espèces du groupe");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Retirer Virement du groupe" }),
+    );
+
+    expect(await screen.findByText("Paramètres enregistrés.")).toBeVisible();
+    const appel = fetchMock.mock.calls.find(
+      ([, options]) => options?.method === "PATCH",
+    );
+    expect(JSON.parse(appel?.[1].body)).toEqual({
+      moyensPaiement: ["Espèces du groupe"],
+    });
   });
 });

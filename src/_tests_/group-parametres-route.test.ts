@@ -53,6 +53,7 @@ describe("/api/group/parametres", () => {
       parametres: {
         scanJustificatifsActif: false,
         convertirJustificatifsEnPdf: false,
+        moyensPaiement: ["Espèces du groupe"],
       },
     });
     mocks.query.mockResolvedValue({ rowCount: 1, rows: [] });
@@ -70,6 +71,7 @@ describe("/api/group/parametres", () => {
       parametres: {
         scanJustificatifsActif: false,
         convertirJustificatifsEnPdf: false,
+        moyensPaiement: ["Espèces du groupe"],
       },
     });
   });
@@ -100,6 +102,8 @@ describe("/api/group/parametres", () => {
     ["corps vide", {}],
     ["type invalide", { scanJustificatifsActif: "oui" }],
     ["champ inconnu", { autre: true }],
+    ["moyens de paiement vides", { moyensPaiement: [] }],
+    ["moyens de paiement en doublon", { moyensPaiement: ["A", "a"] }],
   ])("PATCH refuse un corps invalide (%s)", async (_nom, corps) => {
     const reponse = await patch(corps);
 
@@ -116,10 +120,16 @@ describe("/api/group/parametres", () => {
       parametres: {
         scanJustificatifsActif: true,
         convertirJustificatifsEnPdf: false,
+        moyensPaiement: ["Espèces du groupe"],
       },
     });
     expect(mocks.query.mock.calls[0][0]).toMatch(/ON CONFLICT/);
-    expect(mocks.query.mock.calls[0][1]).toEqual(["org_1", true, false]);
+    expect(mocks.query.mock.calls[0][1]).toEqual([
+      "org_1",
+      true,
+      false,
+      JSON.stringify(["Espèces du groupe"]),
+    ]);
   });
 
   it("PATCH désactive le scan", async () => {
@@ -127,6 +137,7 @@ describe("/api/group/parametres", () => {
       parametres: {
         scanJustificatifsActif: true,
         convertirJustificatifsEnPdf: false,
+        moyensPaiement: ["Espèces du groupe"],
       },
     });
 
@@ -138,7 +149,12 @@ describe("/api/group/parametres", () => {
         convertirJustificatifsEnPdf: false,
       },
     });
-    expect(mocks.query.mock.calls[0][1]).toEqual(["org_1", false, false]);
+    expect(mocks.query.mock.calls[0][1]).toEqual([
+      "org_1",
+      false,
+      false,
+      JSON.stringify(["Espèces du groupe"]),
+    ]);
   });
 
   it("PATCH enregistre la conversion en PDF sans toucher au scan", async () => {
@@ -150,7 +166,31 @@ describe("/api/group/parametres", () => {
         convertirJustificatifsEnPdf: true,
       },
     });
-    expect(mocks.query.mock.calls[0][1]).toEqual(["org_1", false, true]);
+    expect(mocks.query.mock.calls[0][1]).toEqual([
+      "org_1",
+      false,
+      true,
+      JSON.stringify(["Espèces du groupe"]),
+    ]);
+  });
+
+  it("PATCH remplace les moyens de paiement sans toucher aux autres réglages", async () => {
+    const reponse = await patch({
+      moyensPaiement: ["Espèces du groupe", "Virement du groupe"],
+    });
+
+    await expect(reponse.json()).resolves.toMatchObject({
+      parametres: {
+        scanJustificatifsActif: false,
+        moyensPaiement: ["Espèces du groupe", "Virement du groupe"],
+      },
+    });
+    expect(mocks.query.mock.calls[0][1]).toEqual([
+      "org_1",
+      false,
+      false,
+      JSON.stringify(["Espèces du groupe", "Virement du groupe"]),
+    ]);
   });
 
   it("PATCH relaie le refus de l'origine de la requête", async () => {

@@ -109,6 +109,7 @@ describe("POST /api/send-expense", () => {
       parametres: {
         scanJustificatifsActif: false,
         convertirJustificatifsEnPdf: false,
+        moyensPaiement: ["Carte de procurement"],
       },
     });
     mocks.envoyerEmailDepense.mockResolvedValue({ messageId: "abc" });
@@ -122,6 +123,16 @@ describe("POST /api/send-expense", () => {
 
     expect(reponse.status).toBe(403);
     expect(mocks.envoyerEmailDepense).not.toHaveBeenCalled();
+  });
+
+  it("valide le corps avec les moyens de paiement du groupe actif", async () => {
+    mocks.recupererRoleMembre.mockResolvedValue("owner");
+
+    await POST(REQUETE_BASE() as never);
+
+    expect(mocks.validerCorpsRequete).toHaveBeenCalledWith(expect.anything(), [
+      "Carte de procurement",
+    ]);
   });
 
   it("autorise un membre ayant accès à l’unité soumise", async () => {
@@ -215,6 +226,7 @@ describe("POST /api/send-expense", () => {
       parametres: {
         scanJustificatifsActif: false,
         convertirJustificatifsEnPdf: true,
+        moyensPaiement: ["Carte de procurement"],
       },
     });
     mocks.convertirPiecesJointesEnPdf.mockResolvedValue([
@@ -262,6 +274,7 @@ describe("POST /api/send-expense", () => {
       parametres: {
         scanJustificatifsActif: false,
         convertirJustificatifsEnPdf: true,
+        moyensPaiement: ["Carte de procurement"],
       },
     });
     mocks.convertirPiecesJointesEnPdf.mockResolvedValue([piece]);
@@ -296,6 +309,7 @@ describe("POST /api/send-expense", () => {
       parametres: {
         scanJustificatifsActif: false,
         convertirJustificatifsEnPdf: false,
+        moyensPaiement: ["Carte de procurement"],
       },
     });
 

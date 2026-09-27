@@ -16,10 +16,7 @@ import {
 import type { DonneesEmailDepense } from "@/lib/email";
 import type { NextResponse } from "next/server";
 import { z } from "zod";
-import {
-  LIBELLES_CATEGORIES_COMPTABLES,
-  MOYENS_PAIEMENT_GROUPE,
-} from "@/constants/configDepenses";
+import { LIBELLES_CATEGORIES_COMPTABLES } from "@/constants/configDepenses";
 import { totalDetails } from "@/lib/depenses";
 import { analyserDateIso } from "@/lib/nomenclature";
 import { journal } from "@/lib/logger";
@@ -79,7 +76,10 @@ function validerPieceJointe(brute: unknown, nom: string): ResultatPiece {
   };
 }
 
-export function validerCorpsRequete(body: unknown): {
+export function validerCorpsRequete(
+  body: unknown,
+  moyensPaiementGroupe: readonly string[],
+): {
   donneesEmail?: DonneesEmailDepense;
   error?: NextResponse;
 } {
@@ -188,7 +188,7 @@ export function validerCorpsRequete(body: unknown): {
   const estCategorieValide = (categorie: string) =>
     LIBELLES_CATEGORIES_COMPTABLES.includes(categorie);
   const estMoyenPaiementValide = (moyen: string) =>
-    (MOYENS_PAIEMENT_GROUPE as readonly string[]).includes(moyen);
+    moyensPaiementGroupe.includes(moyen);
 
   // Un élément de `expenses` par justificatif, dans le même ordre.
   if (b.expenses.length !== piecesJointesNormalisees.length) {
