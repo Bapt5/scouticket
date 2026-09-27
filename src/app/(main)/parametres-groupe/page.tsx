@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { InterrupteurParametre } from "@/components/InterrupteurParametre";
+import { SelecteurMoyensPaiement } from "@/components/SelecteurMoyensPaiement";
 import { clientAuth } from "@/lib/auth-client";
 import {
   PARAMETRES_GROUPE_PAR_DEFAUT,
@@ -101,6 +102,16 @@ export default function PageParametresGroupe() {
               onChange={(actif) =>
                 modifier({ convertirJustificatifsEnPdf: actif })
               }
+            />
+            <h2 className="text-lg font-semibold text-zinc-900">
+              Moyens de paiement
+            </h2>
+            <SelecteurMoyensPaiement
+              id="moyens-paiement"
+              libelle="Moyens de paiement du groupe"
+              valeur={parametres.moyensPaiement}
+              desactive={enregistrement}
+              onChange={(moyensPaiement) => modifier({ moyensPaiement })}
             />
             {message && (
               <p role="status" className="text-sm text-zinc-600">

@@ -6,6 +6,7 @@ import {
   type ReservationNumeros,
 } from "./nomenclature";
 import type { ParametresGroupe } from "./parametresGroupe";
+import { MOYENS_PAIEMENT_PAR_DEFAUT } from "@/constants/configDepenses";
 import { pool } from "@/lib/baseDeDonnees";
 import type { PoolClient } from "pg";
 
@@ -20,6 +21,7 @@ export async function recupererGroupeActif(identifiantOrganisation: string) {
     annee_comptable_format: FormatAnneeComptable | null;
     scan_justificatifs_actif: boolean | null;
     convertir_justificatifs_pdf: boolean | null;
+    moyens_paiement: string[] | null;
   }>(
     `SELECT organization.name, donnees.treasury_email,
             donnees.treasury_verification, donnees.nomenclature_format,
@@ -27,7 +29,8 @@ export async function recupererGroupeActif(identifiantOrganisation: string) {
             donnees.annee_comptable_debut_jour,
             donnees.annee_comptable_format,
             donnees.scan_justificatifs_actif,
-            donnees.convertir_justificatifs_pdf
+            donnees.convertir_justificatifs_pdf,
+            donnees.moyens_paiement
        FROM organization
        LEFT JOIN scouticket_group_data donnees
          ON donnees.organization_id = organization.id
@@ -67,6 +70,7 @@ export async function recupererGroupeActif(identifiantOrganisation: string) {
     parametres: {
       scanJustificatifsActif: groupe.scan_justificatifs_actif ?? false,
       convertirJustificatifsEnPdf: groupe.convertir_justificatifs_pdf ?? false,
+      moyensPaiement: groupe.moyens_paiement ?? [...MOYENS_PAIEMENT_PAR_DEFAUT],
     } satisfies ParametresGroupe,
   };
 }

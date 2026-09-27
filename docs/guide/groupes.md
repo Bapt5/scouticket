@@ -34,14 +34,14 @@ Par défaut, les pièces jointes envoyées à la trésorerie gardent le nom du f
 
 Le format mélange du texte fixe et des variables entre accolades, par exemple `{YYYY}-{MM}-{DD} - {Branche} - {Type} - {Montant} - {Numero}` donne `2026-03-05 - Louveteaux - Carburant - 28.50 - 01.pdf`. Les boutons de la page insèrent les variables, et un aperçu montre le résultat. L’extension du fichier est ajoutée automatiquement.
 
-| Variable                                          | Valeur                                                                                                                              |
-| ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `{YYYY}` `{MM}` `{DD}`                            | Année, mois et jour du justificatif (pas de l’envoi)                                                                                |
-| `{Branche}` `{Type}` `{ModePaiement}` `{Montant}` | Unité, catégorie comptable, mode de paiement et montant du justificatif (total de ses lignes ; `Multiples` si plusieurs catégories) |
-| `{AnneeComptable}`                                | Année comptable du justificatif                                                                                                     |
-| `{Numero}`                                        | Rang du justificatif dans l’envoi (01, 02…)                                                                                         |
-| `{GlobalNumeroComptable}`                         | Rang dans l’année comptable, tous envois confondus (001, 002…)                                                                      |
-| `{GlobalNumero}`                                  | Rang dans l’ensemble des envois du groupe (001, 002…)                                                                               |
+| Variable                                          | Valeur                                                                                                                                                                        |
+| ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `{YYYY}` `{MM}` `{DD}`                            | Année, mois et jour du justificatif (pas de l’envoi)                                                                                                                          |
+| `{Branche}` `{Type}` `{ModePaiement}` `{Montant}` | Unité, catégorie comptable, moyen de paiement du groupe (`NDF` pour une note de frais) et montant du justificatif (total de ses lignes ; `Multiples` si plusieurs catégories) |
+| `{AnneeComptable}`                                | Année comptable du justificatif                                                                                                                                               |
+| `{Numero}`                                        | Rang du justificatif dans l’envoi (01, 02…)                                                                                                                                   |
+| `{GlobalNumeroComptable}`                         | Rang dans l’année comptable, tous envois confondus (001, 002…)                                                                                                                |
+| `{GlobalNumero}`                                  | Rang dans l’ensemble des envois du groupe (001, 002…)                                                                                                                         |
 
 **Année comptable.** Elle commence par défaut le 1er septembre et se termine le 31 août. Vous pouvez changer le jour et le mois de début (pas le 29 février). Lorsqu’elle chevauche deux années civiles, choisissez l’affichage de `{AnneeComptable}` : année de début (2023), année de fin (2024) ou les deux (2023-2024). La numérotation `{GlobalNumeroComptable}` repart de 001 à chaque nouvelle année comptable.
 
@@ -75,3 +75,12 @@ Le traitement se fait dans votre navigateur : aucune image n’est envoyée à u
 ## Conversion des justificatifs en PDF
 
 Depuis **Paramètres du groupe**, les responsables peuvent activer la conversion des justificatifs en PDF. Désactivée par défaut, les justificatifs sont envoyés à la trésorerie dans leur format d’origine. Activée, chaque photo ou image est convertie en PDF (un PDF par justificatif) avant l’envoi par e-mail ; les PDF sont envoyés tels quels. Rien n’est conservé par Scouticket.
+
+## Moyens de paiement du groupe
+
+Depuis **Paramètres du groupe**, les responsables gèrent la liste des moyens de paiement proposés lors d’une dépense avec un moyen de paiement du groupe (par exemple « Carte de procurement » ou « Espèces du groupe ») :
+
+- pour **ajouter** un moyen, tapez son nom dans le champ puis cliquez sur **Ajouter** (le bouton reste désactivé si le moyen existe déjà ou si le champ est vide) ;
+- pour **retirer** un moyen, cliquez sur l’icône poubelle à côté de son nom. Il doit toujours en rester au moins un.
+
+Cette liste est propre à chaque groupe ; elle n’a aucun impact sur les notes de frais, qui ne demandent pas de moyen de paiement.
