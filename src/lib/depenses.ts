@@ -79,7 +79,9 @@ export const totalLignes = (lignes: readonly Pick<LigneDepense, "montant">[]) =>
     ) * 100,
   ) / 100;
 
-export const totalDetails = (details: readonly DetailDepense[]) =>
+export const totalDetails = (
+  details: readonly { lignes: readonly Pick<LigneDepense, "montant">[] }[],
+) =>
   Math.round(
     details.reduce((total, detail) => total + totalLignes(detail.lignes), 0) *
       100,
@@ -105,7 +107,11 @@ export const versDepenseNomenclature = (
 
 // Total par catégorie comptable sur tous les justificatifs, dans l'ordre de
 // première apparition.
-export const ventilerParCategorie = (details: readonly DetailDepense[]) => {
+export const ventilerParCategorie = (
+  details: readonly {
+    lignes: readonly Pick<LigneDepense, "categorie" | "montant">[];
+  }[],
+) => {
   const totaux = new Map<string, number>();
   for (const ligne of details.flatMap((detail) => detail.lignes)) {
     totaux.set(

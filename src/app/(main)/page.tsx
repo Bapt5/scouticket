@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { clientAuth } from "@/lib/auth-client";
 import { FormulaireDepense } from "@/components/FormulaireDepense";
+import { FormulaireRecette } from "@/components/FormulaireRecette";
 import { CapturePhoto } from "@/components/PhotoCapture";
 import { InviteInstallation } from "@/components/InstallPrompt";
 import {
@@ -25,8 +26,9 @@ import type { ParametresGroupe } from "@/lib/parametresGroupe";
 type Groupe = {
   units: UniteGroupe[];
   nomenclature?: {
-    format: string | null;
     anneeComptable: ParametresAnneeComptable;
+    depense: { format: string | null };
+    recette: { format: string | null };
   };
   parametres?: ParametresGroupe;
   configured: boolean;
@@ -35,6 +37,8 @@ type Groupe = {
   treasuryEmail?: string;
   unitPreference: string;
 };
+
+type OngletAccueil = "depenses" | "recettes";
 
 type InvitationEnAttente = {
   id: string;
@@ -86,6 +90,7 @@ export default function Home() {
   const { data: organisations } = clientAuth.useListOrganizations();
   const [piecesJointes, setPiecesJointes] = useState<PieceJointeDepense[]>([]);
   const [typeEnvoi, setTypeEnvoi] = useState<TypeEnvoi>("note-de-frais");
+  const [ongletActif, setOngletActif] = useState<OngletAccueil>("depenses");
   const [groupe, setGroupe] = useState<Groupe | null>(null);
   const [chargementGroupe, setChargementGroupe] = useState(true);
   const [nomGroupe, setNomGroupe] = useState("");
@@ -500,7 +505,7 @@ export default function Home() {
                           href="/gestion-nomenclature"
                           className="block w-full rounded-lg bg-white px-4 py-3 text-center font-medium text-[#1E3A8A] shadow-sm ring-1 ring-zinc-200 transition-colors hover:bg-zinc-100"
                         >
-                          Nom des justificatifs
+                          Nomenclature
                         </Link>
                         <Link
                           href="/parametres-groupe"
@@ -513,115 +518,192 @@ export default function Home() {
                   </>
                 )}
               </div>
-              <fieldset className="space-y-2">
-                <legend className="text-sm font-medium text-zinc-700">
-                  Type d’envoi
-                </legend>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {TYPES_ENVOI.map((type) => {
-                    const selectionne = typeEnvoi === type;
-                    return (
-                      <label
-                        key={type}
-                        className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 text-left shadow-sm transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-zinc-400 has-[:focus-visible]:ring-offset-2 ${
-                          selectionne
-                            ? "border-zinc-900 bg-zinc-900"
-                            : "border-zinc-200 bg-white hover:bg-zinc-50"
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name="type-envoi"
-                          value={type}
-                          checked={selectionne}
-                          onChange={() => {
-                            setTypeEnvoi(type);
-                            setPiecesJointes((precedentes) =>
-                              precedentes.slice(
-                                0,
-                                nombreMaxJustificatifs(type),
-                              ),
-                            );
-                          }}
-                          className="sr-only"
-                        />
-                        <span
-                          aria-hidden="true"
-                          className={`mt-0.5 flex h-5 w-5 flex-none items-center justify-center rounded-full border-2 ${
-                            selectionne
-                              ? "border-white"
-                              : "border-zinc-400 bg-white"
-                          }`}
-                        >
-                          {selectionne && (
-                            <span className="h-2.5 w-2.5 rounded-full bg-white" />
-                          )}
-                        </span>
-                        <span className="min-w-0">
-                          <span
-                            className={`block text-sm font-semibold ${
-                              selectionne ? "text-white" : "text-zinc-900"
+              <div
+                role="tablist"
+                aria-label="Type de mouvement"
+                className="grid grid-cols-2 gap-2"
+              >
+                {(
+                  [
+                    ["depenses", "Dépenses"],
+                    ["recettes", "Recettes"],
+                  ] as const
+                ).map(([onglet, libelle]) => {
+                  const selectionne = ongletActif === onglet;
+                  return (
+                    <button
+                      key={onglet}
+                      type="button"
+                      role="tab"
+                      id={`onglet-${onglet}`}
+                      aria-selected={selectionne}
+                      aria-controls={`panneau-${onglet}`}
+                      onClick={() => setOngletActif(onglet)}
+                      className={`rounded-xl border p-3 text-sm font-semibold shadow-sm transition-colors ${
+                        selectionne
+                          ? "border-zinc-900 bg-zinc-900 text-white"
+                          : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
+                      }`}
+                    >
+                      {libelle}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {ongletActif === "depenses" && (
+                <div
+                  role="tabpanel"
+                  id="panneau-depenses"
+                  aria-labelledby="onglet-depenses"
+                  className="space-y-6"
+                >
+                  <fieldset className="space-y-2">
+                    <legend className="text-sm font-medium text-zinc-700">
+                      Type d’envoi
+                    </legend>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {TYPES_ENVOI.map((type) => {
+                        const selectionne = typeEnvoi === type;
+                        return (
+                          <label
+                            key={type}
+                            className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 text-left shadow-sm transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-zinc-400 has-[:focus-visible]:ring-offset-2 ${
+                              selectionne
+                                ? "border-zinc-900 bg-zinc-900"
+                                : "border-zinc-200 bg-white hover:bg-zinc-50"
                             }`}
                           >
-                            {LIBELLES_TYPES_ENVOI[type]}
-                          </span>
-                          <span
-                            className={`mt-0.5 block text-xs ${
-                              selectionne ? "text-zinc-300" : "text-zinc-600"
-                            }`}
-                          >
-                            {type === "note-de-frais"
-                              ? "Dépense avancée à faire rembourser par le groupe."
-                              : "Un envoi par justificatif, sans remboursement."}
-                          </span>
-                        </span>
-                      </label>
-                    );
-                  })}
+                            <input
+                              type="radio"
+                              name="type-envoi"
+                              value={type}
+                              checked={selectionne}
+                              onChange={() => {
+                                setTypeEnvoi(type);
+                                setPiecesJointes((precedentes) =>
+                                  precedentes.slice(
+                                    0,
+                                    nombreMaxJustificatifs(type),
+                                  ),
+                                );
+                              }}
+                              className="sr-only"
+                            />
+                            <span
+                              aria-hidden="true"
+                              className={`mt-0.5 flex h-5 w-5 flex-none items-center justify-center rounded-full border-2 ${
+                                selectionne
+                                  ? "border-white"
+                                  : "border-zinc-400 bg-white"
+                              }`}
+                            >
+                              {selectionne && (
+                                <span className="h-2.5 w-2.5 rounded-full bg-white" />
+                              )}
+                            </span>
+                            <span className="min-w-0">
+                              <span
+                                className={`block text-sm font-semibold ${
+                                  selectionne ? "text-white" : "text-zinc-900"
+                                }`}
+                              >
+                                {LIBELLES_TYPES_ENVOI[type]}
+                              </span>
+                              <span
+                                className={`mt-0.5 block text-xs ${
+                                  selectionne
+                                    ? "text-zinc-300"
+                                    : "text-zinc-600"
+                                }`}
+                              >
+                                {type === "note-de-frais"
+                                  ? "Dépense avancée à faire rembourser par le groupe."
+                                  : "Un envoi par justificatif, sans remboursement."}
+                              </span>
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </fieldset>
+                  <CapturePhoto
+                    onAttachmentsAdd={(nouvelles) =>
+                      setPiecesJointes((precedentes) =>
+                        [...precedentes, ...nouvelles].slice(
+                          0,
+                          nombreMaxJustificatifs(typeEnvoi),
+                        ),
+                      )
+                    }
+                    maxFichiers={nombreMaxJustificatifs(typeEnvoi)}
+                    currentCount={piecesJointes.length}
+                    scanActive={groupe.parametres?.scanJustificatifsActif}
+                  />
+                  <FormulaireDepense
+                    key={organisation.id}
+                    typeEnvoi={typeEnvoi}
+                    piecesJointes={piecesJointes}
+                    emailUtilisateur={session.user.email}
+                    units={groupe.units}
+                    nomenclature={
+                      groupe.nomenclature && {
+                        format: groupe.nomenclature.depense.format,
+                        anneeComptable: groupe.nomenclature.anneeComptable,
+                      }
+                    }
+                    moyensPaiement={groupe.parametres?.moyensPaiement}
+                    uniteInitiale={groupe.unitPreference}
+                    treasuryVerified={groupe.treasuryVerified}
+                    onChangementUnite={(unitId) =>
+                      void fetch("/api/user/unit-preference", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          organizationId: organisation.id,
+                          unitId,
+                        }),
+                      })
+                    }
+                    erreurEnregistrementUnite=""
+                    onCreerNouvelleNote={() => setPiecesJointes([])}
+                    onSupprimerPieceJointe={(index) =>
+                      setPiecesJointes((precedentes) =>
+                        precedentes.filter((_, i) => i !== index),
+                      )
+                    }
+                    estEnLigne={estEnLigne}
+                  />
                 </div>
-              </fieldset>
-              <CapturePhoto
-                onAttachmentsAdd={(nouvelles) =>
-                  setPiecesJointes((precedentes) =>
-                    [...precedentes, ...nouvelles].slice(
-                      0,
-                      nombreMaxJustificatifs(typeEnvoi),
-                    ),
-                  )
-                }
-                maxFichiers={nombreMaxJustificatifs(typeEnvoi)}
-                currentCount={piecesJointes.length}
-                scanActive={groupe.parametres?.scanJustificatifsActif}
-              />
-              <FormulaireDepense
-                key={organisation.id}
-                typeEnvoi={typeEnvoi}
-                piecesJointes={piecesJointes}
-                emailUtilisateur={session.user.email}
-                units={groupe.units}
-                nomenclature={groupe.nomenclature}
-                moyensPaiement={groupe.parametres?.moyensPaiement}
-                uniteInitiale={groupe.unitPreference}
-                treasuryVerified={groupe.treasuryVerified}
-                onChangementUnite={(unitId) =>
-                  void fetch("/api/user/unit-preference", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      organizationId: organisation.id,
-                      unitId,
-                    }),
-                  })
-                }
-                erreurEnregistrementUnite=""
-                onCreerNouvelleNote={() => setPiecesJointes([])}
-                onSupprimerPieceJointe={(index) =>
-                  setPiecesJointes((precedentes) =>
-                    precedentes.filter((_, i) => i !== index),
-                  )
-                }
-                estEnLigne={estEnLigne}
-              />
+              )}
+
+              {ongletActif === "recettes" && (
+                <div
+                  role="tabpanel"
+                  id="panneau-recettes"
+                  aria-labelledby="onglet-recettes"
+                >
+                  <FormulaireRecette
+                    key={organisation.id}
+                    emailUtilisateur={session.user.email}
+                    units={groupe.units}
+                    uniteInitiale={groupe.unitPreference}
+                    treasuryVerified={groupe.treasuryVerified}
+                    scanActive={groupe.parametres?.scanJustificatifsActif}
+                    onChangementUnite={(unitId) =>
+                      void fetch("/api/user/unit-preference", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          organizationId: organisation.id,
+                          unitId,
+                        }),
+                      })
+                    }
+                    estEnLigne={estEnLigne}
+                  />
+                </div>
+              )}
             </>
           )}
         </div>

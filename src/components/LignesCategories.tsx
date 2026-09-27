@@ -8,6 +8,10 @@ import {
   totalLignes,
   type LigneSaisie,
 } from "@/lib/depenses";
+import {
+  CATEGORIES_COMPTABLES,
+  type CategorieComptable,
+} from "@/constants/configDepenses";
 import { SelecteurCategorie } from "@/components/SelecteurCategorie";
 
 interface LignesCategoriesProps {
@@ -15,6 +19,8 @@ interface LignesCategoriesProps {
   readonly lignes: LigneSaisie[];
   readonly onChange: (lignes: LigneSaisie[]) => void;
   readonly afficherErreurs: boolean;
+  /** Liste des catégories proposées (dépenses par défaut). */
+  readonly categories?: readonly CategorieComptable[];
 }
 
 // Lignes « montant + catégorie comptable » d'un justificatif. La première
@@ -24,6 +30,7 @@ export function LignesCategories({
   lignes,
   onChange,
   afficherErreurs,
+  categories = CATEGORIES_COMPTABLES,
 }: LignesCategoriesProps) {
   const modifierLigne = (index: number, modification: Partial<LigneSaisie>) =>
     onChange(
@@ -81,6 +88,7 @@ export function LignesCategories({
               onChange={(categorie) => modifierLigne(index, { categorie })}
               invalide={erreurCategorie}
               idErreur={`erreur-${idCategorie}`}
+              categories={categories}
             />
             {/* Colonne réservée pour que la mise en page ne bouge pas à l'ajout de lignes */}
             <div className="pt-7 w-10">

@@ -125,6 +125,8 @@ interface CapturePhotoProps {
   readonly scanActive?: boolean;
   /** Nombre maximal de justificatifs (1 pour une dépense du groupe). */
   readonly maxFichiers?: number;
+  /** Titre affiché au-dessus des boutons (ex. « Justificatif (optionnel) » pour une recette). */
+  readonly titre?: string;
 }
 
 interface RevueScan {
@@ -139,6 +141,7 @@ export function CapturePhoto({
   currentCount,
   scanActive = false,
   maxFichiers = MAX_ATTACHMENT_COUNT,
+  titre = "Justificatif de dépense",
 }: Readonly<CapturePhotoProps>) {
   const [errorMessages, setErrorMessages] = useState<string[]>([]);
   const [compressedInfo, setCompressedInfo] = useState<string | null>(null);
@@ -359,7 +362,7 @@ export function CapturePhoto({
     <div className="space-y-4">
       <h2 className="text-lg font-semibold text-zinc-900 flex items-center gap-2">
         <CameraIcon className="w-5 h-5 text-zinc-700" aria-hidden="true" />{" "}
-        Justificatif de dépense
+        {titre}
       </h2>
 
       <div className="grid grid-cols-2 gap-3">

@@ -16,6 +16,7 @@ export async function recupererGroupeActif(identifiantOrganisation: string) {
     treasury_email: string | null;
     treasury_verification: unknown;
     nomenclature_format: string | null;
+    nomenclature_format_recette: string | null;
     annee_comptable_debut_mois: number | null;
     annee_comptable_debut_jour: number | null;
     annee_comptable_format: FormatAnneeComptable | null;
@@ -25,6 +26,7 @@ export async function recupererGroupeActif(identifiantOrganisation: string) {
   }>(
     `SELECT organization.name, donnees.treasury_email,
             donnees.treasury_verification, donnees.nomenclature_format,
+            donnees.nomenclature_format_recette,
             donnees.annee_comptable_debut_mois,
             donnees.annee_comptable_debut_jour,
             donnees.annee_comptable_format,
@@ -54,7 +56,6 @@ export async function recupererGroupeActif(identifiantOrganisation: string) {
       status: "pending",
     }) as ValidationTresorerie,
     nomenclature: {
-      format: groupe.nomenclature_format,
       anneeComptable: {
         mois:
           groupe.annee_comptable_debut_mois ??
@@ -66,6 +67,8 @@ export async function recupererGroupeActif(identifiantOrganisation: string) {
           groupe.annee_comptable_format ??
           PARAMETRES_ANNEE_COMPTABLE_PAR_DEFAUT.format,
       },
+      depense: { format: groupe.nomenclature_format },
+      recette: { format: groupe.nomenclature_format_recette },
     },
     parametres: {
       scanJustificatifsActif: groupe.scan_justificatifs_actif ?? false,
@@ -73,6 +76,19 @@ export async function recupererGroupeActif(identifiantOrganisation: string) {
       moyensPaiement: groupe.moyens_paiement ?? [...MOYENS_PAIEMENT_PAR_DEFAUT],
     } satisfies ParametresGroupe,
   };
+}
+
+/** Nom des colonnes de compteurs, selon le domaine (dépense ou recette). */
+function colonnesCompteurs(domaine: "depense" | "recette") {
+  return domaine === "recette"
+    ? {
+        compteurGlobal: "compteur_global_recette",
+        compteursComptables: "compteurs_comptables_recette",
+      }
+    : {
+        compteurGlobal: "compteur_global",
+        compteursComptables: "compteurs_comptables",
+      };
 }
 
 /**
@@ -85,12 +101,15 @@ export async function reserverNumeros(
   client: PoolClient,
   identifiantOrganisation: string,
   reservation: ReservationNumeros,
+  domaine: "depense" | "recette" = "depense",
 ): Promise<{ premierGlobal?: number; premierComptable?: number }> {
+  const { compteurGlobal: colGlobal, compteursComptables: colComptables } =
+    colonnesCompteurs(domaine);
   const resultat = await client.query<{
     compteur_global: number;
     compteurs_comptables: Record<string, number>;
   }>(
-    `SELECT compteur_global, compteurs_comptables
+    `SELECT ${colGlobal} AS compteur_global, ${colComptables} AS compteurs_comptables
        FROM scouticket_group_data
       WHERE organization_id = $1 FOR UPDATE`,
     [identifiantOrganisation],
@@ -114,7 +133,7 @@ export async function reserverNumeros(
   }
   await client.query(
     `UPDATE scouticket_group_data
-        SET compteur_global = $2, compteurs_comptables = $3::jsonb
+        SET ${colGlobal} = $2, ${colComptables} = $3::jsonb
       WHERE organization_id = $1`,
     [identifiantOrganisation, compteurGlobal, JSON.stringify(compteurs)],
   );

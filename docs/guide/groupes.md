@@ -28,9 +28,9 @@ Vous pouvez renommer ou supprimer une unité, en ajouter une autre et choisir sa
 
 Conservez au moins une unité : un justificatif doit toujours être rattaché à une unité du groupe.
 
-## Nom des justificatifs
+## Nomenclature des justificatifs
 
-Par défaut, les pièces jointes envoyées à la trésorerie gardent le nom du fichier importé par le membre. Les responsables peuvent définir un format de nom depuis **Administration** puis **Nom des justificatifs** ; en cochant l’option, le format est pré-rempli avec `date - unité - type - mode de paiement - montant` et reste modifiable.
+Par défaut, les pièces jointes envoyées à la trésorerie gardent le nom du fichier importé par le membre. Les responsables peuvent définir un format de nom depuis **Administration** puis **Nomenclature** ; en cochant l’option, le format est pré-rempli avec `date - unité - type - mode de paiement - montant` et reste modifiable. Un bascule en haut de la page permet de définir un format et une numérotation **différents pour les dépenses et pour les recettes** ; seule l’année comptable (mois/jour de début) est commune aux deux et se modifie depuis l’onglet « Dépenses ».
 
 Le format mélange du texte fixe et des variables entre accolades, par exemple `{YYYY}-{MM}-{DD} - {Branche} - {Type} - {Montant} - {Numero}` donne `2026-03-05 - Louveteaux - Carburant - 28.50 - 01.pdf`. Les boutons de la page insèrent les variables, et un aperçu montre le résultat. L’extension du fichier est ajoutée automatiquement.
 

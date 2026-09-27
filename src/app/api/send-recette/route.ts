@@ -1,18 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { envoyerEmailDepense, type DonneesEmailDepense } from "@/lib/email";
+import { envoyerEmailRecette, type DonneesEmailRecette } from "@/lib/email";
 import { assainirSegmentNomFichier, devinerExtension } from "@/lib/attachments";
 import {
   analyserDateIso,
   calculerReservation,
-  dedoublonnerNomsFichiers,
   genererNomsNomenclature,
   type ParametresAnneeComptable,
 } from "@/lib/nomenclature";
-import { versDepenseNomenclature } from "@/lib/depenses";
+import { versRecetteNomenclature } from "@/lib/recettes";
 import { convertirPiecesJointesEnPdf } from "@/lib/conversionJustificatifs";
 import { pool } from "@/lib/baseDeDonnees";
 import { jsonError, verifierErreurSmtp } from "@/lib/api/utils";
-import { validerCorpsRequete } from "@/lib/api/validateBody";
+import { validerCorpsRequeteRecette } from "@/lib/api/validateBodyRecette";
 import {
   estResponsable,
   recupererGroupeActif,
@@ -45,59 +44,70 @@ function validateEnv() {
 }
 
 /**
- * Les numéros globaux sont réservés dans une transaction validée seulement
- * après l'envoi : un échec SMTP n'en consomme aucun.
+ * Un numéro est réservé dès qu'un format est configuré, même sans pièce
+ * jointe : la référence doit apparaître dans le corps de l'e-mail dans tous
+ * les cas. Comme pour les dépenses, la réservation n'est validée qu'après
+ * l'envoi réussi de l'e-mail.
  */
 async function envoyerAvecNomenclature(
-  donneesEmail: DonneesEmailDepense,
+  donneesEmail: DonneesEmailRecette,
   identifiantOrganisation: string,
   format: string,
   anneeComptable: ParametresAnneeComptable,
 ) {
-  const depenses = donneesEmail.detailsDepenses.map(versDepenseNomenclature);
+  const recette = versRecetteNomenclature(donneesEmail.detailRecette);
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
     const reservation = calculerReservation(
       format,
       donneesEmail.date,
-      donneesEmail.piecesJointes.length,
+      1,
       anneeComptable,
     );
     const numeros =
       reservation.global > 0 || reservation.comptable
-        ? await reserverNumeros(client, identifiantOrganisation, reservation)
+        ? await reserverNumeros(
+            client,
+            identifiantOrganisation,
+            reservation,
+            "recette",
+          )
         : {};
-    const noms = genererNomsNomenclature({
+    // Référence textuelle (sans extension), toujours affichée dans le corps
+    // de l'e-mail.
+    const [reference] = genererNomsNomenclature({
       format,
       parametresAnnee: anneeComptable,
       date: donneesEmail.date,
       branche: donneesEmail.branche,
-      depenses,
-      extensions: donneesEmail.piecesJointes.map((piece) =>
-        devinerExtension(piece.typeMime, piece.nomFichierOriginal),
-      ),
+      depenses: [recette],
+      extensions: [null],
       ...numeros,
     });
-    donneesEmail.piecesJointes = donneesEmail.piecesJointes.map(
-      (piece, index) => ({ ...piece, nomFichierNormalise: noms[index] }),
-    );
-    // Référence textuelle (sans extension) affichée dans le corps de
-    // l'e-mail, en plus du nom de la pièce jointe : mêmes numéros déjà
-    // réservés ci-dessus, aucune nouvelle réservation.
-    const references = genererNomsNomenclature({
-      format,
-      parametresAnnee: anneeComptable,
-      date: donneesEmail.date,
-      branche: donneesEmail.branche,
-      depenses,
-      extensions: depenses.map(() => null),
-      ...numeros,
-    });
-    donneesEmail.detailsDepenses = donneesEmail.detailsDepenses.map(
-      (detail, index) => ({ ...detail, reference: references[index] }),
-    );
-    const resultat = await envoyerEmailDepense(donneesEmail);
+    donneesEmail.detailRecette = { ...donneesEmail.detailRecette, reference };
+    // Même référence, avec extension cette fois, utilisée comme nom de la
+    // pièce jointe quand il y en a une.
+    if (donneesEmail.piecesJointes.length > 0) {
+      const [nomFichier] = genererNomsNomenclature({
+        format,
+        parametresAnnee: anneeComptable,
+        date: donneesEmail.date,
+        branche: donneesEmail.branche,
+        depenses: [recette],
+        extensions: [
+          devinerExtension(
+            donneesEmail.piecesJointes[0].typeMime,
+            donneesEmail.piecesJointes[0].nomFichierOriginal,
+          ),
+        ],
+        ...numeros,
+      });
+      donneesEmail.piecesJointes = [
+        { ...donneesEmail.piecesJointes[0], nomFichierNormalise: nomFichier },
+      ];
+    }
+    const resultat = await envoyerEmailRecette(donneesEmail);
     await client.query("COMMIT");
     return resultat;
   } catch (erreur) {
@@ -111,7 +121,6 @@ async function envoyerAvecNomenclature(
 export async function POST(req: NextRequest) {
   return executerRouteAvecLogs(req, async () => {
     try {
-      // Auth
       const { session, identifiantUtilisateur, identifiantOrganisation } =
         await recupererContexteGroupe();
       if (!session || !identifiantUtilisateur || !identifiantOrganisation)
@@ -122,7 +131,7 @@ export async function POST(req: NextRequest) {
 
       // Max 2 envois par 30 secondes
       const limiteCourte = verifierRateLimit(
-        `envoi-email:court:${identifiantUtilisateur}`,
+        `envoi-email-recette:court:${identifiantUtilisateur}`,
         2,
         30 * 1000,
       );
@@ -132,7 +141,7 @@ export async function POST(req: NextRequest) {
 
       // Max 5 envois par 10 minutes
       const limiteLongue = verifierRateLimit(
-        `envoi-email:long:${identifiantUtilisateur}`,
+        `envoi-email-recette:long:${identifiantUtilisateur}`,
         5,
         10 * 60 * 1000,
       );
@@ -141,20 +150,15 @@ export async function POST(req: NextRequest) {
       }
 
       const userEmail = session.user.email;
-      // Env vars
       const envError = validateEnv();
       if (envError) return envError;
 
-      // Body & validation
       const body = await req.json().catch(() => null);
       if (!body) return jsonError("Corps de requête invalide", 400);
       if (body.userEmail !== userEmail) return jsonError("Email invalide", 403);
 
       const group = await recupererGroupeActif(identifiantOrganisation);
-      const { donneesEmail, error } = validerCorpsRequete(
-        body,
-        group.parametres.moyensPaiement,
-      );
+      const { donneesEmail, error } = validerCorpsRequeteRecette(body);
       if (error || !donneesEmail) return error as NextResponse;
       if (group.validation.status !== "verified" || !group.emailTresorerie)
         return jsonError(
@@ -182,25 +186,12 @@ export async function POST(req: NextRequest) {
       donneesEmail.couleur = unit.color;
       donneesEmail.emailTresorerie = group.emailTresorerie;
 
-      // Avant le nommage : les extensions doivent refléter le format converti.
       if (group.parametres.convertirJustificatifsEnPdf)
         donneesEmail.piecesJointes = await convertirPiecesJointesEnPdf(
           donneesEmail.piecesJointes,
         );
 
-      // Le RIB n'est jamais converti ni renommé par la nomenclature :
-      // « RIB - {nom du demandeur} ».
-      if (donneesEmail.rib) {
-        const nomDemandeur =
-          session.user.name?.trim() || userEmail.split("@")[0];
-        donneesEmail.rib = {
-          ...donneesEmail.rib,
-          nomFichierNormalise: `RIB - ${assainirSegmentNomFichier(nomDemandeur)}.${devinerExtension(donneesEmail.rib.typeMime, donneesEmail.rib.nomFichierOriginal)}`,
-        };
-      }
-
-      const { anneeComptable, depense } = group.nomenclature;
-      const { format } = depense;
+      const { format } = group.nomenclature.recette;
       let resultat;
       if (format) {
         if (!analyserDateIso(donneesEmail.date))
@@ -209,18 +200,20 @@ export async function POST(req: NextRequest) {
           donneesEmail,
           identifiantOrganisation,
           format,
-          anneeComptable,
+          group.nomenclature.anneeComptable,
         );
       } else {
-        const noms = dedoublonnerNomsFichiers(
-          donneesEmail.piecesJointes.map((piece) =>
-            assainirSegmentNomFichier(piece.nomFichierOriginal),
-          ),
-        );
-        donneesEmail.piecesJointes = donneesEmail.piecesJointes.map(
-          (piece, index) => ({ ...piece, nomFichierNormalise: noms[index] }),
-        );
-        resultat = await envoyerEmailDepense(donneesEmail);
+        if (donneesEmail.piecesJointes.length > 0) {
+          donneesEmail.piecesJointes = [
+            {
+              ...donneesEmail.piecesJointes[0],
+              nomFichierNormalise: assainirSegmentNomFichier(
+                donneesEmail.piecesJointes[0].nomFichierOriginal,
+              ),
+            },
+          ];
+        }
+        resultat = await envoyerEmailRecette(donneesEmail);
       }
       return NextResponse.json({
         success: true,
@@ -228,8 +221,8 @@ export async function POST(req: NextRequest) {
         messageId: resultat.messageId,
       });
     } catch (error) {
-      journal.erreur("depense.envoi_echoue", {
-        categorie: "depense",
+      journal.erreur("recette.envoi_echoue", {
+        categorie: "recette",
         erreur: error,
       });
       if (error instanceof Error) {

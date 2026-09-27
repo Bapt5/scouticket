@@ -1,7 +1,10 @@
 "use client";
 
 import { useId, useState, type KeyboardEvent } from "react";
-import { CATEGORIES_COMPTABLES } from "@/constants/configDepenses";
+import {
+  CATEGORIES_COMPTABLES,
+  type CategorieComptable,
+} from "@/constants/configDepenses";
 
 interface SelecteurCategorieProps {
   readonly id: string;
@@ -10,6 +13,8 @@ interface SelecteurCategorieProps {
   readonly onChange: (categorie: string) => void;
   readonly invalide?: boolean;
   readonly idErreur?: string;
+  /** Liste des catégories proposées (dépenses par défaut). */
+  readonly categories?: readonly CategorieComptable[];
 }
 
 const normaliser = (texte: string) =>
@@ -25,6 +30,7 @@ export function SelecteurCategorie({
   onChange,
   invalide = false,
   idErreur,
+  categories = CATEGORIES_COMPTABLES,
 }: SelecteurCategorieProps) {
   const idListe = useId();
   const [ouvert, setOuvert] = useState(false);
@@ -32,14 +38,14 @@ export function SelecteurCategorie({
   const [indexActif, setIndexActif] = useState(0);
 
   const requete = normaliser(recherche);
-  const resultats = CATEGORIES_COMPTABLES.filter(
+  const resultats = categories.filter(
     (categorie) =>
       !requete ||
       normaliser(`${categorie.libelle} ${categorie.description}`).includes(
         requete,
       ),
   );
-  const categorieChoisie = CATEGORIES_COMPTABLES.find(
+  const categorieChoisie = categories.find(
     (categorie) => categorie.libelle === valeur,
   );
   const idOption = (index: number) => `${idListe}-option-${index}`;
@@ -145,18 +151,16 @@ export function SelecteurCategorie({
           </ul>
         )}
       </div>
-      {/* Hauteur fixe (2 lignes) ; le texte complet s'affiche au survol via ::after */}
-      <div
-        data-texte={categorieChoisie?.description || undefined}
-        className="group relative h-10 after:pointer-events-none after:absolute after:left-0 after:top-full after:z-30 after:mt-1 after:hidden after:w-full after:rounded-lg after:bg-zinc-900 after:p-2 after:text-xs after:leading-5 after:text-white after:shadow-lg after:content-[attr(data-texte)] hover:after:block"
+      {/* Hauteur fixe (2 lignes) ; le texte complet s'affiche au survol via le
+          tooltip natif du navigateur (title), qui ne recouvre jamais les
+          champs suivants contrairement à un tooltip positionné en CSS. */}
+      <p
+        title={categorieChoisie?.description || undefined}
+        className="h-10 line-clamp-2 text-xs leading-5 text-zinc-500"
+        aria-live="polite"
       >
-        <p
-          className="line-clamp-2 text-xs leading-5 text-zinc-500"
-          aria-live="polite"
-        >
-          {categorieChoisie?.description}
-        </p>
-      </div>
+        {categorieChoisie?.description}
+      </p>
     </div>
   );
 }

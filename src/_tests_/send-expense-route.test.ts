@@ -103,8 +103,9 @@ describe("POST /api/send-expense", () => {
       emailTresorerie: "tresorerie@example.test",
       validation: { status: "verified" },
       nomenclature: {
-        format: null,
         anneeComptable: { mois: 9, jour: 1, format: "debut-fin" },
+        depense: { format: null },
+        recette: { format: null },
       },
       parametres: {
         scanJustificatifsActif: false,
@@ -303,8 +304,9 @@ describe("POST /api/send-expense", () => {
       emailTresorerie: "tresorerie@example.test",
       validation: { status: "verified" },
       nomenclature: {
-        format,
         anneeComptable: { mois: 9, jour: 1, format: "debut-fin" },
+        depense: { format },
+        recette: { format: null },
       },
       parametres: {
         scanJustificatifsActif: false,
@@ -360,6 +362,7 @@ describe("POST /api/send-expense", () => {
       expect(envoye.piecesJointes[0].nomFichierNormalise).toBe(
         "2025-2026 - 013.pdf",
       );
+      expect(envoye.detailsDepenses[0].reference).toBe("2025-2026 - 013");
       expect(mocks.reserverNumeros).toHaveBeenCalledWith(
         expect.anything(),
         "org_1",

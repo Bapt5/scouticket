@@ -23,11 +23,12 @@ import { journal } from "@/lib/logger";
 
 const expressionBase64Sure = /^[A-Za-z0-9+/=]+$/;
 
-type ResultatPiece =
+export type ResultatPiece =
   { piece: PieceJointeDepense; taille: number } | { error: NextResponse };
 
 // Valide une pièce jointe brute (justificatif ou RIB) ; `nom` sert aux messages.
-function validerPieceJointe(brute: unknown, nom: string): ResultatPiece {
+// Exportée pour être réutilisée par la validation des recettes.
+export function validerPieceJointe(brute: unknown, nom: string): ResultatPiece {
   if (!brute || typeof brute !== "object") {
     return { error: jsonError(`${nom} invalide`, 400) };
   }
