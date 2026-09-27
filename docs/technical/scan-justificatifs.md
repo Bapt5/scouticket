@@ -26,12 +26,19 @@ Ces échecs ne sont pas montrés aux membres (ils sont seulement journalisés da
 
 ## Paramètres du groupe
 
-Les paramètres sont stockés dans `scouticket_group_data` (migrations `sql/008_parametres_groupe.sql` et `sql/009_convertir_justificatifs_pdf.sql`, à appliquer avec `pnpm db:migrate`) :
+Les paramètres sont stockés dans `scouticket_group_data` (migrations `sql/008_parametres_groupe.sql`, `sql/009_convertir_justificatifs_pdf.sql` et `sql/010_moyens_paiement.sql`, à appliquer avec `pnpm db:migrate`) :
 
 - `scan_justificatifs_actif` : active le scan (défaut : `false`).
 - `convertir_justificatifs_pdf` : convertit les justificatifs en PDF avant l’envoi (défaut : `false`). Voir [Conversion en PDF](#conversion-en-pdf).
+- `moyens_paiement` (JSONB) : liste des moyens de paiement du groupe proposés lors d’une dépense de groupe. `NULL` (valeur par défaut) équivaut à la liste historique (`MOYENS_PAIEMENT_PAR_DEFAUT` dans `src/constants/configDepenses.ts`). Voir [Moyens de paiement](#moyens-de-paiement).
 
 `GET /api/group/parametres` est lisible par tous les membres ; `PATCH /api/group/parametres` (mise à jour partielle) est réservé aux responsables. Les paramètres sont aussi renvoyés par `GET /api/group/config` (`parametres`), ce qui évite un appel supplémentaire depuis l’accueil. La page est conçue pour accueillir d’autres paramètres : il suffit d’ajouter une colonne, un champ dans `src/lib/parametresGroupe.ts` et un `InterrupteurParametre`.
+
+## Moyens de paiement
+
+Sur `/parametres-groupe`, la section **Moyens de paiement** (`src/components/SelecteurMoyensPaiement.tsx`) permet aux responsables de personnaliser la liste proposée dans le formulaire de dépense de groupe (`FormulaireDepense`) : un champ texte permet de saisir un nouveau moyen (bouton **Ajouter**, désactivé si le texte est vide, déjà présent ou si la limite de 20 moyens est atteinte), et la liste des moyens existants (défilable au-delà de 4 lignes) permet d'en retirer un via son icône poubelle, sauf s’il ne reste qu’un seul moyen.
+
+La liste est validée côté serveur (`schemaMiseAJourParametresGroupe` dans `src/lib/parametresGroupe.ts`) : 1 à 20 moyens, chacun non vide (max 50 caractères), sans doublon une fois les accents et la casse ignorés. `POST /api/send-expense` valide le moyen de paiement soumis contre la liste du groupe actif (`estMoyenPaiementValide` dans `src/lib/api/validateBody.ts`), et non plus contre une constante globale.
 
 ## Conversion en PDF
 

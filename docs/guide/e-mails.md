@@ -4,13 +4,15 @@
 
 ## Ce que contient l’e-mail
 
-| Élément            | Contenu                                                                                                                |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------- |
-| Objet              | Groupe, unité et date de la dépense                                                                                    |
-| Informations       | Date, unité, demandeur, description éventuelle et total                                                                |
-| Plusieurs dépenses | Pour chaque justificatif : mode de paiement, lignes catégorie comptable / montant et sous-total, puis le total général |
-| Pièces jointes     | Les photos et PDF envoyés, avec des noms pouvant inclure catégorie, mode de paiement et montant                        |
-| Couleur            | La couleur de l’unité choisie dans la configuration du groupe                                                          |
+L’objet indique le type d’envoi : **Note de frais** ou **Dépense avec moyen de paiement du groupe**.
+
+| Élément        | Note de frais                                                                                                                 | Dépense avec moyen de paiement du groupe                                                     |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Objet          | Note de frais, groupe, unité et date                                                                                          | Dépense avec moyen de paiement du groupe, groupe, unité et date                              |
+| Justificatif   | Pour chaque justificatif : date de la dépense, activité liée, description, lignes catégorie comptable / montant et sous-total | Date du justificatif, description, lignes catégorie comptable / montant et moyen de paiement |
+| Informations   | Unité, demandeur, ventilation du total par catégorie comptable, total général et présence du RIB                              | Unité, demandeur et total                                                                    |
+| Pièces jointes | Les photos et PDF envoyés, puis le RIB s’il est fourni (nommé `RIB - {nom du demandeur}`)                                     | Le justificatif (un seul)                                                                    |
+| Couleur        | La couleur de l’unité choisie dans la configuration du groupe                                                                 | La couleur de l’unité choisie dans la configuration du groupe                                |
 
 Vous pouvez ensuite rechercher le nom du groupe, une unité, une date ou un mot de la description dans votre boîte e-mail pour retrouver un justificatif.
 

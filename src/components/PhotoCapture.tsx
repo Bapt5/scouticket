@@ -123,6 +123,8 @@ interface CapturePhotoProps {
   readonly currentCount: number;
   /** Recadrage automatique des images avec Scanic (paramètre du groupe). */
   readonly scanActive?: boolean;
+  /** Nombre maximal de justificatifs (1 pour une dépense du groupe). */
+  readonly maxFichiers?: number;
 }
 
 interface RevueScan {
@@ -136,6 +138,7 @@ export function CapturePhoto({
   onAttachmentsAdd,
   currentCount,
   scanActive = false,
+  maxFichiers = MAX_ATTACHMENT_COUNT,
 }: Readonly<CapturePhotoProps>) {
   const [errorMessages, setErrorMessages] = useState<string[]>([]);
   const [compressedInfo, setCompressedInfo] = useState<string | null>(null);
@@ -229,19 +232,17 @@ export function CapturePhoto({
     const nextErrors: string[] = [];
     setCompressedInfo(null);
 
-    if (currentCount >= MAX_ATTACHMENT_COUNT) {
+    if (currentCount >= maxFichiers) {
       setErrorMessages([
-        `Vous avez déjà atteint la limite de ${MAX_ATTACHMENT_COUNT} justificatifs.`,
+        `Vous avez déjà atteint la limite de ${maxFichiers} justificatifs.`,
       ]);
       return;
     }
 
-    const availableSlots = MAX_ATTACHMENT_COUNT - currentCount;
+    const availableSlots = maxFichiers - currentCount;
     const candidates = selectedFiles.slice(0, availableSlots);
     if (selectedFiles.length > availableSlots) {
-      nextErrors.push(
-        `Nombre maximum atteint: ${MAX_ATTACHMENT_COUNT} justificatifs.`,
-      );
+      nextErrors.push(`Nombre maximum atteint: ${maxFichiers} justificatifs.`);
     }
 
     const piecesJointesCreees: PieceJointeDepense[] = [];
