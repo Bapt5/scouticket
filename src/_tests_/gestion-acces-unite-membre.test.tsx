@@ -8,6 +8,7 @@ const membre = {
   nom: "Camille Test",
   email: "camille@example.test",
   role: "member",
+  recoitNotifications: false,
 };
 
 const unites = [
@@ -18,9 +19,11 @@ const unites = [
 const proprietesParDefaut = {
   estMoi: false,
   roleAppelant: "owner",
+  estDernierTresorierNotifie: false,
   onClose: vi.fn(),
   onMembreRetire: vi.fn(),
   onRoleModifie: vi.fn(),
+  onNotificationsModifiees: vi.fn(),
 };
 
 const reponseUnites = (corps: object) => ({
@@ -124,7 +127,7 @@ describe("GestionAccesUniteMembre", () => {
       );
   });
 
-  it("n’affiche ni menu de rôle, ni case, ni bouton pour son propre rôle de responsable", async () => {
+  it("n’affiche ni menu de rôle, ni gestion d’unités, ni retrait pour son propre rôle de responsable, mais permet sa propre case de notification", async () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(
       reponseUnites({
         accesTotal: true,
@@ -154,8 +157,11 @@ describe("GestionAccesUniteMembre", () => {
       screen.queryByRole("checkbox", { name: "Tout sélectionner" }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /Enregistrer/ }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("checkbox", { name: /Reçoit les e-mails/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Enregistrer/ }),
+    ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /Retirer l’utilisateur/ }),
     ).not.toBeInTheDocument();
@@ -295,6 +301,75 @@ describe("GestionAccesUniteMembre", () => {
     expect(JSON.parse(optionsUnites.body)).toEqual({
       uniteIds: ["farfadets"],
     });
+  });
+
+  it("permet de désactiver la notification d'un trésorier", async () => {
+    const utilisateur = userEvent.setup();
+    const onNotificationsModifiees = vi.fn();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        reponseUnites({
+          accesTotal: true,
+          unites,
+          uniteIdsAutorisees: ["farfadets", "groupe"],
+        }),
+      )
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({}) });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <GestionAccesUniteMembre
+        membre={{ ...membre, role: "owner", recoitNotifications: true }}
+        {...proprietesParDefaut}
+        onNotificationsModifiees={onNotificationsModifiees}
+      />,
+    );
+
+    const case_ = await screen.findByRole("checkbox", {
+      name: /Reçoit les e-mails/,
+    });
+    expect(case_).toBeChecked();
+    await utilisateur.click(case_);
+    await utilisateur.click(
+      screen.getByRole("button", { name: "Enregistrer les modifications" }),
+    );
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    const [url, options] = fetchMock.mock.calls[1];
+    expect(url).toBe(`/api/group/members/${membre.id}/notifications`);
+    expect(options.method).toBe("PATCH");
+    expect(JSON.parse(options.body)).toEqual({ recoit: false });
+    expect(onNotificationsModifiees).toHaveBeenCalledWith(membre.id, false);
+  });
+
+  it("désactive la case du dernier trésorier notifié", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValueOnce(
+        reponseUnites({
+          accesTotal: true,
+          unites,
+          uniteIdsAutorisees: ["farfadets", "groupe"],
+        }),
+      ),
+    );
+
+    render(
+      <GestionAccesUniteMembre
+        membre={{ ...membre, role: "owner", recoitNotifications: true }}
+        {...proprietesParDefaut}
+        estDernierTresorierNotifie
+      />,
+    );
+
+    const case_ = await screen.findByRole("checkbox", {
+      name: /Reçoit les e-mails/,
+    });
+    expect(case_).toBeDisabled();
+    expect(
+      screen.getByText("Au moins un trésorier doit recevoir les mails."),
+    ).toBeInTheDocument();
   });
 
   it("retire un membre après confirmation", async () => {

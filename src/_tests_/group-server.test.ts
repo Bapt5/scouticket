@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({ query: vi.fn() }));
 vi.mock("@/lib/baseDeDonnees", () => ({ pool: { query: mocks.query } }));
 
 import {
+  compterTresoriersNotifies,
   estResponsable,
   recupererGroupeActif,
   recupererUnitesAutoriseesMembre,
@@ -93,6 +94,19 @@ describe("recupererGroupeActif", () => {
     mocks.query.mockResolvedValueOnce({ rows: [] });
 
     await expect(recupererGroupeActif("org_inconnu")).rejects.toThrow();
+  });
+});
+
+describe("compterTresoriersNotifies", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("compte les trésoriers notifiés, hors le membre exclu", async () => {
+    mocks.query.mockResolvedValueOnce({ rows: [{ count: "2" }] });
+
+    const nombre = await compterTresoriersNotifies("org_1", "user_2");
+
+    expect(nombre).toBe(2);
+    expect(mocks.query.mock.calls[0][1]).toEqual(["org_1", "user_2"]);
   });
 });
 

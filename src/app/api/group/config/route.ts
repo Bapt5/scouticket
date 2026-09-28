@@ -106,6 +106,16 @@ export async function POST(req: Request) {
        ON CONFLICT (organization_id) DO NOTHING`,
         [identifiantOrganisation],
       );
+      // Garantit qu'un trésorier (souvent le créateur du groupe, à sa
+      // première configuration) reçoit les mails par défaut dès qu'il passe
+      // par cette étape, sans dépendre d'une promotion via /role.
+      if (role === "owner")
+        await client.query(
+          `INSERT INTO scouticket_notification_tresorerie (user_id, organization_id)
+         VALUES ($1, $2)
+         ON CONFLICT DO NOTHING`,
+          [identifiantUtilisateur, identifiantOrganisation],
+        );
       await appliquerUnites(client, identifiantOrganisation, units);
       await client.query("COMMIT");
     } catch (erreur) {

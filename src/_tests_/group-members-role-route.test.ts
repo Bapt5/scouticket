@@ -117,9 +117,11 @@ describe("PATCH /api/group/members/[memberId]/role", () => {
   });
 
   it("traduit le refus de Better Auth en 403", async () => {
-    mocks.query.mockResolvedValueOnce({
-      rows: [{ userId: "user_2", role: "owner" }],
-    });
+    mocks.query
+      .mockResolvedValueOnce({
+        rows: [{ userId: "user_2", role: "owner" }],
+      })
+      .mockResolvedValueOnce({ rows: [{ count: "1" }] });
     mocks.updateMemberRole.mockRejectedValueOnce(
       new APIError(403, {
         code: "YOU_ARE_NOT_ALLOWED_TO_UPDATE_THIS_MEMBER",
@@ -134,5 +136,59 @@ describe("PATCH /api/group/members/[memberId]/role", () => {
 
     expect(reponse.status).toBe(403);
     expect(corps.error).toContain("responsable");
+  });
+
+  it("bloque la rétrogradation du dernier trésorier notifié", async () => {
+    mocks.query
+      .mockResolvedValueOnce({
+        rows: [{ userId: "user_2", role: "owner" }],
+      })
+      .mockResolvedValueOnce({ rows: [{ count: "0" }] });
+
+    const reponse = await PATCH(requete({ role: "admin" }), {
+      params: params(),
+    });
+    const corps = await reponse.json();
+
+    expect(reponse.status).toBe(400);
+    expect(corps.error).toContain("trésorier");
+    expect(mocks.updateMemberRole).not.toHaveBeenCalled();
+  });
+
+  it("retire la notification du trésorier rétrogradé quand un autre reste notifié", async () => {
+    mocks.query
+      .mockResolvedValueOnce({
+        rows: [{ userId: "user_2", role: "owner" }],
+      })
+      .mockResolvedValueOnce({ rows: [{ count: "1" }] })
+      .mockResolvedValueOnce({ rows: [] });
+
+    const reponse = await PATCH(requete({ role: "admin" }), {
+      params: params(),
+    });
+
+    expect(reponse.status).toBe(200);
+    expect(mocks.query).toHaveBeenLastCalledWith(
+      expect.stringMatching(/DELETE FROM scouticket_notification_tresorerie/),
+      ["user_2", "org_1"],
+    );
+  });
+
+  it("active la notification par défaut lors d'une promotion au rôle de trésorier", async () => {
+    mocks.query
+      .mockResolvedValueOnce({
+        rows: [{ userId: "user_2", role: "member" }],
+      })
+      .mockResolvedValueOnce({ rows: [] });
+
+    const reponse = await PATCH(requete({ role: "owner" }), {
+      params: params(),
+    });
+
+    expect(reponse.status).toBe(200);
+    expect(mocks.query).toHaveBeenLastCalledWith(
+      expect.stringMatching(/INSERT INTO scouticket_notification_tresorerie/),
+      ["user_2", "org_1"],
+    );
   });
 });

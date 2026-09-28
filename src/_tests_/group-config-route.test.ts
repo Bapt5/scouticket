@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
   recupererUnitesAutoriseesMembre: vi.fn(),
   recupererGroupeActif: vi.fn(),
   query: vi.fn(),
+  connect: vi.fn(),
+  verifierOrigineRequete: vi.fn(),
 }));
 
 vi.mock("@/lib/sessionServeur", () => ({
@@ -25,9 +27,14 @@ vi.mock("@/lib/groupServer", async () => {
     recupererUnitesAutoriseesMembre: mocks.recupererUnitesAutoriseesMembre,
   };
 });
-vi.mock("@/lib/baseDeDonnees", () => ({ pool: { query: mocks.query } }));
+vi.mock("@/lib/baseDeDonnees", () => ({
+  pool: { query: mocks.query, connect: mocks.connect },
+}));
+vi.mock("@/lib/api/securiteRequetes", () => ({
+  verifierOrigineRequete: mocks.verifierOrigineRequete,
+}));
 
-import { GET } from "@/app/api/group/config/route";
+import { GET, POST } from "@/app/api/group/config/route";
 
 const UNITES = [
   { id: "farfadets", label: "Farfadets", color: "#6CC24A" },
@@ -95,5 +102,59 @@ describe("GET /api/group/config", () => {
     const corps = await reponse.json();
 
     expect(corps.unitPreference).toBe("");
+  });
+});
+
+describe("POST /api/group/config", () => {
+  function creerClientFictif() {
+    const query = vi.fn().mockResolvedValue({});
+    const release = vi.fn();
+    return { query, client: { query, release } };
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.recupererContexteGroupe.mockResolvedValue({
+      identifiantOrganisation: "org_1",
+      identifiantUtilisateur: "user_1",
+    });
+    mocks.recupererSession.mockResolvedValue({ user: { id: "user_1" } });
+    mocks.verifierOrigineRequete.mockReturnValue(null);
+  });
+
+  const UNE_UNITE = [{ id: null, label: "Groupe", color: "#1E3A8A" }];
+
+  const requete = (units: unknown) =>
+    new Request("https://example.test/api/group/config", {
+      method: "POST",
+      body: JSON.stringify({ units }),
+    });
+
+  it("active la notification par défaut pour le trésorier qui configure le groupe", async () => {
+    const { client, query } = creerClientFictif();
+    mocks.connect.mockResolvedValue(client);
+    mocks.recupererRoleMembre.mockResolvedValue("owner");
+
+    const reponse = await POST(requete(UNE_UNITE));
+
+    expect(reponse.status).toBe(200);
+    expect(query).toHaveBeenCalledWith(
+      expect.stringMatching(/INSERT INTO scouticket_notification_tresorerie/),
+      ["user_1", "org_1"],
+    );
+  });
+
+  it("n'active pas de notification pour un responsable non trésorier", async () => {
+    const { client, query } = creerClientFictif();
+    mocks.connect.mockResolvedValue(client);
+    mocks.recupererRoleMembre.mockResolvedValue("admin");
+
+    const reponse = await POST(requete(UNE_UNITE));
+
+    expect(reponse.status).toBe(200);
+    expect(query).not.toHaveBeenCalledWith(
+      expect.stringMatching(/INSERT INTO scouticket_notification_tresorerie/),
+      expect.anything(),
+    );
   });
 });

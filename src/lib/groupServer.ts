@@ -48,6 +48,9 @@ export async function recupererGroupeActif(identifiantOrganisation: string) {
       `SELECT "user".email
          FROM member
          JOIN "user" ON "user".id = member."userId"
+         JOIN scouticket_notification_tresorerie notif
+           ON notif.user_id = member."userId"
+          AND notif.organization_id = member."organizationId"
         WHERE member."organizationId" = $1 AND member.role = 'owner'`,
       [identifiantOrganisation],
     ),
@@ -156,6 +159,28 @@ export async function recupererRoleMembre(
 /** Un responsable (owner/admin) a toujours accès à toutes les unités de son groupe. */
 export function estResponsable(role: string | null) {
   return role === "admin" || role === "owner";
+}
+
+/**
+ * Nombre de trésoriers (rôle owner) qui reçoivent actuellement les mails de
+ * notes de frais/dépenses/recettes dans ce groupe, hors le membre exclu le
+ * cas échéant (pour vérifier l'invariant avant de le désactiver lui-même).
+ */
+export async function compterTresoriersNotifies(
+  identifiantOrganisation: string,
+  identifiantUtilisateurExclu?: string,
+): Promise<number> {
+  const resultat = await pool.query<{ count: string }>(
+    `SELECT COUNT(*)
+       FROM member
+       JOIN scouticket_notification_tresorerie notif
+         ON notif.user_id = member."userId"
+        AND notif.organization_id = member."organizationId"
+      WHERE member."organizationId" = $1 AND member.role = 'owner'
+        AND ($2::text IS NULL OR member."userId" != $2)`,
+    [identifiantOrganisation, identifiantUtilisateurExclu ?? null],
+  );
+  return Number(resultat.rows[0]?.count ?? 0);
 }
 
 /** Unités qu'un membre simple est explicitement autorisé à utiliser. */

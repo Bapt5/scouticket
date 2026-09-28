@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { APIError } from "better-auth/api";
-import { auth } from "@/lib/auth";
 import {
   compterTresoriersNotifies,
   estResponsable,
@@ -12,7 +10,7 @@ import { pool } from "@/lib/baseDeDonnees";
 import { verifierOrigineRequete } from "@/lib/api/securiteRequetes";
 import { executerRouteAvecLogs } from "@/lib/api/routeAvecLogs";
 
-const schemaCorps = z.object({ role: z.enum(["member", "admin", "owner"]) });
+const schemaCorps = z.object({ recoit: z.boolean() }).strict();
 
 async function resoudreMembreCible(
   memberId: string,
@@ -25,7 +23,7 @@ async function resoudreMembreCible(
   return resultat.rows[0] ?? null;
 }
 
-/** Modifie le rôle d'un membre (interdit sur soi-même). */
+/** Active ou désactive la réception des e-mails de notes de frais pour ce trésorier. */
 export async function PATCH(
   requete: Request,
   { params }: { params: Promise<{ memberId: string }> },
@@ -56,71 +54,40 @@ export async function PATCH(
         { error: "Membre introuvable" },
         { status: 404 },
       );
-    if (membre.userId === identifiantUtilisateur)
+    if (membre.role !== "owner")
       return NextResponse.json(
-        { error: "Vous ne pouvez pas modifier votre propre rôle" },
-        { status: 403 },
+        { error: "Seul un trésorier peut recevoir ces e-mails" },
+        { status: 400 },
       );
 
     const corps = schemaCorps.safeParse(await requete.json().catch(() => null));
     if (!corps.success)
       return NextResponse.json({ error: "Requête invalide" }, { status: 400 });
 
-    const retrogradeTresorier =
-      membre.role === "owner" && corps.data.role !== "owner";
-    if (retrogradeTresorier) {
+    if (!corps.data.recoit) {
       const autresTresoriersNotifies = await compterTresoriersNotifies(
         identifiantOrganisation,
         membre.userId,
       );
       if (autresTresoriersNotifies === 0)
         return NextResponse.json(
-          {
-            error:
-              "Impossible de retirer ce rôle : il doit rester au moins un trésorier qui reçoit les mails.",
-          },
+          { error: "Au moins un trésorier doit recevoir les mails." },
           { status: 400 },
         );
-    }
-
-    try {
-      await auth.api.updateMemberRole({
-        headers: requete.headers,
-        body: {
-          memberId,
-          role: corps.data.role,
-          organizationId: identifiantOrganisation,
-        },
-      });
-    } catch (erreur) {
-      if (
-        erreur instanceof APIError &&
-        erreur.body?.code === "YOU_ARE_NOT_ALLOWED_TO_UPDATE_THIS_MEMBER"
-      )
-        return NextResponse.json(
-          {
-            error:
-              "Seul un responsable peut modifier le rôle d’un autre responsable ou promouvoir un membre au rang de responsable.",
-          },
-          { status: 403 },
-        );
-      throw erreur;
-    }
-
-    if (retrogradeTresorier)
       await pool.query(
         `DELETE FROM scouticket_notification_tresorerie
           WHERE user_id = $1 AND organization_id = $2`,
         [membre.userId, identifiantOrganisation],
       );
-    else if (membre.role !== "owner" && corps.data.role === "owner")
+    } else {
       await pool.query(
         `INSERT INTO scouticket_notification_tresorerie (user_id, organization_id)
          VALUES ($1, $2)
          ON CONFLICT DO NOTHING`,
         [membre.userId, identifiantOrganisation],
       );
+    }
 
-    return NextResponse.json({ success: true, role: corps.data.role });
+    return NextResponse.json({ success: true, recoit: corps.data.recoit });
   });
 }
