@@ -100,8 +100,7 @@ describe("POST /api/send-expense", () => {
     mocks.recupererGroupeActif.mockResolvedValue({
       organisation: { id: "org_1", name: "Groupe test" },
       unites: [{ id: "farfadets", label: "Farfadets", color: "#6CC24A" }],
-      emailTresorerie: "tresorerie@example.test",
-      validation: { status: "verified" },
+      emailsTresoriers: ["tresorerie@example.test"],
       nomenclature: {
         anneeComptable: { mois: 9, jour: 1, format: "debut-fin" },
         depense: { format: null },
@@ -114,6 +113,19 @@ describe("POST /api/send-expense", () => {
       },
     });
     mocks.envoyerEmailDepense.mockResolvedValue({ messageId: "abc" });
+  });
+
+  it("refuse l'envoi si le groupe n'a aucun trésorier", async () => {
+    mocks.recupererRoleMembre.mockResolvedValue("owner");
+    mocks.recupererGroupeActif.mockResolvedValue({
+      ...(await mocks.recupererGroupeActif()),
+      emailsTresoriers: [],
+    });
+
+    const reponse = await POST(REQUETE_BASE() as never);
+
+    expect(reponse.status).toBe(403);
+    expect(mocks.envoyerEmailDepense).not.toHaveBeenCalled();
   });
 
   it("refuse un membre sans accès à l’unité soumise", async () => {
@@ -335,8 +347,7 @@ describe("POST /api/send-expense", () => {
     const groupeAvecFormat = (format: string) => ({
       organisation: { id: "org_1", name: "Groupe test" },
       unites: [{ id: "farfadets", label: "Farfadets", color: "#6CC24A" }],
-      emailTresorerie: "tresorerie@example.test",
-      validation: { status: "verified" },
+      emailsTresoriers: ["tresorerie@example.test"],
       nomenclature: {
         anneeComptable: { mois: 9, jour: 1, format: "debut-fin" },
         depense: { format },

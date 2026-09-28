@@ -33,7 +33,7 @@ describe("FormulaireDepense", () => {
         piecesJointes={[]}
         emailUtilisateur="test@example.test"
         units={UNITES_TEST}
-        treasuryVerified
+        aTresorier
         onChangementUnite={onChangementUnite}
       />,
     );
@@ -54,7 +54,7 @@ describe("FormulaireDepense", () => {
         emailUtilisateur="test@example.test"
         units={UNITES_TEST}
         uniteInitiale="groupe"
-        treasuryVerified
+        aTresorier
         onChangementUnite={onChangementUnite}
       />,
     );
@@ -82,7 +82,7 @@ describe("FormulaireDepense", () => {
         piecesJointes={[]}
         emailUtilisateur="test@example.test"
         units={UNITES_TEST}
-        treasuryVerified
+        aTresorier
       />,
     );
 
@@ -109,7 +109,7 @@ describe("FormulaireDepense", () => {
         emailUtilisateur="test@example.test"
         units={UNITES_TEST}
         uniteInitiale="groupe"
-        treasuryVerified
+        aTresorier
       />,
     );
 
@@ -146,7 +146,7 @@ describe("FormulaireDepense", () => {
         emailUtilisateur="test@example.test"
         units={UNITES_TEST}
         uniteInitiale="groupe"
-        treasuryVerified
+        aTresorier
       />,
     );
 
@@ -175,7 +175,7 @@ describe("FormulaireDepense", () => {
         ]}
         emailUtilisateur="test@example.test"
         units={UNITES_TEST}
-        treasuryVerified
+        aTresorier
       />,
     );
 
@@ -199,7 +199,7 @@ describe("FormulaireDepense", () => {
         emailUtilisateur="test@example.test"
         units={UNITES_TEST}
         uniteInitiale="groupe"
-        treasuryVerified
+        aTresorier
       />,
     );
 
@@ -239,7 +239,7 @@ describe("FormulaireDepense", () => {
         emailUtilisateur="test@example.test"
         units={UNITES_TEST}
         uniteInitiale="groupe"
-        treasuryVerified
+        aTresorier
       />,
     );
 
@@ -265,7 +265,7 @@ describe("FormulaireDepense", () => {
         emailUtilisateur="test@example.test"
         units={UNITES_TEST}
         uniteInitiale="groupe"
-        treasuryVerified
+        aTresorier
       />,
     );
 
@@ -295,7 +295,7 @@ describe("FormulaireDepense", () => {
         emailUtilisateur="test@example.test"
         units={UNITES_TEST}
         uniteInitiale="groupe"
-        treasuryVerified
+        aTresorier
       />,
     );
 
@@ -315,7 +315,7 @@ describe("FormulaireDepense", () => {
         units={UNITES_TEST}
         moyensPaiement={["Cagnotte en ligne"]}
         uniteInitiale="groupe"
-        treasuryVerified
+        aTresorier
       />,
     );
 
@@ -332,7 +332,7 @@ describe("FormulaireDepense", () => {
         emailUtilisateur="test@example.test"
         units={UNITES_TEST}
         uniteInitiale="groupe"
-        treasuryVerified
+        aTresorier
         estAdmin
       />,
     );
@@ -350,7 +350,7 @@ describe("FormulaireDepense", () => {
         emailUtilisateur="test@example.test"
         units={UNITES_TEST}
         uniteInitiale="groupe"
-        treasuryVerified
+        aTresorier
         estAdmin={false}
       />,
     );
@@ -368,7 +368,7 @@ describe("FormulaireDepense", () => {
         emailUtilisateur="test@example.test"
         units={UNITES_TEST}
         uniteInitiale="groupe"
-        treasuryVerified
+        aTresorier
         estAdmin
       />,
     );
@@ -387,7 +387,7 @@ describe("FormulaireDepense", () => {
         emailUtilisateur="test@example.test"
         units={UNITES_TEST}
         uniteInitiale="groupe"
-        treasuryVerified
+        aTresorier
         estAdmin
       />,
     );
@@ -414,7 +414,7 @@ describe("FormulaireDepense", () => {
         emailUtilisateur="test@example.test"
         units={UNITES_TEST}
         uniteInitiale="groupe"
-        treasuryVerified
+        aTresorier
         estAdmin
       />,
     );

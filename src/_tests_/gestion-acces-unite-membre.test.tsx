@@ -145,7 +145,7 @@ describe("GestionAccesUniteMembre", () => {
     expect(
       await screen.findByText(/accès à toutes les unités/),
     ).toBeInTheDocument();
-    expect(screen.getByText("Responsable")).toBeInTheDocument();
+    expect(screen.getByText("Trésorier")).toBeInTheDocument();
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Groupe" }),
@@ -201,7 +201,7 @@ describe("GestionAccesUniteMembre", () => {
     expect(onRoleModifie).toHaveBeenCalledWith(membre.id, "admin");
   });
 
-  it("n’offre pas le rôle Responsable à un administrateur", async () => {
+  it("n’offre pas le rôle Trésorier à un Responsable de groupe", async () => {
     vi.stubGlobal(
       "fetch",
       vi
@@ -221,7 +221,7 @@ describe("GestionAccesUniteMembre", () => {
 
     await screen.findByRole("combobox", { name: "Rôle du membre" });
     expect(
-      screen.queryByRole("option", { name: "Responsable" }),
+      screen.queryByRole("option", { name: "Trésorier" }),
     ).not.toBeInTheDocument();
   });
 
@@ -247,7 +247,7 @@ describe("GestionAccesUniteMembre", () => {
 
     await screen.findByText(/accès à toutes les unités/);
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
-    expect(screen.getByText("Responsable")).toBeInTheDocument();
+    expect(screen.getByText("Trésorier")).toBeInTheDocument();
   });
 
   it("rétrograder un administrateur révèle les unités et enregistre rôle puis accès", async () => {

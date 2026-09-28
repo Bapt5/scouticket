@@ -45,8 +45,7 @@ describe("GET /api/group/config", () => {
     mocks.recupererGroupeActif.mockResolvedValue({
       organisation: { id: "org_1", name: "Groupe test" },
       unites: UNITES,
-      emailTresorerie: "tresorerie@example.test",
-      validation: { status: "verified" },
+      emailsTresoriers: ["tresorier@example.test"],
     });
     mocks.query.mockResolvedValue({ rows: [] });
   });

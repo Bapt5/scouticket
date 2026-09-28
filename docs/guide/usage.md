@@ -3,7 +3,7 @@
 ## Avant de commencer
 
 - Vous devez appartenir à un groupe.
-- Votre responsable doit avoir terminé la configuration du groupe et la trésorerie doit avoir confirmé son adresse e-mail.
+- Votre responsable doit avoir terminé la configuration du groupe et le groupe doit avoir au moins un Trésorier.
 - Une connexion internet est nécessaire pour l’envoi.
 
 ## Envoyer un justificatif de dépense

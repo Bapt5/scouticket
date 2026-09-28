@@ -1,6 +1,6 @@
 # Les e-mails de justificatifs et de recettes
 
-À chaque envoi, l’application envoie un e-mail à l’adresse de trésorerie du groupe et met l’utilisateur en copie. Les justificatifs ne sont pas conservés par l’application : ils sont transmis en pièces jointes dans cet e-mail (pièce jointe facultative pour une recette).
+À chaque envoi, l’application envoie un e-mail à tous les Trésoriers du groupe (membres ayant le rôle `owner`) et met l’utilisateur en copie. Les justificatifs ne sont pas conservés par l’application : ils sont transmis en pièces jointes dans cet e-mail (pièce jointe facultative pour une recette).
 
 ## Ce que contient l’e-mail
 

@@ -1,5 +1,4 @@
 import type { UniteBrouillon, UniteGroupe } from "./group";
-import type { ValidationTresorerie } from "./treasuryVerification";
 import {
   PARAMETRES_ANNEE_COMPTABLE_PAR_DEFAUT,
   type FormatAnneeComptable,
@@ -13,8 +12,6 @@ import type { PoolClient } from "pg";
 export async function recupererGroupeActif(identifiantOrganisation: string) {
   const resultat = await pool.query<{
     name: string;
-    treasury_email: string | null;
-    treasury_verification: unknown;
     nomenclature_format: string | null;
     nomenclature_format_recette: string | null;
     annee_comptable_debut_mois: number | null;
@@ -24,8 +21,7 @@ export async function recupererGroupeActif(identifiantOrganisation: string) {
     convertir_justificatifs_pdf: boolean | null;
     moyens_paiement: string[] | null;
   }>(
-    `SELECT organization.name, donnees.treasury_email,
-            donnees.treasury_verification, donnees.nomenclature_format,
+    `SELECT organization.name, donnees.nomenclature_format,
             donnees.nomenclature_format_recette,
             donnees.annee_comptable_debut_mois,
             donnees.annee_comptable_debut_jour,
@@ -42,19 +38,25 @@ export async function recupererGroupeActif(identifiantOrganisation: string) {
   const groupe = resultat.rows[0];
   if (!groupe) throw new Error("ORGANISATION_INTRouvable");
 
-  const unites = await pool.query<UniteGroupe>(
-    `SELECT id, label, color FROM scouticket_unites
-      WHERE organization_id = $1 ORDER BY ordre ASC`,
-    [identifiantOrganisation],
-  );
+  const [unites, tresoriers] = await Promise.all([
+    pool.query<UniteGroupe>(
+      `SELECT id, label, color FROM scouticket_unites
+        WHERE organization_id = $1 ORDER BY ordre ASC`,
+      [identifiantOrganisation],
+    ),
+    pool.query<{ email: string }>(
+      `SELECT "user".email
+         FROM member
+         JOIN "user" ON "user".id = member."userId"
+        WHERE member."organizationId" = $1 AND member.role = 'owner'`,
+      [identifiantOrganisation],
+    ),
+  ]);
 
   return {
     organisation: { id: identifiantOrganisation, name: groupe.name },
     unites: unites.rows,
-    emailTresorerie: groupe.treasury_email ?? "",
-    validation: (groupe.treasury_verification ?? {
-      status: "pending",
-    }) as ValidationTresorerie,
+    emailsTresoriers: tresoriers.rows.map((ligne) => ligne.email),
     nomenclature: {
       anneeComptable: {
         mois:

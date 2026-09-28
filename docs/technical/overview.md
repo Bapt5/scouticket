@@ -6,9 +6,9 @@
 - Deux onglets de premier niveau : **Dépenses** et **Recettes**
 - Dépenses — deux types d’envoi : **note de frais** (plusieurs justificatifs avec date, activité liée et description, RIB facultatif joint au mail) et **dépense avec moyen de paiement du groupe** (un seul justificatif, moyen de paiement du groupe) ; chaque justificatif est une section repliable avec une ou plusieurs lignes (montant + catégorie comptable). Le RIB, comme les justificatifs, n’est jamais stocké
 - Recettes — signalement d’un encaissement à venir (virement, chèque, liquide ou carte bancaire) avec une ou plusieurs lignes (montant + catégorie comptable) ; **aucun justificatif obligatoire**, une pièce jointe reste possible mais facultative
-- Envoi automatique par email (trésorerie + utilisateur)
-- Groupes indépendants : unités, couleurs et adresse de trésorerie propres à chaque groupe
-- Validation de l’adresse de trésorerie avant le premier envoi
+- Envoi automatique par email (Trésoriers du groupe + utilisateur)
+- Groupes indépendants : unités et couleurs propres à chaque groupe
+- Trois rôles : Membre, Responsable de groupe (admin) et Trésorier (owner, reçoit les envois)
 - Support PWA (installation écran d’accueil)
 - Mode hors ligne partiel (préparation possible, envoi en ligne)
 
@@ -36,15 +36,14 @@ flowchart TD
   accueil --> groupeActif{Groupe actif ?}
   groupeActif -- Non --> choix[Choisir un groupe ou en créer un]
   choix --> creation[Créer l’organisation Better Auth]
-  creation --> proprietaire[Créateur : rôle owner]
+  creation --> proprietaire[Créateur : rôle owner, Trésorier]
   proprietaire --> groupePrincipal[Définir le groupe principal\net le rendre actif]
   choix --> groupePrincipal
   groupePrincipal --> configuration
 
   groupeActif -- Oui --> configuration{Groupe configuré ?}
-  configuration -- Non, owner ou admin --> configurer[Configurer trésorerie et unités]
+  configuration -- Non, owner ou admin --> configurer[Configurer les unités]
   configurer --> donnees[(PostgreSQL : scouticket_group_data)]
-  configurer --> validationTresorerie[E-mail de validation de la trésorerie]
   configuration -- Oui --> depense[Créer et envoyer une note de frais]
 
   proprietaire --> gestion[/Gestion des membres/]
@@ -68,7 +67,7 @@ flowchart TD
 ```mermaid
 sequenceDiagram
   autonumber
-  actor Responsable
+  actor Trésorier
   actor Membre
   participant Client as Navigateur / UI React
   participant Proxy as Proxy Next.js
@@ -78,21 +77,21 @@ sequenceDiagram
   participant SMTP as Serveur SMTP
   participant Boite as Boîte e-mail
 
-  Note over Responsable,Boite: Création du compte et du premier groupe
-  Responsable->>Client: Ouvre une route privée
+  Note over Trésorier,Boite: Création du compte et du premier groupe
+  Trésorier->>Client: Ouvre une route privée
   Client->>Proxy: Requête HTTP
   Proxy-->>Client: Redirection vers /sign-in si aucune session
-  Responsable->>Client: Inscription par e-mail et mot de passe
+  Trésorier->>Client: Inscription par e-mail et mot de passe
   Client->>Auth: POST /api/auth/sign-up/email
   Auth->>DB: Crée user, account et demande de vérification
   Auth->>SMTP: Envoie le lien de confirmation
   SMTP->>Boite: E-mail de vérification
-  Responsable->>Boite: Ouvre le lien de confirmation
+  Trésorier->>Boite: Ouvre le lien de confirmation
   Boite->>Auth: Validation de l’adresse e-mail
   Auth->>DB: Marque l’adresse vérifiée et crée la session
   Auth-->>Client: Retour vers callbackURL, sinon /
 
-  Responsable->>Client: Crée un groupe depuis l’accueil
+  Trésorier->>Client: Crée un groupe depuis l’accueil
   Client->>Auth: organization.create(nom, slug)
   Auth->>DB: Crée organization et member(owner)
   Auth-->>Client: Identifiant de l’organisation créée
@@ -100,22 +99,20 @@ sequenceDiagram
   Client->>API: POST /api/user/default-group
   API->>DB: Enregistre scouticket_user_default_group
 
-  Responsable->>Client: Renseigne trésorerie et unités
+  Trésorier->>Client: Configure les unités du groupe
   Client->>API: POST /api/group/config
   API->>Auth: Lit session et activeOrganizationId
   API->>DB: Vérifie le rôle owner/admin
   API->>DB: Écrit scouticket_group_data
-  API->>SMTP: Envoie le lien de validation trésorerie
-  SMTP->>Boite: E-mail de validation
 
-  Note over Responsable,Boite: Invitation du membre
-  Responsable->>Client: Ouvre /gestion-membres
+  Note over Trésorier,Boite: Invitation du membre
+  Trésorier->>Client: Ouvre /gestion-membres
   Client->>API: GET /api/group/members
   API->>Auth: Lit session et groupe actif
   API->>DB: Vérifie rôle owner/admin et liste invitations pending
   API-->>Client: Organisation et invitations en attente
-  Client-->>Responsable: Affiche la gestion des membres
-  Responsable->>Client: Invite adresse@email.fr
+  Client-->>Trésorier: Affiche la gestion des membres
+  Trésorier->>Client: Invite adresse@email.fr
   Client->>Auth: organization.inviteMember(email, member)
   Auth->>DB: Crée invitation(status pending)
   Auth->>SMTP: Déclenche sendInvitationEmail
@@ -166,7 +163,7 @@ sequenceDiagram
 
 L'application n'a pas de base de données persistante pour les justificatifs. Les pièces jointes sont transmises par e-mail et ne sont pas stockées par l’application.
 
-Better Auth gère les comptes, les organisations, les rôles et les invitations. L’application stocke la configuration des groupes (adresse de trésorerie et état de validation) dans PostgreSQL, dans `scouticket_group_data`. Les unités de chaque groupe sont dans une table dédiée, `scouticket_unites` (une ligne par unité, clé composite `(organization_id, id)`, avec son ordre d’affichage). L’id d’une unité est un identifiant opaque généré côté base (`appliquerUnites` dans `src/lib/groupServer.ts`) au moment de sa création, jamais dérivé de son libellé : renommer une unité ne change donc jamais son id.
+Better Auth gère les comptes, les organisations, les rôles (member/admin/owner, affichés comme Membre/Responsable de groupe/Trésorier) et les invitations. Les Trésoriers d'un groupe sont les membres ayant le rôle `owner` ; leurs adresses e-mail sont résolues à l'envoi, il n'y a pas d'adresse de trésorerie dédiée. L’application stocke la configuration des groupes dans PostgreSQL, dans `scouticket_group_data`. Les unités de chaque groupe sont dans une table dédiée, `scouticket_unites` (une ligne par unité, clé composite `(organization_id, id)`, avec son ordre d’affichage). L’id d’une unité est un identifiant opaque généré côté base (`appliquerUnites` dans `src/lib/groupServer.ts`) au moment de sa création, jamais dérivé de son libellé : renommer une unité ne change donc jamais son id.
 
 La nomenclature des justificatifs est aussi stockée dans `scouticket_group_data` (migration `sql/007_nomenclature_justificatifs.sql`) : `nomenclature_format` (`NULL` = le nom du fichier importé est conservé), le début et l’affichage de l’année comptable (`annee_comptable_*`) et les compteurs de numérotation `compteur_global` et `compteurs_comptables` (JSONB indexé par année de début). Ces compteurs ne contiennent ni donnée personnelle ni justificatif. Quand un format est défini, `POST /api/send-expense` calcule les noms **côté serveur** (`src/lib/nomenclature.ts` ; le client n’envoie aucun nom normalisé, seulement `originalFileName`) et réserve les numéros dans une transaction (`reserverNumeros`, verrou `FOR UPDATE` sur la ligne du groupe) qui n’est validée (`COMMIT`) qu’après l’envoi SMTP : un échec annule la réservation (`ROLLBACK`) et ne laisse aucun trou. L’année comptable et le compteur comptable dépendent de la date du justificatif, pas de la date d’envoi.
 

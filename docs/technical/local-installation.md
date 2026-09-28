@@ -29,7 +29,7 @@ bun install
 cp .env.example .env.local
 ```
 
-Renseigner ensuite les variables Clerk et SMTP. L’adresse de trésorerie est configurée dans l’application, groupe par groupe.
+Renseigner ensuite les variables Clerk et SMTP. Le Trésorier de chaque groupe est le membre ayant le rôle `owner`, géré depuis l’application.
 
 ## Lancement et vérification
 

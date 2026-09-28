@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { clientAuth } from "@/lib/auth-client";
 import { GestionAccesUniteMembre } from "@/components/GestionAccesUniteMembre";
+import { libelleRole } from "@/lib/roles";
 
 type Invitation = {
   id: string;
@@ -235,11 +236,7 @@ export default function PageGestionMembres() {
                     )}
                   </span>
                   <span className="shrink-0 text-zinc-600">
-                    {membre.role === "owner"
-                      ? "Responsable"
-                      : membre.role === "admin"
-                        ? "Administrateur"
-                        : "Membre"}
+                    {libelleRole(membre.role)}
                   </span>
                 </button>
               </li>

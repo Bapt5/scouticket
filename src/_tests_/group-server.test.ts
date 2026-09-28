@@ -29,21 +29,14 @@ describe("recupererGroupeActif", () => {
 
   it("renvoie les unités triées par ordre, issues de scouticket_unites", async () => {
     mocks.query
-      .mockResolvedValueOnce({
-        rows: [
-          {
-            name: "Groupe test",
-            treasury_email: "tresorerie@example.test",
-            treasury_verification: { status: "verified" },
-          },
-        ],
-      })
+      .mockResolvedValueOnce({ rows: [{ name: "Groupe test" }] })
       .mockResolvedValueOnce({
         rows: [
           { id: "farfadets", label: "Farfadets", color: "#6CC24A" },
           { id: "groupe", label: "Groupe", color: "#1E3A8A" },
         ],
-      });
+      })
+      .mockResolvedValueOnce({ rows: [{ email: "tresorier@example.test" }] });
 
     const groupe = await recupererGroupeActif("org_1");
 
@@ -51,13 +44,17 @@ describe("recupererGroupeActif", () => {
       { id: "farfadets", label: "Farfadets", color: "#6CC24A" },
       { id: "groupe", label: "Groupe", color: "#1E3A8A" },
     ]);
+    expect(groupe.emailsTresoriers).toEqual(["tresorier@example.test"]);
     expect(mocks.query.mock.calls[1][0]).toMatch(/ORDER BY ordre ASC/);
     expect(mocks.query.mock.calls[1][1]).toEqual(["org_1"]);
+    expect(mocks.query.mock.calls[2][0]).toMatch(/role = 'owner'/);
+    expect(mocks.query.mock.calls[2][1]).toEqual(["org_1"]);
   });
 
   it("lit les paramètres du groupe avec des défauts désactivés", async () => {
     mocks.query
       .mockResolvedValueOnce({ rows: [{ name: "Sans paramètres" }] })
+      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({
         rows: [
@@ -69,6 +66,7 @@ describe("recupererGroupeActif", () => {
           },
         ],
       })
+      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] });
 
     const sans = await recupererGroupeActif("org_1");

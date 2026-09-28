@@ -29,7 +29,7 @@ interface FormulaireRecetteProps {
   readonly emailUtilisateur: string;
   readonly units: UniteGroupe[];
   readonly uniteInitiale?: string;
-  readonly treasuryVerified: boolean;
+  readonly aTresorier: boolean;
   readonly onChangementUnite?: (unitId: string) => void;
   readonly estEnLigne: boolean;
   /** Recadrage automatique de la pièce jointe avec Scanic (paramètre du groupe). */
@@ -40,7 +40,7 @@ export function FormulaireRecette({
   emailUtilisateur,
   units,
   uniteInitiale = "",
-  treasuryVerified,
+  aTresorier,
   onChangementUnite,
   estEnLigne,
   scanActive,
@@ -393,15 +393,15 @@ export function FormulaireRecette({
 
       <button
         type="submit"
-        disabled={envoiEnCours || !estEnLigne || !treasuryVerified}
+        disabled={envoiEnCours || !estEnLigne || !aTresorier}
         className={`w-full rounded-lg p-4 font-semibold text-white transition-colors focus:outline-none ${
-          !envoiEnCours && estEnLigne && treasuryVerified
+          !envoiEnCours && estEnLigne && aTresorier
             ? "bg-zinc-900 hover:bg-zinc-800 focus:ring-2 focus:ring-zinc-400"
             : "cursor-not-allowed bg-zinc-300"
         }`}
       >
-        {!treasuryVerified
-          ? "Validation de la trésorerie en attente"
+        {!aTresorier
+          ? "Aucun trésorier n'est configuré pour ce groupe"
           : envoiEnCours
             ? "Envoi en cours…"
             : "Envoyer la recette"}

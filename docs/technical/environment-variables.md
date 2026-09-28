@@ -73,7 +73,7 @@ Après avoir modifié cette variable dans l’environnement de production, redé
 | `SMTP_FROM_NAME`  | Optionnel | Nom affiché de l’expéditeur                | `Notes de frais`                 |
 | `SMTP_FROM_EMAIL` | Optionnel | Adresse de repli si `SMTP_FROM` est absent | `notes@exemple.fr`               |
 
-L’adresse de trésorerie n’est **pas** une variable d’environnement. Chaque responsable la renseigne pour son groupe dans l’application, puis elle est confirmée par e-mail.
+Il n’y a pas d’adresse de trésorerie configurée séparément : les notes de frais sont envoyées aux membres du groupe ayant le rôle Trésorier (`owner`), géré depuis la gestion des membres de l’application.
 
 ## Valeurs courantes
 

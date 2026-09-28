@@ -68,7 +68,7 @@ interface FormulaireDepenseProps {
     anneeComptable: ParametresAnneeComptable;
   };
   readonly uniteInitiale?: string;
-  readonly treasuryVerified: boolean;
+  readonly aTresorier: boolean;
   readonly onChangementUnite?: (unitId: string) => void;
   readonly erreurEnregistrementUnite?: string;
   readonly onCreerNouvelleNote?: () => void;
@@ -86,7 +86,7 @@ export function FormulaireDepense({
   moyensPaiement = MOYENS_PAIEMENT_PAR_DEFAUT as string[],
   nomenclature,
   uniteInitiale = "",
-  treasuryVerified,
+  aTresorier,
   onChangementUnite,
   erreurEnregistrementUnite,
   onCreerNouvelleNote,
@@ -745,7 +745,7 @@ export function FormulaireDepense({
           />
           <span>
             Je déclare cette dépense sans justificatif (par exemple un virement
-            interne à l'association) et j’ai conscience de l’envoyer sans aucune
+            interne à l’association) et j’ai conscience de l’envoyer sans aucune
             pièce jointe.
           </span>
         </label>
@@ -928,15 +928,15 @@ export function FormulaireDepense({
 
         <button
           type="submit"
-          disabled={envoiEnCours || !estEnLigne || !treasuryVerified}
+          disabled={envoiEnCours || !estEnLigne || !aTresorier}
           className={`w-full p-4 rounded-lg font-semibold text-white transition-colors focus:outline-none ${
-            !envoiEnCours && estEnLigne && treasuryVerified
+            !envoiEnCours && estEnLigne && aTresorier
               ? "bg-zinc-900 hover:bg-zinc-800 focus:ring-2 focus:ring-zinc-400"
               : "bg-zinc-300 cursor-not-allowed"
           }`}
         >
-          {!treasuryVerified ? (
-            "Validation de la trésorerie en attente"
+          {!aTresorier ? (
+            "Aucun trésorier n'est configuré pour ce groupe"
           ) : envoiEnCours ? (
             <span className="flex items-center justify-center">
               <svg

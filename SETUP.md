@@ -266,7 +266,7 @@ Vérifiez que :
 
 Vérifiez :
 
-- ✅ L'email de la trésorerie (TREASURY_EMAIL)
+- ✅ L'email du/des Trésorier(s) du groupe
 - ✅ Votre email personnel (celui de votre compte)
 
 Vous devriez avoir reçu un email avec :
@@ -301,7 +301,7 @@ Le projet utilise Better Auth pour l'authentification et envoie les justificatif
 
 Les responsables créent directement leurs groupes dans l’application et invitent leurs membres par e-mail. Better Auth stocke les organisations dans PostgreSQL. Google est optionnel ; renseignez les identifiants OAuth de votre projet Google pour proposer ce moyen de connexion en plus de l’inscription e-mail/mot de passe.
 
-L’adresse de trésorerie n’est plus une variable d’environnement : chaque responsable la renseigne dans son groupe. L’application envoie un lien de validation à cette adresse et bloque les notes de frais tant qu’elle n’est pas confirmée.
+Le Trésorier n’est pas une variable d’environnement : c’est un rôle (`owner`) porté par un membre du groupe, attribué automatiquement au créateur du groupe puis modifiable depuis la gestion des membres. Les notes de frais sont bloquées tant qu’aucun membre n’a ce rôle.
 
 Renseignez les variables suivantes dans `.env.local`, puis lancez `pnpm auth:migrate` suivi de `pnpm db:migrate` :
 
@@ -378,7 +378,7 @@ pnpm start
 3. L'utilisateur complète manuellement la date, le type, le montant, la branche et la description
 4. Le frontend envoie les données et les pièces jointes (base64) à l'API route `/api/send-expense`
 5. Le serveur valide les données, construit l'email et envoie via Gmail SMTP à :
-   - Trésorerie
+   - Trésorier(s) du groupe (membres ayant le rôle `owner`)
    - Utilisateur (e-mail du compte)
 
 L'email contient un HTML lisible, un fallback texte et les pièces jointes avec des noms formatés `YYYY-MM-DD - Branche - Type - Montant - 01.ext`.

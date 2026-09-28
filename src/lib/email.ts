@@ -31,7 +31,7 @@ export interface DonneesEmailDepense {
   sansJustificatifAttesteParResponsable?: boolean;
   groupe?: string;
   couleur?: string;
-  emailTresorerie?: string;
+  emailsTresoriers?: string[];
 }
 
 const schemaTexteHtml = z
@@ -195,13 +195,14 @@ export const envoyerEmailDepense = async (donnees: DonneesEmailDepense) => {
     sansJustificatifAttesteParResponsable = false,
     groupe = "Groupe scout",
     couleur = "#1E3A8A",
-    emailTresorerie,
+    emailsTresoriers,
   } = donnees;
 
   const piecesJointesAnalysees = piecesJointes.map(analyserPieceJointe);
   const ribAnalyse = rib ? analyserPieceJointe(rib) : undefined;
   const estNoteDeFrais = typeEnvoi === "note-de-frais";
-  if (!emailTresorerie) throw new Error("TREASURY_EMAIL_UNDEFINED");
+  if (!emailsTresoriers || emailsTresoriers.length === 0)
+    throw new Error("TREASURY_EMAIL_UNDEFINED");
   const libelleType = LIBELLES_TYPES_ENVOI[typeEnvoi];
   const sujet = `Scouticket - ${libelleType} - ${groupe} - ${branche} - ${date}`;
   const resultatCouleur = schemaCouleurHtml.safeParse(couleur);
@@ -411,7 +412,7 @@ Email envoyé automatiquement par Scouticket.
   `;
 
   const optionsEmail = {
-    to: emailTresorerie,
+    to: emailsTresoriers.join(", "),
     cc: emailUtilisateur,
     subject: sujet,
     text: contenuTexte,
@@ -441,7 +442,7 @@ export interface DonneesEmailRecette {
   detailRecette: DetailRecette;
   groupe?: string;
   couleur?: string;
-  emailTresorerie?: string;
+  emailsTresoriers?: string[];
 }
 
 // Compose et envoie l'e-mail de recette, avec une pièce jointe facultative.
@@ -455,10 +456,11 @@ export const envoyerEmailRecette = async (donnees: DonneesEmailRecette) => {
     detailRecette,
     groupe = "Groupe scout",
     couleur = "#1E3A8A",
-    emailTresorerie,
+    emailsTresoriers,
   } = donnees;
 
-  if (!emailTresorerie) throw new Error("TREASURY_EMAIL_UNDEFINED");
+  if (!emailsTresoriers || emailsTresoriers.length === 0)
+    throw new Error("TREASURY_EMAIL_UNDEFINED");
   const piecesJointesAnalysees = piecesJointes.map(analyserPieceJointe);
   const libelleType = "Recette";
   const sujet = `Scouticket - ${libelleType} - ${groupe} - ${branche} - ${date}`;
@@ -574,7 +576,7 @@ Email envoyé automatiquement par Scouticket.
   `;
 
   const optionsEmail = {
-    to: emailTresorerie,
+    to: emailsTresoriers.join(", "),
     cc: emailUtilisateur,
     subject: sujet,
     text: contenuTexte,

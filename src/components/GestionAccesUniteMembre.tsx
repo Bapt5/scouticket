@@ -3,14 +3,9 @@
 import { useEffect, useState } from "react";
 import { CheckIcon, MinusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import type { UniteGroupe } from "@/lib/group";
+import { libelleRole } from "@/lib/roles";
 
 type Membre = { id: string; nom: string; email: string; role: string };
-
-function libelleRole(role: string) {
-  if (role === "owner") return "Responsable";
-  if (role === "admin") return "Administrateur";
-  return "Membre";
-}
 
 const estResponsableRole = (role: string) =>
   role === "admin" || role === "owner";
@@ -197,9 +192,9 @@ export function GestionAccesUniteMembre({
                 className="mt-1 rounded-lg border border-zinc-300 bg-white px-2 py-1 text-sm text-zinc-900 outline-none focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A]/20"
               >
                 <option value="member">Membre</option>
-                <option value="admin">Administrateur</option>
+                <option value="admin">Responsable de groupe</option>
                 {roleAppelant === "owner" && (
-                  <option value="owner">Responsable</option>
+                  <option value="owner">Trésorier</option>
                 )}
               </select>
             ) : (
@@ -223,8 +218,8 @@ export function GestionAccesUniteMembre({
             <p className="text-sm text-zinc-600">Chargement…</p>
           ) : accesTotalAffiche ? (
             <p className="text-sm text-zinc-600">
-              Ce membre a accès à toutes les unités du groupe (responsable ou
-              administrateur).
+              Ce membre a accès à toutes les unités du groupe (Trésorier ou
+              Responsable de groupe).
             </p>
           ) : unites.length === 0 ? (
             <p className="text-sm text-zinc-600">
