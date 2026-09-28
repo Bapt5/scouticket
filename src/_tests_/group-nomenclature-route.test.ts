@@ -52,11 +52,22 @@ describe("/api/group/nomenclature", () => {
     mocks.recupererRoleMembre.mockResolvedValue("admin");
     mocks.verifierOrigineRequete.mockReturnValue(null);
     mocks.recupererGroupeActif.mockResolvedValue({
-      nomenclature: { format: "{YYYY} - {Numero}", anneeComptable },
+      nomenclature: {
+        anneeComptable,
+        depense: { format: "{YYYY} - {Numero}" },
+        recette: { format: null },
+      },
     });
     mocks.query.mockResolvedValue({
       rowCount: 1,
-      rows: [{ compteur_global: 41, compteurs_comptables: {} }],
+      rows: [
+        {
+          compteur_global: 41,
+          compteurs_comptables: {},
+          compteur_global_recette: 4,
+          compteurs_comptables_recette: {},
+        },
+      ],
     });
   });
 
@@ -85,7 +96,7 @@ describe("/api/group/nomenclature", () => {
     expect(reponse.status).toBe(400);
   });
 
-  it("PATCH enregistre le format et les valeurs de départ", async () => {
+  it("PATCH enregistre le format et les valeurs de départ pour les dépenses (domaine par défaut)", async () => {
     const reponse = await patch({
       format: "{YYYY} - {GlobalNumero}.pdf",
       anneeComptable,
@@ -94,7 +105,9 @@ describe("/api/group/nomenclature", () => {
     });
 
     expect(reponse.status).toBe(200);
-    const [, valeurs] = mocks.query.mock.calls[0];
+    const [sql, valeurs] = mocks.query.mock.calls[0];
+    expect(sql).toContain("nomenclature_format =");
+    expect(sql).not.toContain("nomenclature_format_recette");
     expect(valeurs).toEqual([
       "org_1",
       "{YYYY} - {GlobalNumero}",
@@ -104,6 +117,31 @@ describe("/api/group/nomenclature", () => {
       119,
       "2025",
       4,
+    ]);
+  });
+
+  it("PATCH avec domaine « recette » écrit dans les colonnes dédiées", async () => {
+    const reponse = await patch({
+      domaine: "recette",
+      format: "{YYYY} - R{GlobalNumero}.pdf",
+      anneeComptable,
+      prochainNumeroGlobal: 10,
+    });
+
+    expect(reponse.status).toBe(200);
+    const [sql, valeurs] = mocks.query.mock.calls[0];
+    expect(sql).toContain("nomenclature_format_recette =");
+    expect(sql).toContain("compteur_global_recette =");
+    // L'année comptable reste partagée : toujours écrite quel que soit le domaine.
+    expect(valeurs).toEqual([
+      "org_1",
+      "{YYYY} - R{GlobalNumero}",
+      9,
+      1,
+      "debut-fin",
+      9,
+      null,
+      null,
     ]);
   });
 
@@ -122,18 +160,22 @@ describe("/api/group/nomenclature", () => {
     expect(reponse.status).toBe(409);
   });
 
-  it("GET expose les compteurs aux seuls responsables", async () => {
+  it("GET expose les compteurs des deux domaines aux seuls responsables", async () => {
     const reponseAdmin = await GET(
       new Request("https://example.test/api/group/nomenclature"),
     );
-    expect((await reponseAdmin.json()).compteurs.prochainNumeroGlobal).toBe(42);
+    const corpsAdmin = await reponseAdmin.json();
+    expect(corpsAdmin.depense.compteurs.prochainNumeroGlobal).toBe(42);
+    expect(corpsAdmin.recette.compteurs.prochainNumeroGlobal).toBe(5);
 
     mocks.recupererRoleMembre.mockResolvedValue("member");
     const reponseMembre = await GET(
       new Request("https://example.test/api/group/nomenclature"),
     );
     const corps = await reponseMembre.json();
-    expect(corps.format).toBe("{YYYY} - {Numero}");
-    expect(corps.compteurs).toBeUndefined();
+    expect(corps.depense.format).toBe("{YYYY} - {Numero}");
+    expect(corps.recette.format).toBeNull();
+    expect(corps.depense.compteurs).toBeUndefined();
+    expect(corps.recette.compteurs).toBeUndefined();
   });
 });

@@ -14,17 +14,47 @@ import {
   type ParametresAnneeComptable,
 } from "@/lib/nomenclature";
 
-type ReponseNomenclature = {
+type Domaine = "depense" | "recette";
+
+const LIBELLES_DOMAINE: Record<Domaine, string> = {
+  depense: "Dépenses",
+  recette: "Recettes",
+};
+
+const EXEMPLES_APERCU: Record<
+  Domaine,
+  { typeDepense: string; modePaiement: string; montant: number }[]
+> = {
+  depense: [
+    { typeDepense: "Carburant", modePaiement: "Carte bancaire", montant: 28.5 },
+    { typeDepense: "Fournitures", modePaiement: "Espèces", montant: 12 },
+  ],
+  recette: [
+    { typeDepense: "Cotisations SGDF", modePaiement: "Virement", montant: 45 },
+    {
+      typeDepense: "Vente article boutique",
+      modePaiement: "Liquide",
+      montant: 8,
+    },
+  ],
+};
+
+type ReponseDomaine = {
   format: string | null;
-  anneeComptable: ParametresAnneeComptable;
   compteurs?: {
     prochainNumeroGlobal: number;
-    anneeComptableCourante: number;
     prochainNumeroComptable: number;
   };
 };
 
-const BROUILLON_INITIAL: BrouillonNomenclature = {
+type ReponseNomenclature = {
+  anneeComptable: ParametresAnneeComptable;
+  anneeComptableCourante?: number;
+  depense: ReponseDomaine;
+  recette: ReponseDomaine;
+};
+
+const brouillonVide: BrouillonNomenclature = {
   personnalise: false,
   format: "",
   anneeComptable: PARAMETRES_ANNEE_COMPTABLE_PAR_DEFAUT,
@@ -32,10 +62,30 @@ const BROUILLON_INITIAL: BrouillonNomenclature = {
   prochainNumeroComptable: "1",
 };
 
+function brouillonDepuis(
+  reponse: ReponseDomaine,
+  anneeComptable: ParametresAnneeComptable,
+): BrouillonNomenclature {
+  return {
+    personnalise: reponse.format !== null,
+    format: reponse.format ?? "",
+    anneeComptable,
+    prochainNumeroGlobal: String(reponse.compteurs?.prochainNumeroGlobal ?? 1),
+    prochainNumeroComptable: String(
+      reponse.compteurs?.prochainNumeroComptable ?? 1,
+    ),
+  };
+}
+
 export default function PageGestionNomenclature() {
   const { data: organisation } = clientAuth.useActiveOrganization();
-  const [brouillon, setBrouillon] = useState(BROUILLON_INITIAL);
-  const [initial, setInitial] = useState(BROUILLON_INITIAL);
+  const [domaine, setDomaine] = useState<Domaine>("depense");
+  const [brouillons, setBrouillons] = useState<
+    Record<Domaine, BrouillonNomenclature>
+  >({ depense: brouillonVide, recette: brouillonVide });
+  const [initiaux, setInitiaux] = useState<
+    Record<Domaine, BrouillonNomenclature>
+  >({ depense: brouillonVide, recette: brouillonVide });
   const [anneeCourante, setAnneeCourante] = useState(new Date().getFullYear());
   const [chargement, setChargement] = useState(true);
   const [estResponsable, setEstResponsable] = useState(false);
@@ -46,27 +96,42 @@ export default function PageGestionNomenclature() {
     fetch("/api/group/nomenclature")
       .then((reponse) => (reponse.ok ? reponse.json() : null))
       .then((donnees: ReponseNomenclature | null) => {
-        if (!donnees?.compteurs) {
+        if (!donnees?.depense.compteurs || !donnees.recette.compteurs) {
           setMessage("Accès réservé aux responsables du groupe.");
           return;
         }
-        const charge: BrouillonNomenclature = {
-          personnalise: donnees.format !== null,
-          format: donnees.format ?? "",
-          anneeComptable: donnees.anneeComptable,
-          prochainNumeroGlobal: String(donnees.compteurs.prochainNumeroGlobal),
-          prochainNumeroComptable: String(
-            donnees.compteurs.prochainNumeroComptable,
-          ),
+        const charges: Record<Domaine, BrouillonNomenclature> = {
+          depense: brouillonDepuis(donnees.depense, donnees.anneeComptable),
+          recette: brouillonDepuis(donnees.recette, donnees.anneeComptable),
         };
         setEstResponsable(true);
-        setAnneeCourante(donnees.compteurs.anneeComptableCourante);
-        setBrouillon(charge);
-        setInitial(charge);
+        setAnneeCourante(
+          donnees.anneeComptableCourante ?? new Date().getFullYear(),
+        );
+        setBrouillons(charges);
+        setInitiaux(charges);
       })
       .catch(() => setMessage("Impossible de charger la nomenclature."))
       .finally(() => setChargement(false));
   }, []);
+
+  const brouillon = brouillons[domaine];
+  const initial = initiaux[domaine];
+
+  const modifierBrouillon = (valeur: BrouillonNomenclature) =>
+    setBrouillons((precedents) => {
+      // L'année comptable est partagée : la modifier sur un domaine la
+      // modifie aussi pour l'autre, pour rester cohérent avec le serveur.
+      const autre: Domaine = domaine === "depense" ? "recette" : "depense";
+      return {
+        ...precedents,
+        [domaine]: valeur,
+        [autre]: {
+          ...precedents[autre],
+          anneeComptable: valeur.anneeComptable,
+        },
+      };
+    });
 
   const enregistrer = async (event: FormEvent) => {
     event.preventDefault();
@@ -80,6 +145,7 @@ export default function PageGestionNomenclature() {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        domaine,
         format: brouillon.personnalise ? brouillon.format : null,
         anneeComptable: brouillon.anneeComptable,
         prochainNumeroGlobal:
@@ -97,7 +163,7 @@ export default function PageGestionNomenclature() {
     } | null;
     setEnregistrement(false);
     if (reponse.ok) {
-      setInitial(brouillon);
+      setInitiaux((precedents) => ({ ...precedents, [domaine]: brouillon }));
       setMessage("Nomenclature enregistrée.");
     } else {
       setMessage(corps?.error ?? "Impossible d’enregistrer la nomenclature.");
@@ -119,7 +185,7 @@ export default function PageGestionNomenclature() {
           ← Retour
         </Link>
         <h1 className="mt-4 text-2xl font-semibold text-zinc-900">
-          Nom des justificatifs
+          Nomenclature
         </h1>
         <p className="mt-2 text-zinc-600">{organisation.name}</p>
         {chargement ? (
@@ -128,10 +194,37 @@ export default function PageGestionNomenclature() {
           <p className="mt-5 text-sm text-rose-600">{message}</p>
         ) : (
           <form onSubmit={enregistrer} className="mt-5 space-y-5">
+            <div
+              role="tablist"
+              aria-label="Domaine de la nomenclature"
+              className="grid grid-cols-2 gap-2"
+            >
+              {(["depense", "recette"] as const).map((option) => {
+                const selectionne = domaine === option;
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    role="tab"
+                    aria-selected={selectionne}
+                    onClick={() => setDomaine(option)}
+                    className={`rounded-lg border p-2 text-sm font-semibold transition-colors ${
+                      selectionne
+                        ? "border-zinc-900 bg-zinc-900 text-white"
+                        : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
+                    }`}
+                  >
+                    {LIBELLES_DOMAINE[option]}
+                  </button>
+                );
+              })}
+            </div>
             <EditeurNomenclature
               valeur={brouillon}
-              onChange={setBrouillon}
+              onChange={modifierBrouillon}
               anneeComptableCourante={anneeCourante}
+              afficherAnneeComptable={domaine === "depense"}
+              exemplesApercu={EXEMPLES_APERCU[domaine]}
             />
             {message && <p className="text-sm text-zinc-600">{message}</p>}
             <button

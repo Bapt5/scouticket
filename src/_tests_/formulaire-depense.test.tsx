@@ -323,4 +323,129 @@ describe("FormulaireDepense", () => {
     expect(moyen).toHaveTextContent("Cagnotte en ligne");
     expect(moyen).not.toHaveTextContent("Chèque du groupe");
   });
+
+  it("propose la déclaration sans justificatif à un responsable, sans pièce jointe, pour une dépense du groupe", () => {
+    render(
+      <FormulaireDepense
+        typeEnvoi="depense-groupe"
+        piecesJointes={[]}
+        emailUtilisateur="test@example.test"
+        units={UNITES_TEST}
+        uniteInitiale="groupe"
+        treasuryVerified
+        estAdmin
+      />,
+    );
+
+    expect(
+      screen.getByText(/Je déclare cette dépense sans justificatif/),
+    ).toBeInTheDocument();
+  });
+
+  it("ne propose pas la déclaration sans justificatif à un simple membre", () => {
+    render(
+      <FormulaireDepense
+        typeEnvoi="depense-groupe"
+        piecesJointes={[]}
+        emailUtilisateur="test@example.test"
+        units={UNITES_TEST}
+        uniteInitiale="groupe"
+        treasuryVerified
+        estAdmin={false}
+      />,
+    );
+
+    expect(
+      screen.queryByText(/Je déclare cette dépense sans justificatif/),
+    ).toBeNull();
+  });
+
+  it("ne propose pas la déclaration sans justificatif pour une note de frais", () => {
+    render(
+      <FormulaireDepense
+        typeEnvoi="note-de-frais"
+        piecesJointes={[]}
+        emailUtilisateur="test@example.test"
+        units={UNITES_TEST}
+        uniteInitiale="groupe"
+        treasuryVerified
+        estAdmin
+      />,
+    );
+
+    expect(
+      screen.queryByText(/Je déclare cette dépense sans justificatif/),
+    ).toBeNull();
+  });
+
+  it("masque la case dès qu’un justificatif est joint et affiche les champs de la dépense une fois cochée", async () => {
+    const utilisateur = userEvent.setup();
+    render(
+      <FormulaireDepense
+        typeEnvoi="depense-groupe"
+        piecesJointes={[]}
+        emailUtilisateur="test@example.test"
+        units={UNITES_TEST}
+        uniteInitiale="groupe"
+        treasuryVerified
+        estAdmin
+      />,
+    );
+
+    const case_ = screen.getByRole("checkbox");
+    await utilisateur.click(case_);
+
+    expect(screen.getByText("Détails de la dépense")).toBeInTheDocument();
+    expect(screen.getByLabelText("Date de la dépense *")).toBeInTheDocument();
+    expect(screen.getByLabelText("Moyen de paiement *")).toBeInTheDocument();
+  });
+
+  it("envoie withoutReceipt lors de la soumission d’une dépense déclarée sans justificatif", async () => {
+    const utilisateur = userEvent.setup();
+    const fetchSimule = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify({ success: true })));
+    vi.stubGlobal("fetch", fetchSimule);
+
+    render(
+      <FormulaireDepense
+        typeEnvoi="depense-groupe"
+        piecesJointes={[]}
+        emailUtilisateur="test@example.test"
+        units={UNITES_TEST}
+        uniteInitiale="groupe"
+        treasuryVerified
+        estAdmin
+      />,
+    );
+
+    await utilisateur.click(screen.getByRole("checkbox"));
+    await utilisateur.selectOptions(
+      screen.getByLabelText("Moyen de paiement *"),
+      "Chèque du groupe",
+    );
+    await utilisateur.type(screen.getByLabelText("Montant (€) *"), "10");
+    const categorie = screen.getByRole("combobox", {
+      name: "Catégorie comptable *",
+    });
+    await utilisateur.click(categorie);
+    await utilisateur.type(categorie, "bouteille");
+    await utilisateur.click(
+      screen.getByRole("option", { name: /^Gaz : achat de bouteille/ }),
+    );
+    await utilisateur.click(
+      screen.getByRole("button", { name: "Envoyer la facture" }),
+    );
+
+    expect(fetchSimule).toHaveBeenCalledWith(
+      "/api/send-expense",
+      expect.objectContaining({ method: "POST" }),
+    );
+    const corps = JSON.parse(fetchSimule.mock.calls[0][1].body as string);
+    expect(corps.withoutReceipt).toBe(true);
+    expect(corps.attachments).toEqual([]);
+    expect(corps.expenses).toHaveLength(1);
+
+    vi.unstubAllGlobals();
+  });
 });

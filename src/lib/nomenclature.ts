@@ -231,7 +231,8 @@ export interface ParametresGenerationNoms {
   date: string;
   branche: string;
   depenses: DepenseNomenclature[];
-  extensions: string[];
+  /** `null` : pas d'extension ajoutée — utilisé pour la référence textuelle affichée dans l'e-mail quand il n'y a pas de pièce jointe à nommer. */
+  extensions: (string | null)[];
   /** Premier numéro attribué (dernier + 1) ; ignoré si la variable est absente du format. */
   premierGlobal?: number;
   premierComptable?: number;
@@ -243,7 +244,8 @@ function remplirNumero(numero: number, largeur: number): string {
   return String(numero).padStart(largeur, "0");
 }
 
-function limiterLongueur(nom: string, extension: string): string {
+function limiterLongueur(nom: string, extension: string | null): string {
+  if (extension === null) return nom.slice(0, LONGUEUR_MAX_NOM_FICHIER).trim();
   const suffixe = `.${extension}`;
   const longueurBase = LONGUEUR_MAX_NOM_FICHIER - suffixe.length;
   return `${nom.slice(0, Math.max(longueurBase, 1)).trim()}${suffixe}`;
@@ -278,7 +280,12 @@ function remplacerVariables(
   );
 }
 
-/** Génère le nom de chaque pièce jointe (extension comprise). */
+/**
+ * Génère le nom de chaque pièce jointe (extension comprise), ou la référence
+ * textuelle sans extension pour les éléments dont `extensions[i]` vaut
+ * `null` (utilisé pour afficher la nomenclature dans le corps de l'e-mail
+ * même quand il n'y a pas de pièce jointe à nommer).
+ */
 export function genererNomsNomenclature(
   parametres: ParametresGenerationNoms,
 ): string[] {
@@ -325,7 +332,8 @@ export function genererNomsNomenclature(
       doublons && noms.length > 1
         ? `${nom} - ${remplirNumero(index + 1, 2)}`
         : nom;
-    return limiterLongueur(base, parametres.extensions[index] ?? "bin");
+    const extension = parametres.extensions[index];
+    return limiterLongueur(base, extension === undefined ? "bin" : extension);
   });
 }
 

@@ -17,6 +17,7 @@ import { verifierOrigineRequete } from "@/lib/api/securiteRequetes";
 import { executerRouteAvecLogs } from "@/lib/api/routeAvecLogs";
 
 const schemaCorps = z.object({
+  domaine: z.enum(["depense", "recette"]).default("depense"),
   format: z.string().nullable(),
   anneeComptable: z.unknown(),
   prochainNumeroGlobal: z.number().int().min(1).max(999999).optional(),
@@ -27,6 +28,21 @@ const schemaCorps = z.object({
     })
     .optional(),
 });
+
+/** Nom des colonnes de nomenclature/compteurs, selon le domaine. */
+function colonnesDomaine(domaine: "depense" | "recette") {
+  return domaine === "recette"
+    ? {
+        format: "nomenclature_format_recette",
+        compteurGlobal: "compteur_global_recette",
+        compteursComptables: "compteurs_comptables_recette",
+      }
+    : {
+        format: "nomenclature_format",
+        compteurGlobal: "compteur_global",
+        compteursComptables: "compteurs_comptables",
+      };
+}
 
 export async function GET(requete: Request) {
   return executerRouteAvecLogs(requete, async () => {
@@ -44,16 +60,20 @@ export async function GET(requete: Request) {
       identifiantOrganisation,
     );
     const reponse: Record<string, unknown> = {
-      format: groupe.nomenclature.format,
       anneeComptable: groupe.nomenclature.anneeComptable,
+      depense: { format: groupe.nomenclature.depense.format },
+      recette: { format: groupe.nomenclature.recette.format },
     };
 
     if (estResponsable(role)) {
       const compteurs = await pool.query<{
         compteur_global: number;
         compteurs_comptables: Record<string, number>;
+        compteur_global_recette: number;
+        compteurs_comptables_recette: Record<string, number>;
       }>(
-        `SELECT compteur_global, compteurs_comptables
+        `SELECT compteur_global, compteurs_comptables,
+                compteur_global_recette, compteurs_comptables_recette
            FROM scouticket_group_data WHERE organization_id = $1`,
         [identifiantOrganisation],
       );
@@ -63,10 +83,15 @@ export async function GET(requete: Request) {
         aujourdhui,
         groupe.nomenclature.anneeComptable,
       );
-      reponse.compteurs = {
+      reponse.anneeComptableCourante = annee;
+      (reponse.depense as Record<string, unknown>).compteurs = {
         prochainNumeroGlobal: (ligne?.compteur_global ?? 0) + 1,
-        anneeComptableCourante: annee,
         prochainNumeroComptable: (ligne?.compteurs_comptables[annee] ?? 0) + 1,
+      };
+      (reponse.recette as Record<string, unknown>).compteurs = {
+        prochainNumeroGlobal: (ligne?.compteur_global_recette ?? 0) + 1,
+        prochainNumeroComptable:
+          (ligne?.compteurs_comptables_recette[annee] ?? 0) + 1,
       };
     }
     return NextResponse.json(reponse);
@@ -96,7 +121,7 @@ export async function PATCH(requete: Request) {
     const corps = schemaCorps.safeParse(await requete.json().catch(() => null));
     if (!corps.success)
       return NextResponse.json({ error: "Données invalides" }, { status: 400 });
-    const { format, anneeComptable } = corps.data;
+    const { domaine, format, anneeComptable } = corps.data;
     if (!validerParametresAnneeComptable(anneeComptable))
       return NextResponse.json(
         { error: "Année comptable invalide" },
@@ -110,16 +135,20 @@ export async function PATCH(requete: Request) {
     const formatEnregistre =
       format === null ? null : normaliserFormatNomenclature(format);
     const { prochainNumeroGlobal, prochainNumeroComptable } = corps.data;
+    const colonnes = colonnesDomaine(domaine);
+    // L'année comptable est partagée : elle est toujours mise à jour, quel
+    // que soit le domaine édité. Le format et les compteurs ne touchent que
+    // les colonnes du domaine ciblé.
     const resultat = await pool.query(
       `UPDATE scouticket_group_data
-          SET nomenclature_format = $2,
+          SET ${colonnes.format} = $2,
               annee_comptable_debut_mois = $3,
               annee_comptable_debut_jour = $4,
               annee_comptable_format = $5,
-              compteur_global = COALESCE($6::int, compteur_global),
-              compteurs_comptables = CASE
-                WHEN $7::text IS NULL THEN compteurs_comptables
-                ELSE compteurs_comptables || jsonb_build_object($7::text, $8::int)
+              ${colonnes.compteurGlobal} = COALESCE($6::int, ${colonnes.compteurGlobal}),
+              ${colonnes.compteursComptables} = CASE
+                WHEN $7::text IS NULL THEN ${colonnes.compteursComptables}
+                ELSE ${colonnes.compteursComptables} || jsonb_build_object($7::text, $8::int)
               END
         WHERE organization_id = $1`,
       [
@@ -141,6 +170,7 @@ export async function PATCH(requete: Request) {
 
     return NextResponse.json({
       success: true,
+      domaine,
       format: formatEnregistre,
       anneeComptable,
     });
