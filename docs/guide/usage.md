@@ -35,6 +35,8 @@ Un justificatif peut couvrir plusieurs catégories comptables : cliquez sur **Aj
 
 Les justificatifs se traitent un par un : chacun est une section repliable qui indique s’il est **complet** ou **à compléter**. L’envoi se fait une fois tous les justificatifs complétés.
 
+**Envoi sans justificatif (responsables uniquement) :** si vous êtes responsable du groupe (owner ou administrateur) et qu’aucun fichier n’est joint, une case « Je déclare cette dépense sans justificatif » apparaît. Elle est réservée aux cas où aucun justificatif n’existe réellement, par exemple un virement interne à l'association. En la cochant, vous attestez ne pas avoir besoin de justificatif pour cette dépense ; renseignez alors la date, le moyen de paiement et les lignes comme d’habitude. La trésorerie est informée dans l’e-mail que la dépense a été envoyée sans pièce jointe sur cette attestation.
+
 La trésorerie reçoit l’e-mail avec les pièces jointes et vous recevez une copie pour assurer votre suivi. Les pièces jointes gardent le nom de votre fichier, sauf si votre groupe a défini un format de nom ; les numéros globaux (affichés `###` dans l’aperçu) sont attribués au moment de l’envoi.
 
 ![Page de connexion](./page_connexion.png)

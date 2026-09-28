@@ -23,8 +23,12 @@ export interface DonneesEmailDepense {
   piecesJointes: PieceJointeDepense[];
   /** RIB joint à une note de frais (facultatif). */
   rib?: PieceJointeDepense;
-  /** Un élément par pièce jointe, dans le même ordre. */
+  /** Un élément par pièce jointe, dans le même ordre ; un élément sans pièce
+   * jointe correspondante lorsque `sansJustificatifAttesteParResponsable`. */
   detailsDepenses: DetailDepense[];
+  /** Dépense avec moyen de paiement du groupe envoyée sans justificatif, sur
+   * attestation d'un responsable (ex. virement interne à l'association). */
+  sansJustificatifAttesteParResponsable?: boolean;
   groupe?: string;
   couleur?: string;
   emailTresorerie?: string;
@@ -188,6 +192,7 @@ export const envoyerEmailDepense = async (donnees: DonneesEmailDepense) => {
     piecesJointes,
     rib,
     detailsDepenses,
+    sansJustificatifAttesteParResponsable = false,
     groupe = "Groupe scout",
     couleur = "#1E3A8A",
     emailTresorerie,
@@ -207,10 +212,12 @@ export const envoyerEmailDepense = async (donnees: DonneesEmailDepense) => {
   const accentColor = "#FBB042";
   const texteSurCouleurPrincipale = "#ffffff";
   const formaterMontant = (valeur: number) => `${valeur.toFixed(2)} €`;
-  const blocsJustificatifs = piecesJointesAnalysees.map((piece, index) => {
-    const detail = detailsDepenses[index];
+  // Basé sur `detailsDepenses` (et non les pièces jointes) : une dépense sans
+  // justificatif attesté n'a pas de pièce jointe correspondante.
+  const blocsJustificatifs = detailsDepenses.map((detail, index) => {
+    const piece = piecesJointesAnalysees[index];
     return {
-      filename: piece.filename,
+      filename: piece?.filename ?? "Aucun justificatif (attesté sans pièce)",
       reference: detail?.reference ?? "",
       dateJustificatif: detail?.date ?? "",
       modePaiement: detail?.modePaiement ?? "",
@@ -339,6 +346,14 @@ export const envoyerEmailDepense = async (donnees: DonneesEmailDepense) => {
           </table>
         </div>
 
+        ${
+          sansJustificatifAttesteParResponsable
+            ? `<div style="background-color: #FEF3C7; color: #92400E; padding: 15px; border-radius: 8px; margin: 20px 0;">
+          <strong>⚠️ Dépense envoyée sans justificatif :</strong> un responsable du groupe a attesté qu'aucun justificatif n'était nécessaire pour cette dépense (ex. virement interne à l'association).
+        </div>`
+            : ""
+        }
+
         <div style="background-color: ${accentColor}; color: ${couleurPrincipale}; padding: 15px; border-radius: 8px; margin: 20px 0;">
           <strong>📎 ${echapperHtml(String(toutesPiecesJointes.length))} pièce(s) jointe(s) :</strong>
           <ul style="margin: 8px 0 0 18px; padding: 0;">
@@ -388,7 +403,7 @@ ${
 }Total : ${formaterMontant(montant)}
 Demandeur : ${emailUtilisateur}
 ${estNoteDeFrais ? `RIB : ${ribAnalyse ? "joint à ce message" : "non fourni"}` : ""}
-
+${sansJustificatifAttesteParResponsable ? "\n⚠️ Dépense envoyée sans justificatif : un responsable du groupe a attesté qu'aucun justificatif n'était nécessaire (ex. virement interne à l'association).\n" : ""}
 Pièce(s) jointe(s) (${toutesPiecesJointes.length}) :
 ${toutesPiecesJointes.map((pieceJointe) => `- ${pieceJointe.filename}`).join("\n")}
 

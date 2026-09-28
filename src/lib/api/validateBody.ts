@@ -108,6 +108,10 @@ export function validerCorpsRequete(
       ),
       attachments: z.array(z.any()).optional(),
       rib: z.any().optional(),
+      // Dépense avec moyen de paiement du groupe uniquement : attestation du
+      // responsable qu'aucun justificatif n'est nécessaire (ex. virement
+      // interne à l'association). Sans effet si un justificatif est fourni.
+      withoutReceipt: z.boolean().optional(),
     })
     .safeParse(body);
 
@@ -128,7 +132,18 @@ export function validerCorpsRequete(
   // ─── Pièces jointes ───
   const piecesJointesBrutes: unknown[] = b.attachments ?? [];
 
-  if (piecesJointesBrutes.length === 0) {
+  // Attestation du responsable qu'aucun justificatif n'est nécessaire : ne
+  // vaut qu'en l'absence de toute pièce jointe, pour une dépense avec moyen
+  // de paiement du groupe (l'autorisation par rôle est vérifiée par l'appelant).
+  const sansJustificatifAttesteParResponsable =
+    !estNoteDeFrais &&
+    b.withoutReceipt === true &&
+    piecesJointesBrutes.length === 0;
+
+  if (
+    piecesJointesBrutes.length === 0 &&
+    !sansJustificatifAttesteParResponsable
+  ) {
     return { error: jsonError("Aucun justificatif fourni", 400) };
   }
 
@@ -191,8 +206,13 @@ export function validerCorpsRequete(
   const estMoyenPaiementValide = (moyen: string) =>
     moyensPaiementGroupe.includes(moyen);
 
-  // Un élément de `expenses` par justificatif, dans le même ordre.
-  if (b.expenses.length !== piecesJointesNormalisees.length) {
+  // Un élément de `expenses` par justificatif, dans le même ordre ; une seule
+  // dépense sans pièce jointe lorsqu'elle est déclarée sans justificatif.
+  const nombreDepensesAttendu = Math.max(
+    piecesJointesNormalisees.length,
+    sansJustificatifAttesteParResponsable ? 1 : 0,
+  );
+  if (b.expenses.length !== nombreDepensesAttendu) {
     return { error: jsonError("Détails des dépenses incomplets", 400) };
   }
 
@@ -259,6 +279,7 @@ export function validerCorpsRequete(
       piecesJointes: piecesJointesNormalisees,
       detailsDepenses,
       rib,
+      sansJustificatifAttesteParResponsable,
     },
   };
 }

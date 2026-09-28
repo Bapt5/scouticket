@@ -211,4 +211,48 @@ describe("validerCorpsRequete : dépense avec moyen de paiement du groupe", () =
       400,
     );
   });
+
+  it("accepte une dépense sans justificatif attestée par un responsable (withoutReceipt)", () => {
+    const resultat = valider(
+      depenseGroupe({
+        attachments: [],
+        withoutReceipt: true,
+        expenses: [
+          {
+            date: "2026-08-16",
+            paymentMethod: "Carte de procurement",
+            lines: [ligne],
+          },
+        ],
+      }),
+    );
+    expect(resultat.error).toBeUndefined();
+    expect(resultat.donneesEmail).toMatchObject({
+      montant: 18,
+      piecesJointes: [],
+      sansJustificatifAttesteParResponsable: true,
+      detailsDepenses: [{ modePaiement: "Carte de procurement" }],
+    });
+  });
+
+  it("refuse toujours l'absence de justificatif sans l'attestation withoutReceipt", () => {
+    const resultat = valider(depenseGroupe({ attachments: [] }));
+    expect(resultat.error?.status).toBe(400);
+  });
+
+  it("ignore withoutReceipt si un justificatif est malgré tout fourni", () => {
+    const resultat = valider(depenseGroupe({ withoutReceipt: true }));
+    expect(resultat.error).toBeUndefined();
+    expect(resultat.donneesEmail?.sansJustificatifAttesteParResponsable).toBe(
+      false,
+    );
+    expect(resultat.donneesEmail?.piecesJointes).toHaveLength(1);
+  });
+
+  it("n'accepte pas withoutReceipt pour une note de frais", () => {
+    const resultat = valider(
+      noteDeFrais({ attachments: [], withoutReceipt: true }),
+    );
+    expect(resultat.error?.status).toBe(400);
+  });
 });
