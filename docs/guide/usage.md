@@ -1,4 +1,4 @@
-# Envoyer un justificatif
+# Envoyer un justificatif ou signaler une recette
 
 ## Avant de commencer
 
@@ -6,9 +6,9 @@
 - Votre responsable doit avoir terminé la configuration du groupe et la trésorerie doit avoir confirmé son adresse e-mail.
 - Une connexion internet est nécessaire pour l’envoi.
 
-## Envoyer un justificatif
+## Envoyer un justificatif de dépense
 
-1. Connectez-vous et vérifiez que le bon groupe est sélectionné dans l’en-tête.
+1. Connectez-vous, vérifiez que le bon groupe est sélectionné dans l’en-tête, puis restez sur l’onglet **Dépenses**.
 2. Choisissez le **type d’envoi** :
    - **Note de frais** : vous avez avancé une dépense pour votre mission ou pour le groupe et vous devez être remboursé ;
    - **Dépense avec moyen de paiement du groupe** : la dépense a été réglée avec un moyen de paiement fourni par le groupe (aucun remboursement).
@@ -35,9 +35,17 @@ Un justificatif peut couvrir plusieurs catégories comptables : cliquez sur **Aj
 
 Les justificatifs se traitent un par un : chacun est une section repliable qui indique s’il est **complet** ou **à compléter**. L’envoi se fait une fois tous les justificatifs complétés.
 
+**Envoi sans justificatif (responsables uniquement) :** si vous êtes responsable du groupe (owner ou administrateur) et qu’aucun fichier n’est joint, une case « Je déclare cette dépense sans justificatif » apparaît. Elle est réservée aux cas où aucun justificatif n’existe réellement, par exemple un virement interne à l'association. En la cochant, vous attestez ne pas avoir besoin de justificatif pour cette dépense ; renseignez alors la date, le moyen de paiement et les lignes comme d’habitude. La trésorerie est informée dans l’e-mail que la dépense a été envoyée sans pièce jointe sur cette attestation.
+
 La trésorerie reçoit l’e-mail avec les pièces jointes et vous recevez une copie pour assurer votre suivi. Les pièces jointes gardent le nom de votre fichier, sauf si votre groupe a défini un format de nom ; les numéros globaux (affichés `###` dans l’aperçu) sont attribués au moment de l’envoi.
 
 ![Page de connexion](./page_connexion.png)
+
+## Signaler une recette
+
+Depuis l’onglet **Recettes** de la page d’accueil, signalez un encaissement à venir (virement, chèque, liquide ou carte bancaire) : contrairement à une dépense, **aucun justificatif n’est obligatoire**.
+
+Renseignez la **date de la recette**, le **mode de paiement**, une ou plusieurs lignes « montant + catégorie comptable » (fonctionnement identique aux dépenses), une **description** si elle est utile et, si vous le souhaitez, un **justificatif (optionnel)** (par exemple une photo du chèque). Choisissez l’unité puis envoyez : la trésorerie reçoit l’e-mail et vous recevez une copie.
 
 ## Mode hors ligne
 

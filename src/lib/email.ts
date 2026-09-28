@@ -5,6 +5,7 @@ import { estTypeMimePieceJointeAutorise } from "./attachments";
 import {
   type PieceJointeDepense,
   type DetailDepense,
+  type DetailRecette,
   type TypeEnvoi,
 } from "@/constants/piecesJointes";
 import { LIBELLES_TYPES_ENVOI } from "@/constants/piecesJointes";
@@ -22,8 +23,12 @@ export interface DonneesEmailDepense {
   piecesJointes: PieceJointeDepense[];
   /** RIB joint à une note de frais (facultatif). */
   rib?: PieceJointeDepense;
-  /** Un élément par pièce jointe, dans le même ordre. */
+  /** Un élément par pièce jointe, dans le même ordre ; un élément sans pièce
+   * jointe correspondante lorsque `sansJustificatifAttesteParResponsable`. */
   detailsDepenses: DetailDepense[];
+  /** Dépense avec moyen de paiement du groupe envoyée sans justificatif, sur
+   * attestation d'un responsable (ex. virement interne à l'association). */
+  sansJustificatifAttesteParResponsable?: boolean;
   groupe?: string;
   couleur?: string;
   emailTresorerie?: string;
@@ -106,6 +111,76 @@ export async function envoyerMail(optionsEmail: Omit<SendMailOptions, "from">) {
   }
 }
 
+// Helper pour extraire le buffer depuis une data URL ou une chaîne base64 brute
+function extraireTamponPieceJointe(entree: string, typeMime: string) {
+  if (!entree || !typeMime) {
+    throw new Error("ATTACHMENT_MISSING");
+  }
+
+  let mime = typeMime;
+  let partieBase64 = entree;
+
+  // Format attendu: data:<type>;base64,<data>
+  if (entree.startsWith("data:")) {
+    const match = /^data:([a-zA-Z0-9.+/-]+);base64,(.*)$/.exec(entree);
+    if (!match || match.length < 3) {
+      throw new Error("ATTACHMENT_DATA_URL_INVALID");
+    }
+    mime = match[1];
+    partieBase64 = match[2];
+  } else if (entree.includes(",")) {
+    // Cas dégradé: on prend tout après la première virgule
+    const indexVirgule = entree.indexOf(",");
+    partieBase64 = indexVirgule >= 0 ? entree.slice(indexVirgule + 1) : entree;
+  }
+
+  partieBase64 = partieBase64.replace(/\s+/g, "");
+  if (!/^[A-Za-z0-9+/=]+$/.test(partieBase64)) {
+    // Vérification minimale que la chaîne ressemble à du base64
+    throw new Error("ATTACHMENT_NOT_BASE64");
+  }
+
+  if (!estTypeMimePieceJointeAutorise(mime)) {
+    throw new Error("ATTACHMENT_MIME_NOT_ALLOWED");
+  }
+
+  try {
+    const buffer = Buffer.from(partieBase64, "base64");
+    if (buffer.length === 0) {
+      throw new Error("ATTACHMENT_EMPTY_BUFFER");
+    }
+    return { buffer, mime };
+  } catch (e) {
+    journal.erreur("smtp.conversion_piece_jointe_echouee", {
+      categorie: "email",
+      erreur: e,
+    });
+    throw new Error("ATTACHMENT_BUFFER_CONVERSION_FAILED");
+  }
+}
+
+function analyserPieceJointe(pieceJointe: PieceJointeDepense) {
+  try {
+    const info = extraireTamponPieceJointe(
+      pieceJointe.donneesBase64,
+      pieceJointe.typeMime,
+    );
+    return {
+      filename:
+        pieceJointe.nomFichierNormalise ||
+        pieceJointe.nomAffiche ||
+        pieceJointe.nomFichierOriginal,
+      content: info.buffer,
+      contentType: info.mime,
+    };
+  } catch (e) {
+    if (e instanceof Error && e.message.startsWith("ATTACHMENT_")) {
+      throw new Error(`INVALID_ATTACHMENT:${e.message}`);
+    }
+    throw e;
+  }
+}
+
 // Compose et envoie l'e-mail de note de frais avec ses pièces jointes.
 export const envoyerEmailDepense = async (donnees: DonneesEmailDepense) => {
   const {
@@ -117,81 +192,12 @@ export const envoyerEmailDepense = async (donnees: DonneesEmailDepense) => {
     piecesJointes,
     rib,
     detailsDepenses,
+    sansJustificatifAttesteParResponsable = false,
     groupe = "Groupe scout",
     couleur = "#1E3A8A",
     emailTresorerie,
   } = donnees;
 
-  // Helper pour extraire le buffer depuis une data URL ou une chaîne base64 brute
-  const extraireTamponPieceJointe = (entree: string, typeMime: string) => {
-    if (!entree || !typeMime) {
-      throw new Error("ATTACHMENT_MISSING");
-    }
-
-    let mime = typeMime;
-    let partieBase64 = entree;
-
-    // Format attendu: data:<type>;base64,<data>
-    if (entree.startsWith("data:")) {
-      const match = /^data:([a-zA-Z0-9.+/-]+);base64,(.*)$/.exec(entree);
-      if (!match || match.length < 3) {
-        throw new Error("ATTACHMENT_DATA_URL_INVALID");
-      }
-      mime = match[1];
-      partieBase64 = match[2];
-    } else if (entree.includes(",")) {
-      // Cas dégradé: on prend tout après la première virgule
-      const indexVirgule = entree.indexOf(",");
-      partieBase64 =
-        indexVirgule >= 0 ? entree.slice(indexVirgule + 1) : entree;
-    }
-
-    partieBase64 = partieBase64.replace(/\s+/g, "");
-    if (!/^[A-Za-z0-9+/=]+$/.test(partieBase64)) {
-      // Vérification minimale que la chaîne ressemble à du base64
-      throw new Error("ATTACHMENT_NOT_BASE64");
-    }
-
-    if (!estTypeMimePieceJointeAutorise(mime)) {
-      throw new Error("ATTACHMENT_MIME_NOT_ALLOWED");
-    }
-
-    try {
-      const buffer = Buffer.from(partieBase64, "base64");
-      if (buffer.length === 0) {
-        throw new Error("ATTACHMENT_EMPTY_BUFFER");
-      }
-      return { buffer, mime };
-    } catch (e) {
-      journal.erreur("smtp.conversion_piece_jointe_echouee", {
-        categorie: "email",
-        erreur: e,
-      });
-      throw new Error("ATTACHMENT_BUFFER_CONVERSION_FAILED");
-    }
-  };
-
-  const analyserPieceJointe = (pieceJointe: PieceJointeDepense) => {
-    try {
-      const info = extraireTamponPieceJointe(
-        pieceJointe.donneesBase64,
-        pieceJointe.typeMime,
-      );
-      return {
-        filename:
-          pieceJointe.nomFichierNormalise ||
-          pieceJointe.nomAffiche ||
-          pieceJointe.nomFichierOriginal,
-        content: info.buffer,
-        contentType: info.mime,
-      };
-    } catch (e) {
-      if (e instanceof Error && e.message.startsWith("ATTACHMENT_")) {
-        throw new Error(`INVALID_ATTACHMENT:${e.message}`);
-      }
-      throw e;
-    }
-  };
   const piecesJointesAnalysees = piecesJointes.map(analyserPieceJointe);
   const ribAnalyse = rib ? analyserPieceJointe(rib) : undefined;
   const estNoteDeFrais = typeEnvoi === "note-de-frais";
@@ -206,10 +212,13 @@ export const envoyerEmailDepense = async (donnees: DonneesEmailDepense) => {
   const accentColor = "#FBB042";
   const texteSurCouleurPrincipale = "#ffffff";
   const formaterMontant = (valeur: number) => `${valeur.toFixed(2)} €`;
-  const blocsJustificatifs = piecesJointesAnalysees.map((piece, index) => {
-    const detail = detailsDepenses[index];
+  // Basé sur `detailsDepenses` (et non les pièces jointes) : une dépense sans
+  // justificatif attesté n'a pas de pièce jointe correspondante.
+  const blocsJustificatifs = detailsDepenses.map((detail, index) => {
+    const piece = piecesJointesAnalysees[index];
     return {
-      filename: piece.filename,
+      filename: piece?.filename ?? "Aucun justificatif (attesté sans pièce)",
+      reference: detail?.reference ?? "",
       dateJustificatif: detail?.date ?? "",
       modePaiement: detail?.modePaiement ?? "",
       activite: detail?.activite ?? "",
@@ -223,11 +232,13 @@ export const envoyerEmailDepense = async (donnees: DonneesEmailDepense) => {
   const champsJustificatif = (bloc: (typeof blocsJustificatifs)[number]) =>
     (estNoteDeFrais
       ? [
+          ["Référence", bloc.reference],
           ["Date de la dépense", bloc.dateJustificatif],
           ["Activité liée", bloc.activite],
           ["Description", bloc.description],
         ]
       : [
+          ["Référence", bloc.reference],
           ["Date du justificatif", bloc.dateJustificatif],
           ["Description", bloc.description],
           ["Moyen de paiement", bloc.modePaiement],
@@ -335,6 +346,14 @@ export const envoyerEmailDepense = async (donnees: DonneesEmailDepense) => {
           </table>
         </div>
 
+        ${
+          sansJustificatifAttesteParResponsable
+            ? `<div style="background-color: #FEF3C7; color: #92400E; padding: 15px; border-radius: 8px; margin: 20px 0;">
+          <strong>⚠️ Dépense envoyée sans justificatif :</strong> un responsable du groupe a attesté qu'aucun justificatif n'était nécessaire pour cette dépense (ex. virement interne à l'association).
+        </div>`
+            : ""
+        }
+
         <div style="background-color: ${accentColor}; color: ${couleurPrincipale}; padding: 15px; border-radius: 8px; margin: 20px 0;">
           <strong>📎 ${echapperHtml(String(toutesPiecesJointes.length))} pièce(s) jointe(s) :</strong>
           <ul style="margin: 8px 0 0 18px; padding: 0;">
@@ -384,7 +403,7 @@ ${
 }Total : ${formaterMontant(montant)}
 Demandeur : ${emailUtilisateur}
 ${estNoteDeFrais ? `RIB : ${ribAnalyse ? "joint à ce message" : "non fourni"}` : ""}
-
+${sansJustificatifAttesteParResponsable ? "\n⚠️ Dépense envoyée sans justificatif : un responsable du groupe a attesté qu'aucun justificatif n'était nécessaire (ex. virement interne à l'association).\n" : ""}
 Pièce(s) jointe(s) (${toutesPiecesJointes.length}) :
 ${toutesPiecesJointes.map((pieceJointe) => `- ${pieceJointe.filename}`).join("\n")}
 
@@ -405,6 +424,168 @@ Email envoyé automatiquement par Scouticket.
       "X-MSMail-Priority": "High",
     },
     attachments: toutesPiecesJointes,
+  };
+
+  const info = await envoyerMail(optionsEmail);
+  return { success: true, messageId: info.messageId };
+};
+
+export interface DonneesEmailRecette {
+  emailUtilisateur: string;
+  date: string;
+  branche: string;
+  /** Total de toutes les lignes de la recette. */
+  montant: number;
+  /** Pièce jointe facultative (0 ou 1 : jamais de justificatif obligatoire). */
+  piecesJointes: PieceJointeDepense[];
+  detailRecette: DetailRecette;
+  groupe?: string;
+  couleur?: string;
+  emailTresorerie?: string;
+}
+
+// Compose et envoie l'e-mail de recette, avec une pièce jointe facultative.
+export const envoyerEmailRecette = async (donnees: DonneesEmailRecette) => {
+  const {
+    emailUtilisateur,
+    date,
+    branche,
+    montant,
+    piecesJointes,
+    detailRecette,
+    groupe = "Groupe scout",
+    couleur = "#1E3A8A",
+    emailTresorerie,
+  } = donnees;
+
+  if (!emailTresorerie) throw new Error("TREASURY_EMAIL_UNDEFINED");
+  const piecesJointesAnalysees = piecesJointes.map(analyserPieceJointe);
+  const libelleType = "Recette";
+  const sujet = `Scouticket - ${libelleType} - ${groupe} - ${branche} - ${date}`;
+  const resultatCouleur = schemaCouleurHtml.safeParse(couleur);
+  const couleurPrincipale = resultatCouleur.success
+    ? resultatCouleur.data
+    : "#1E3A8A";
+  const accentColor = "#FBB042";
+  const texteSurCouleurPrincipale = "#ffffff";
+  const formaterMontant = (valeur: number) => `${valeur.toFixed(2)} €`;
+  const ventilation = ventilerParCategorie([detailRecette]);
+
+  const contenuHtml = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <div style="background-color: ${couleurPrincipale}; color: ${texteSurCouleurPrincipale}; padding: 20px; text-align: center;">
+  <h1 style="margin: 0; font-size: 24px;">📜 Scouticket</h1>
+        <p style="margin: 10px 0 0 0; opacity: 0.9;">${echapperHtml(groupe)}</p>
+      </div>
+
+      <div style="padding: 30px; background-color: #f9f9f9;">
+  <h2 style="color: ${couleurPrincipale}; margin-top: 0;">${echapperHtml(libelleType)}</h2>
+
+        <div style="background-color: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 10px 0; border-bottom: 1px solid #eee; font-weight: bold; color: #374151;">Branche :</td>
+              <td style="padding: 10px 0; border-bottom: 1px solid #eee; color: #374151;">${echapperHtml(branche)}</td>
+            </tr>
+            ${
+              detailRecette.reference
+                ? `<tr>
+              <td style="padding: 10px 0; border-bottom: 1px solid #eee; font-weight: bold; color: #374151;">Référence :</td>
+              <td style="padding: 10px 0; border-bottom: 1px solid #eee; color: #374151;">${echapperHtml(detailRecette.reference)}</td>
+            </tr>`
+                : ""
+            }
+            <tr>
+              <td style="padding: 10px 0; border-bottom: 1px solid #eee; font-weight: bold; color: #374151;">Date de la recette :</td>
+              <td style="padding: 10px 0; border-bottom: 1px solid #eee; color: #374151;">${echapperHtml(detailRecette.date)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 0; border-bottom: 1px solid #eee; font-weight: bold; color: #374151;">Mode de paiement :</td>
+              <td style="padding: 10px 0; border-bottom: 1px solid #eee; color: #374151;">${echapperHtml(detailRecette.modePaiement)}</td>
+            </tr>
+            ${
+              detailRecette.description
+                ? `<tr>
+              <td style="padding: 10px 0; border-bottom: 1px solid #eee; font-weight: bold; color: #374151;">Description :</td>
+              <td style="padding: 10px 0; border-bottom: 1px solid #eee; color: #374151;">${echapperHtml(detailRecette.description)}</td>
+            </tr>`
+                : ""
+            }
+            <tr>
+              <td colspan="2" style="padding: 14px 0 6px; font-weight: bold; color: #374151;">Ventilation par catégorie comptable :</td>
+            </tr>
+            ${ventilation
+              .map(
+                (ligne) => `
+            <tr>
+              <td style="padding: 2px 0 2px 12px; color: #374151;">${echapperHtml(ligne.categorie)}</td>
+              <td style="padding: 2px 0; color: #374151; text-align: right;">${echapperHtml(formaterMontant(ligne.montant))}</td>
+            </tr>`,
+              )
+              .join("")}
+            <tr>
+              <td style="padding: 10px 0; border-top: 1px solid #eee; border-bottom: 1px solid #eee; font-weight: bold; color: ${couleurPrincipale};">Total :</td>
+              <td style="padding: 10px 0; border-top: 1px solid #eee; border-bottom: 1px solid #eee; color: ${couleurPrincipale}; font-weight: bold; font-size: 18px; text-align: right;">${echapperHtml(formaterMontant(montant))}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 0; font-weight: bold; color: #374151;">Déclarant :</td>
+              <td style="padding: 10px 0; color: #374151;">${echapperHtml(emailUtilisateur)}</td>
+            </tr>
+          </table>
+        </div>
+
+        <div style="background-color: ${accentColor}; color: ${couleurPrincipale}; padding: 15px; border-radius: 8px; margin: 20px 0;">
+          <strong>📎 ${echapperHtml(String(piecesJointesAnalysees.length))} pièce(s) jointe(s) :</strong>
+          ${
+            piecesJointesAnalysees.length === 0
+              ? '<p style="margin: 8px 0 0;">Aucune pièce jointe</p>'
+              : `<ul style="margin: 8px 0 0 18px; padding: 0;">
+            ${piecesJointesAnalysees.map((pieceJointe) => `<li>${echapperHtml(pieceJointe.filename)}</li>`).join("")}
+          </ul>`
+          }
+        </div>
+
+        <p style="color: #6B7280; font-size: 14px; margin-top: 30px;">
+          Email envoyé automatiquement par Scouticket.
+        </p>
+      </div>
+    </div>
+  `;
+
+  const contenuTexte = `
+Scouticket - ${groupe}
+
+${libelleType}
+
+Branche : ${branche}
+${detailRecette.reference ? `Référence : ${detailRecette.reference}\n` : ""}Date de la recette : ${detailRecette.date}
+Mode de paiement : ${detailRecette.modePaiement}
+${detailRecette.description ? `Description : ${detailRecette.description}\n` : ""}Ventilation par catégorie comptable :
+${ventilation
+  .map((ligne) => `    ${ligne.categorie} : ${formaterMontant(ligne.montant)}`)
+  .join("\n")}
+Total : ${formaterMontant(montant)}
+Déclarant : ${emailUtilisateur}
+
+Pièce(s) jointe(s) (${piecesJointesAnalysees.length}) :
+${piecesJointesAnalysees.length === 0 ? "Aucune pièce jointe" : piecesJointesAnalysees.map((pieceJointe) => `- ${pieceJointe.filename}`).join("\n")}
+
+Email envoyé automatiquement par Scouticket.
+  `;
+
+  const optionsEmail = {
+    to: emailTresorerie,
+    cc: emailUtilisateur,
+    subject: sujet,
+    text: contenuTexte,
+    html: contenuHtml,
+    priority: "high" as const,
+    headers: {
+      Importance: "High",
+      "X-Priority": "1 (Highest)",
+      "X-MSMail-Priority": "High",
+    },
+    attachments: piecesJointesAnalysees,
   };
 
   const info = await envoyerMail(optionsEmail);

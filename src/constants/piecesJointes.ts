@@ -52,4 +52,23 @@ export interface DetailDepense {
   activite: string;
   description: string;
   lignes: LigneDepense[];
+  /** Référence générée par la nomenclature (sans extension), ajoutée côté serveur ; absente si aucun format n'est configuré. */
+  reference?: string;
+}
+
+export interface LigneRecette {
+  categorie: string;
+  montant: number;
+}
+
+// Une recette : date, mode de paiement (liste fixe), lignes (catégorie
+// comptable + montant), description facultative. Pas de justificatif
+// obligatoire : la pièce jointe éventuelle est unique (0 ou 1).
+export interface DetailRecette {
+  date: string;
+  modePaiement: string;
+  description: string;
+  lignes: LigneRecette[];
+  /** Référence générée par la nomenclature (sans extension), ajoutée côté serveur ; absente si aucun format n'est configuré. */
+  reference?: string;
 }

@@ -7,6 +7,7 @@ export type CategorieJournal =
   | "email"
   | "base_de_donnees"
   | "depense"
+  | "recette"
   | "invitation"
   | "preference_unite"
   | "framework"

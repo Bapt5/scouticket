@@ -129,6 +129,12 @@ describe("genererNomsNomenclature", () => {
     ).toEqual(["2025-2026 - 013 - 042.pdf"]);
   });
 
+  it("ne met aucune extension quand `extensions[i]` vaut null (référence textuelle)", () => {
+    expect(
+      generer("{YYYY} - {Type} - {Montant}", { extensions: [null] }),
+    ).toEqual(["2026 - Carburants - 28.50"]);
+  });
+
   it("attribue des numéros consécutifs aux pièces d'un envoi", () => {
     const noms = generer("{GlobalNumero} - {Numero}", {
       depenses: [depense, depense],

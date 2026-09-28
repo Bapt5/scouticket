@@ -21,11 +21,26 @@ export interface BrouillonNomenclature {
   prochainNumeroComptable: string;
 }
 
+interface ExempleApercu {
+  typeDepense: string;
+  modePaiement: string;
+  montant: number;
+}
+
 interface EditeurNomenclatureProps {
   readonly valeur: BrouillonNomenclature;
   readonly onChange: (valeur: BrouillonNomenclature) => void;
   readonly anneeComptableCourante: number;
+  /** Masque le fieldset « Année comptable » quand elle est déjà affichée ailleurs (partagée entre domaines). */
+  readonly afficherAnneeComptable?: boolean;
+  /** Exemples utilisés pour l'aperçu du format, adaptables au domaine (dépense/recette). */
+  readonly exemplesApercu?: readonly ExempleApercu[];
 }
+
+const EXEMPLES_APERCU_PAR_DEFAUT: readonly ExempleApercu[] = [
+  { typeDepense: "Carburant", modePaiement: "Carte bancaire", montant: 28.5 },
+  { typeDepense: "Fournitures", modePaiement: "Espèces", montant: 12 },
+];
 
 const MOIS = [
   "janvier",
@@ -56,6 +71,8 @@ export function EditeurNomenclature({
   valeur,
   onChange,
   anneeComptableCourante,
+  afficherAnneeComptable = true,
+  exemplesApercu = EXEMPLES_APERCU_PAR_DEFAUT,
 }: EditeurNomenclatureProps) {
   const champFormat = useRef<HTMLInputElement>(null);
   const { anneeComptable } = valeur;
@@ -98,19 +115,10 @@ export function EditeurNomenclature({
           parametresAnnee: anneeComptable,
           date: dateDuJourIso(),
           branche: "Louveteaux",
-          depenses: [
-            {
-              typeDepense: "Carburant",
-              modePaiement: "Carte bancaire",
-              montant: 28.5,
-            },
-            {
-              typeDepense: "Fournitures",
-              modePaiement: "Espèces",
-              montant: 12,
-            },
-          ],
-          extensions: ["pdf", "jpg"],
+          depenses: exemplesApercu.map((exemple) => ({ ...exemple })),
+          extensions: exemplesApercu.map((_, index) =>
+            index === 0 ? "pdf" : "jpg",
+          ),
           premierGlobal: 42,
           premierComptable: 13,
         })
@@ -182,7 +190,7 @@ export function EditeurNomenclature({
             </p>
           </div>
 
-          <fieldset className="space-y-3">
+          <fieldset className={afficherAnneeComptable ? "space-y-3" : "hidden"}>
             <legend className="mb-1 text-base font-semibold text-zinc-900">
               Année comptable
             </legend>
