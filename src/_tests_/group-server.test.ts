@@ -64,6 +64,7 @@ describe("recupererGroupeActif", () => {
             scan_justificatifs_actif: true,
             convertir_justificatifs_pdf: true,
             moyens_paiement: ["Espèces du groupe"],
+            ndf_signee_actif: true,
           },
         ],
       })
@@ -82,11 +83,13 @@ describe("recupererGroupeActif", () => {
         "Virement du groupe",
         "Chèque du groupe",
       ],
+      ndfSigneeActif: false,
     });
     expect(avec.parametres).toEqual({
       scanJustificatifsActif: true,
       convertirJustificatifsEnPdf: true,
       moyensPaiement: ["Espèces du groupe"],
+      ndfSigneeActif: true,
     });
   });
 

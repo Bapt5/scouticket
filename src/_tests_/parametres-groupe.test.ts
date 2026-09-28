@@ -11,6 +11,7 @@ describe("parametresGroupe", () => {
       scanJustificatifsActif: false,
       convertirJustificatifsEnPdf: false,
       moyensPaiement: [...MOYENS_PAIEMENT_PAR_DEFAUT],
+      ndfSigneeActif: false,
     });
   });
 
@@ -20,6 +21,8 @@ describe("parametresGroupe", () => {
     expect(valide({ scanJustificatifsActif: true })).toBe(true);
     expect(valide({ convertirJustificatifsEnPdf: true })).toBe(true);
     expect(valide({ convertirJustificatifsEnPdf: "oui" })).toBe(false);
+    expect(valide({ ndfSigneeActif: true })).toBe(true);
+    expect(valide({ ndfSigneeActif: "oui" })).toBe(false);
     expect(valide({})).toBe(false);
     expect(valide({ scanJustificatifsMl: true })).toBe(false);
     expect(valide({ scanJustificatifsActif: 1 })).toBe(false);

@@ -6,12 +6,14 @@ export interface ParametresGroupe {
   scanJustificatifsActif: boolean;
   convertirJustificatifsEnPdf: boolean;
   moyensPaiement: string[];
+  ndfSigneeActif: boolean;
 }
 
 export const PARAMETRES_GROUPE_PAR_DEFAUT: ParametresGroupe = {
   scanJustificatifsActif: false,
   convertirJustificatifsEnPdf: false,
   moyensPaiement: [...MOYENS_PAIEMENT_PAR_DEFAUT],
+  ndfSigneeActif: false,
 };
 
 const NOMBRE_MAX_MOYENS_PAIEMENT = 20;
@@ -36,6 +38,7 @@ export const schemaMiseAJourParametresGroupe = z
     scanJustificatifsActif: z.boolean().optional(),
     convertirJustificatifsEnPdf: z.boolean().optional(),
     moyensPaiement: schemaMoyensPaiement.optional(),
+    ndfSigneeActif: z.boolean().optional(),
   })
   .strict()
   .refine((corps) => Object.keys(corps).length > 0);

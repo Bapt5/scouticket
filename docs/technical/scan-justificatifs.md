@@ -26,11 +26,12 @@ Ces échecs ne sont pas montrés aux membres (ils sont seulement journalisés da
 
 ## Paramètres du groupe
 
-Les paramètres sont stockés dans `scouticket_group_data` (migrations `sql/008_parametres_groupe.sql`, `sql/009_convertir_justificatifs_pdf.sql` et `sql/010_moyens_paiement.sql`, à appliquer avec `pnpm db:migrate`) :
+Les paramètres sont stockés dans `scouticket_group_data` (migrations `sql/008_parametres_groupe.sql`, `sql/009_convertir_justificatifs_pdf.sql`, `sql/010_moyens_paiement.sql` et `sql/014_ndf_signee.sql`, à appliquer avec `pnpm db:migrate`) :
 
 - `scan_justificatifs_actif` : active le scan (défaut : `false`).
 - `convertir_justificatifs_pdf` : convertit les justificatifs en PDF avant l’envoi (défaut : `false`). Voir [Conversion en PDF](#conversion-en-pdf).
 - `moyens_paiement` (JSONB) : liste des moyens de paiement du groupe proposés lors d’une dépense de groupe. `NULL` (valeur par défaut) équivaut à la liste historique (`MOYENS_PAIEMENT_PAR_DEFAUT` dans `src/constants/configDepenses.ts`). Voir [Moyens de paiement](#moyens-de-paiement).
+- `ndf_signee_actif` : active le processus de validation des notes de frais par signature avant envoi au trésorier (défaut : `false`). À ce stade, seul l’interrupteur existe ; le processus de signature lui-même est mis en place dans les étapes suivantes de cette fonctionnalité.
 
 `GET /api/group/parametres` est lisible par tous les membres ; `PATCH /api/group/parametres` (mise à jour partielle) est réservé aux responsables. Les paramètres sont aussi renvoyés par `GET /api/group/config` (`parametres`), ce qui évite un appel supplémentaire depuis l’accueil. La page est conçue pour accueillir d’autres paramètres : il suffit d’ajouter une colonne, un champ dans `src/lib/parametresGroupe.ts` et un `InterrupteurParametre`.
 

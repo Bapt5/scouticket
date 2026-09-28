@@ -18,6 +18,7 @@ const groupeAdmin = (
   scanJustificatifsActif: boolean,
   convertirJustificatifsEnPdf = false,
   moyensPaiement = ["Espèces du groupe"],
+  ndfSigneeActif = false,
 ) =>
   reponse({
     isAdmin: true,
@@ -25,6 +26,7 @@ const groupeAdmin = (
       scanJustificatifsActif,
       convertirJustificatifsEnPdf,
       moyensPaiement,
+      ndfSigneeActif,
     },
   });
 
@@ -56,7 +58,7 @@ describe("Page Paramètres du groupe", () => {
       name: "Scan automatique des justificatifs",
     });
     expect(scan).toHaveAttribute("aria-checked", "false");
-    expect(screen.getAllByRole("switch")).toHaveLength(2);
+    expect(screen.getAllByRole("switch")).toHaveLength(3);
     expect(screen.queryByText(/ML/)).not.toBeInTheDocument();
   });
 
@@ -120,6 +122,39 @@ describe("Page Paramètres du groupe", () => {
     );
     expect(JSON.parse(appel?.[1].body)).toEqual({
       convertirJustificatifsEnPdf: true,
+    });
+  });
+
+  it("enregistre l'activation des notes de frais signées", async () => {
+    fetchMock.mockImplementation(
+      (_url: string, options?: { method?: string }) =>
+        options?.method === "PATCH"
+          ? reponse({
+              success: true,
+              parametres: {
+                scanJustificatifsActif: false,
+                convertirJustificatifsEnPdf: false,
+                moyensPaiement: ["Espèces du groupe"],
+                ndfSigneeActif: true,
+              },
+            })
+          : groupeAdmin(false),
+    );
+
+    render(<PageParametresGroupe />);
+    const ndfSignee = await screen.findByRole("switch", {
+      name: "Notes de frais signées",
+    });
+    await userEvent.click(ndfSignee);
+
+    expect(await screen.findByText("Paramètres enregistrés.")).toBeVisible();
+    expect(ndfSignee).toHaveAttribute("aria-checked", "true");
+    const appel = fetchMock.mock.calls.find(
+      ([, options]) => options?.method === "PATCH",
+    );
+    expect(appel?.[0]).toBe("/api/group/parametres");
+    expect(JSON.parse(appel?.[1].body)).toEqual({
+      ndfSigneeActif: true,
     });
   });
 

@@ -104,6 +104,17 @@ export default function PageParametresGroupe() {
               }
             />
             <h2 className="text-lg font-semibold text-zinc-900">
+              Notes de frais
+            </h2>
+            <InterrupteurParametre
+              id="ndf-signee"
+              titre="Notes de frais signées"
+              description="Active la validation des notes de frais par signature avant envoi au trésorier."
+              actif={parametres.ndfSigneeActif}
+              desactive={enregistrement}
+              onChange={(actif) => modifier({ ndfSigneeActif: actif })}
+            />
+            <h2 className="text-lg font-semibold text-zinc-900">
               Moyens de paiement
             </h2>
             <SelecteurMoyensPaiement
