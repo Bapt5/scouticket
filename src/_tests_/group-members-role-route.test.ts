@@ -96,9 +96,13 @@ describe("PATCH /api/group/members/[memberId]/role", () => {
   });
 
   it("modifie le rôle d'un autre membre", async () => {
-    mocks.query.mockResolvedValueOnce({
-      rows: [{ userId: "user_2", role: "member" }],
-    });
+    mocks.query
+      .mockResolvedValueOnce({
+        rows: [{ userId: "user_2", role: "member" }],
+      })
+      // Entrée dans le circuit de signature des Responsables (promotion).
+      .mockResolvedValueOnce({ rows: [{ prochain: 1 }] })
+      .mockResolvedValueOnce({ rows: [] });
 
     const reponse = await PATCH(requete(), { params: params() });
     const corps = await reponse.json();
@@ -161,6 +165,10 @@ describe("PATCH /api/group/members/[memberId]/role", () => {
         rows: [{ userId: "user_2", role: "owner" }],
       })
       .mockResolvedValueOnce({ rows: [{ count: "1" }] })
+      .mockResolvedValueOnce({ rows: [] })
+      // Changement de catégorie de signataire (owner -> admin) : rang suivant
+      // puis réassignation.
+      .mockResolvedValueOnce({ rows: [{ prochain: 2 }] })
       .mockResolvedValueOnce({ rows: [] });
 
     const reponse = await PATCH(requete({ role: "admin" }), {
@@ -168,9 +176,13 @@ describe("PATCH /api/group/members/[memberId]/role", () => {
     });
 
     expect(reponse.status).toBe(200);
-    expect(mocks.query).toHaveBeenLastCalledWith(
+    expect(mocks.query.mock.calls).toContainEqual([
       expect.stringMatching(/DELETE FROM scouticket_notification_tresorerie/),
       ["user_2", "org_1"],
+    ]);
+    expect(mocks.query).toHaveBeenLastCalledWith(
+      expect.stringMatching(/INSERT INTO scouticket_signataires/),
+      ["org_1", "user_2", 2],
     );
   });
 
@@ -179,6 +191,72 @@ describe("PATCH /api/group/members/[memberId]/role", () => {
       .mockResolvedValueOnce({
         rows: [{ userId: "user_2", role: "member" }],
       })
+      .mockResolvedValueOnce({ rows: [] })
+      // Entrée dans le circuit de signature des Trésoriers : rang suivant
+      // puis insertion.
+      .mockResolvedValueOnce({ rows: [{ prochain: 1 }] })
+      .mockResolvedValueOnce({ rows: [] });
+
+    const reponse = await PATCH(requete({ role: "owner" }), {
+      params: params(),
+    });
+
+    expect(reponse.status).toBe(200);
+    expect(mocks.query.mock.calls).toContainEqual([
+      expect.stringMatching(/INSERT INTO scouticket_notification_tresorerie/),
+      ["user_2", "org_1"],
+    ]);
+    expect(mocks.query).toHaveBeenLastCalledWith(
+      expect.stringMatching(/INSERT INTO scouticket_signataires/),
+      ["org_1", "user_2", 1],
+    );
+  });
+
+  it("ajoute un membre promu responsable en fin de liste des signataires", async () => {
+    mocks.query
+      .mockResolvedValueOnce({
+        rows: [{ userId: "user_2", role: "member" }],
+      })
+      .mockResolvedValueOnce({ rows: [{ prochain: 3 }] })
+      .mockResolvedValueOnce({ rows: [] });
+
+    const reponse = await PATCH(requete({ role: "admin" }), {
+      params: params(),
+    });
+
+    expect(reponse.status).toBe(200);
+    expect(mocks.query).toHaveBeenLastCalledWith(
+      expect.stringMatching(/INSERT INTO scouticket_signataires/),
+      ["org_1", "user_2", 3],
+    );
+  });
+
+  it("retire un responsable rétrogradé du circuit de signature", async () => {
+    mocks.query
+      .mockResolvedValueOnce({
+        rows: [{ userId: "user_2", role: "admin" }],
+      })
+      .mockResolvedValueOnce({ rows: [] });
+
+    const reponse = await PATCH(requete({ role: "member" }), {
+      params: params(),
+    });
+
+    expect(reponse.status).toBe(200);
+    expect(mocks.query).toHaveBeenLastCalledWith(
+      expect.stringMatching(/DELETE FROM scouticket_signataires/),
+      ["user_2", "org_1"],
+    );
+  });
+
+  it("réassigne le rang en fin de liste lors d'un passage direct admin -> owner", async () => {
+    mocks.query
+      .mockResolvedValueOnce({
+        rows: [{ userId: "user_2", role: "admin" }],
+      })
+      // Notification de trésorerie activée par défaut pour ce nouveau owner.
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ prochain: 2 }] })
       .mockResolvedValueOnce({ rows: [] });
 
     const reponse = await PATCH(requete({ role: "owner" }), {
@@ -187,8 +265,10 @@ describe("PATCH /api/group/members/[memberId]/role", () => {
 
     expect(reponse.status).toBe(200);
     expect(mocks.query).toHaveBeenLastCalledWith(
-      expect.stringMatching(/INSERT INTO scouticket_notification_tresorerie/),
-      ["user_2", "org_1"],
+      expect.stringMatching(
+        /INSERT INTO scouticket_signataires [\s\S]*ON CONFLICT/,
+      ),
+      ["org_1", "user_2", 2],
     );
   });
 });

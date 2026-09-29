@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import {
   compterTresoriersNotifies,
   estResponsable,
+  prochainOrdreSignataire,
   recupererRoleMembre,
 } from "@/lib/groupServer";
 import { recupererContexteGroupe } from "@/lib/sessionServeur";
@@ -120,6 +121,31 @@ export async function PATCH(
          ON CONFLICT DO NOTHING`,
         [membre.userId, identifiantOrganisation],
       );
+
+    // Synchronise le circuit de signature des notes de frais : sortie
+    // définitive si le membre n'est plus responsable ni trésorier, ajout en
+    // fin de liste s'il le devient (nouvelle entrée ou changement de
+    // catégorie admin <-> owner, pour éviter un rang dupliqué avec un
+    // signataire déjà présent dans la nouvelle catégorie).
+    if (estResponsable(membre.role) && !estResponsable(corps.data.role))
+      await pool.query(
+        `DELETE FROM scouticket_signataires
+          WHERE user_id = $1 AND organization_id = $2`,
+        [membre.userId, identifiantOrganisation],
+      );
+    else if (estResponsable(corps.data.role) && membre.role !== corps.data.role) {
+      const ordre = await prochainOrdreSignataire(
+        pool,
+        identifiantOrganisation,
+        corps.data.role as "admin" | "owner",
+      );
+      await pool.query(
+        `INSERT INTO scouticket_signataires (organization_id, user_id, ordre)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (organization_id, user_id) DO UPDATE SET ordre = EXCLUDED.ordre`,
+        [identifiantOrganisation, membre.userId, ordre],
+      );
+    }
 
     return NextResponse.json({ success: true, role: corps.data.role });
   });

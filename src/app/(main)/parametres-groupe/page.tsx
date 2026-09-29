@@ -114,6 +114,19 @@ export default function PageParametresGroupe() {
               desactive={enregistrement}
               onChange={(actif) => modifier({ ndfSigneeActif: actif })}
             />
+            {parametres.ndfSigneeActif ? (
+              <Link
+                href="/parametres-groupe/signataires"
+                className="block text-sm font-medium text-[#1E3A8A]"
+              >
+                Gestion des signataires →
+              </Link>
+            ) : (
+              <p className="text-sm text-zinc-400">
+                Gestion des signataires (activez les notes de frais signées
+                pour y accéder)
+              </p>
+            )}
             <h2 className="text-lg font-semibold text-zinc-900">
               Moyens de paiement
             </h2>

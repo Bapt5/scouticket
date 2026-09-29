@@ -186,6 +186,77 @@ export async function compterTresoriersNotifies(
   return Number(resultat.rows[0]?.count ?? 0);
 }
 
+/** Membre potentiellement signataire, tel qu'exposé par l'API. */
+export interface MembreSignataire {
+  id: string;
+  nom: string;
+  email: string;
+}
+
+async function recupererListeSignataires(
+  identifiantOrganisation: string,
+  role: "admin" | "owner",
+): Promise<{ retenus: MembreSignataire[]; nonRetenus: MembreSignataire[] }> {
+  const resultat = await pool.query<{
+    id: string;
+    nom: string;
+    email: string;
+    ordre: number | null;
+  }>(
+    `SELECT member.id, "user".name AS nom, "user".email, signataires.ordre
+       FROM member
+       JOIN "user" ON "user".id = member."userId"
+       LEFT JOIN scouticket_signataires signataires
+         ON signataires.user_id = member."userId"
+        AND signataires.organization_id = member."organizationId"
+      WHERE member."organizationId" = $1 AND member.role = $2
+      ORDER BY signataires.ordre IS NULL, signataires.ordre ASC,
+               "user".name ASC, "user".email ASC`,
+    [identifiantOrganisation, role],
+  );
+  const retenus: MembreSignataire[] = [];
+  const nonRetenus: MembreSignataire[] = [];
+  for (const { ordre, ...membre } of resultat.rows)
+    (ordre === null ? nonRetenus : retenus).push(membre);
+  return { retenus, nonRetenus };
+}
+
+/**
+ * Liste de priorité des signataires du groupe pour les Responsables (rôle
+ * admin) et les Trésoriers (rôle owner), avec les membres non retenus dans
+ * chaque catégorie (rôle admin/owner mais exclus du circuit de signature).
+ */
+export async function recupererSignataires(identifiantOrganisation: string) {
+  const [responsables, tresoriers] = await Promise.all([
+    recupererListeSignataires(identifiantOrganisation, "admin"),
+    recupererListeSignataires(identifiantOrganisation, "owner"),
+  ]);
+  return { responsables, tresoriers };
+}
+
+/**
+ * Prochain rang disponible pour ajouter un signataire en fin de liste d'une
+ * catégorie (rôle admin ou owner) donnée. Utilisé aussi bien pour une
+ * première insertion (promotion) que pour replacer un signataire qui change
+ * de catégorie (ex. admin devenu owner), afin d'éviter un rang dupliqué avec
+ * un signataire déjà présent dans la nouvelle catégorie.
+ */
+export async function prochainOrdreSignataire(
+  executeur: { query: typeof pool.query },
+  identifiantOrganisation: string,
+  role: "admin" | "owner",
+): Promise<number> {
+  const resultat = await executeur.query<{ prochain: number }>(
+    `SELECT COALESCE(MAX(signataires.ordre), 0) + 1 AS prochain
+       FROM scouticket_signataires signataires
+       JOIN member ON member."userId" = signataires.user_id
+        AND member."organizationId" = signataires.organization_id
+      WHERE member."organizationId" = $1 AND member.role = $2`,
+    [identifiantOrganisation, role],
+  );
+  return Number(resultat.rows[0]?.prochain ?? 1);
+}
+
 /** Unités qu'un membre simple est explicitement autorisé à utiliser. */
 export async function recupererUnitesAutoriseesMembre(
   identifiantUtilisateur: string,
