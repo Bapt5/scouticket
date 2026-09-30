@@ -72,6 +72,10 @@ Le traitement se fait dans votre navigateur : aucune image n’est envoyée à u
 
 Depuis **Paramètres du groupe**, les responsables peuvent activer la conversion des justificatifs en PDF. Désactivée par défaut, les justificatifs sont envoyés à la trésorerie dans leur format d’origine. Activée, chaque photo ou image est convertie en PDF (un PDF par justificatif) avant l’envoi par e-mail ; les PDF sont envoyés tels quels. Rien n’est conservé par Scouticket.
 
+## Logo des notes de frais signées
+
+Quand les **notes de frais signées** sont activées, les responsables peuvent remplacer le logo SGDF affiché en haut du document depuis **Paramètres du groupe** (bloc « Logo de la note de frais »). Formats acceptés : PNG, JPEG ou WebP, 1 Mo maximum, de 100x30 à 2000x2000 px. N’y placez aucune donnée personnelle. Le bouton **Rétablir le logo SGDF** supprime le logo personnalisé. Le changement ne s’applique qu’aux notes de frais déposées ensuite.
+
 ## Moyens de paiement du groupe
 
 Depuis **Paramètres du groupe**, les responsables gèrent la liste des moyens de paiement proposés lors d’une dépense avec un moyen de paiement du groupe (par exemple « Carte de procurement » ou « Espèces du groupe ») :

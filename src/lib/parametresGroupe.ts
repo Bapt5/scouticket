@@ -7,6 +7,8 @@ export interface ParametresGroupe {
   convertirJustificatifsEnPdf: boolean;
   moyensPaiement: string[];
   ndfSigneeActif: boolean;
+  /** Lecture seule : un logo personnalisé est enregistré (géré par /api/group/parametres/logo). */
+  logoPersonnalise: boolean;
 }
 
 export const PARAMETRES_GROUPE_PAR_DEFAUT: ParametresGroupe = {
@@ -14,6 +16,7 @@ export const PARAMETRES_GROUPE_PAR_DEFAUT: ParametresGroupe = {
   convertirJustificatifsEnPdf: false,
   moyensPaiement: [...MOYENS_PAIEMENT_PAR_DEFAUT],
   ndfSigneeActif: false,
+  logoPersonnalise: false,
 };
 
 const NOMBRE_MAX_MOYENS_PAIEMENT = 20;

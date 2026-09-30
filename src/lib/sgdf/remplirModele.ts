@@ -33,6 +33,8 @@ export interface NoteDeFraisPourPdf {
   /** Noms des signataires déjà résolus (règle de conflit d'intérêt appliquée au dépôt). */
   responsableNom: string;
   tresorierNom: string;
+  /** Logo personnalisé du groupe (data URI PNG) ; le logo SGDF est utilisé à défaut. */
+  logoDataUri?: string;
 }
 
 const formateurMontant = new Intl.NumberFormat("fr-FR", {
@@ -124,7 +126,11 @@ export function construireHtmlNoteDeFrais(donnees: NoteDeFraisPourPdf): string {
     <div class="page">
       <div class="entete">
         <div class="logo">
-          <img src="${LOGO_DATA_URI}" alt="Scouts et Guides de France" />
+          <img${donnees.logoDataUri ? ' class="perso"' : ""} src="${echapperHtml(donnees.logoDataUri ?? LOGO_DATA_URI)}" alt="${
+            donnees.logoDataUri
+              ? echapperHtml(donnees.groupe)
+              : "Scouts et Guides de France"
+          }" />
         </div>
         <div class="titre">FEUILLE DE REMBOURSEMENT DE FRAIS</div>
         <div class="groupe">
@@ -263,6 +269,7 @@ const CSS_MODELE = `
   .page { width: 273mm; }
   .entete { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 6px; }
   .entete .logo img { width: 62mm; height: auto; }
+  .entete .logo img.perso { height: 22mm; object-fit: contain; object-position: left center; }
   .entete .titre { flex: 1; text-align: center; font-size: 24px; font-weight: bold; padding-top: 10px; }
   .entete .groupe { text-align: center; min-width: 60mm; }
   .entete .groupe .libelle { font-size: 9px; font-weight: bold; }

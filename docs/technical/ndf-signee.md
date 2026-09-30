@@ -63,10 +63,11 @@ L'e-mail reçu par les trésoriers a donc le même format et les mêmes informat
 
 ## Schéma de données
 
-| Table                                                                      | Rôle                                                                                                               | En fin de circuit ?         |
-| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | --------------------------- |
-| `scouticket_notes_de_frais_signees` (`sql/016_notes_de_frais_signees.sql`) | Note en cours de signature : statut, signataires résolus, données de l'e-mail final, hash du document initial, PDF | Ligne supprimée             |
-| `scouticket_ndf_codes_verification` (`sql/017_ndf_codes_verification.sql`) | Codes OTP (hachés, usage unique, expiration)                                                                       | Lignes supprimées (cascade) |
+| Table                                                                      | Rôle                                                                                                               | En fin de circuit ?             |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------- |
+| `scouticket_notes_de_frais_signees` (`sql/016_notes_de_frais_signees.sql`) | Note en cours de signature : statut, signataires résolus, données de l'e-mail final, hash du document initial, PDF | Ligne supprimée                 |
+| `scouticket_ndf_codes_verification` (`sql/017_ndf_codes_verification.sql`) | Codes OTP (hachés, usage unique, expiration)                                                                       | Lignes supprimées (cascade)     |
+| `scouticket_group_data.ndf_logo` (`sql/018_ndf_logo_groupe.sql`)           | Logo personnalisé du groupe (PNG normalisé)                                                                        | Non (supprimable par le groupe) |
 
 Un circuit **abandonné** (personne ne signe) reste en base, PDF compris, tant qu'il n'est pas terminé : `cree_le` permet de les repérer, mais aucune purge automatique n'existe pour l'instant.
 

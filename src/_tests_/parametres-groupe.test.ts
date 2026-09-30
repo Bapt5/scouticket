@@ -12,6 +12,7 @@ describe("parametresGroupe", () => {
       convertirJustificatifsEnPdf: false,
       moyensPaiement: [...MOYENS_PAIEMENT_PAR_DEFAUT],
       ndfSigneeActif: false,
+      logoPersonnalise: false,
     });
   });
 

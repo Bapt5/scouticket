@@ -21,6 +21,7 @@ export async function recupererGroupeActif(identifiantOrganisation: string) {
     convertir_justificatifs_pdf: boolean | null;
     moyens_paiement: string[] | null;
     ndf_signee_actif: boolean | null;
+    ndf_logo_present: boolean | null;
   }>(
     `SELECT organization.name, donnees.nomenclature_format,
             donnees.nomenclature_format_recette,
@@ -30,7 +31,8 @@ export async function recupererGroupeActif(identifiantOrganisation: string) {
             donnees.scan_justificatifs_actif,
             donnees.convertir_justificatifs_pdf,
             donnees.moyens_paiement,
-            donnees.ndf_signee_actif
+            donnees.ndf_signee_actif,
+            (donnees.ndf_logo IS NOT NULL) AS ndf_logo_present
        FROM organization
        LEFT JOIN scouticket_group_data donnees
          ON donnees.organization_id = organization.id
@@ -82,6 +84,9 @@ export async function recupererGroupeActif(identifiantOrganisation: string) {
       convertirJustificatifsEnPdf: groupe.convertir_justificatifs_pdf ?? false,
       moyensPaiement: groupe.moyens_paiement ?? [...MOYENS_PAIEMENT_PAR_DEFAUT],
       ndfSigneeActif: groupe.ndf_signee_actif ?? false,
+      logoPersonnalise:
+        (groupe.ndf_signee_actif ?? false) &&
+        (groupe.ndf_logo_present ?? false),
     } satisfies ParametresGroupe,
   };
 }

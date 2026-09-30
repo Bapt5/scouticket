@@ -21,6 +21,7 @@ import {
   envoyerEmailTourDeSigner,
 } from "@/lib/emailSignatureNdf";
 import { journal } from "@/lib/logger";
+import { recupererLogoGroupeEnDataUri } from "@/lib/logoGroupe";
 
 function versDateAffichee(dateIso: string): string {
   const [annee, mois, jour] = dateIso.split("-");
@@ -60,6 +61,10 @@ export async function deposerNoteDeFraisSignee(params: {
       lignes: detail.lignes,
     }));
 
+  const logoDataUri = await recupererLogoGroupeEnDataUri(
+    params.identifiantOrganisation,
+  );
+
   const pageNdf = await genererPdfNoteDeFrais({
     groupe: params.donneesEmail.groupe ?? "",
     demandeur: params.beneficiaireNom,
@@ -67,6 +72,7 @@ export async function deposerNoteDeFraisSignee(params: {
     pieces,
     responsableNom: signataires.responsable.nom,
     tresorierNom: signataires.tresorier.nom,
+    logoDataUri,
   });
 
   const documentInitial = await assemblerDocumentInitial(

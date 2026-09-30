@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { InterrupteurParametre } from "@/components/InterrupteurParametre";
+import { LogoGroupe } from "@/components/LogoGroupe";
 import { SelecteurMoyensPaiement } from "@/components/SelecteurMoyensPaiement";
 import { clientAuth } from "@/lib/auth-client";
 import {
@@ -126,6 +127,17 @@ export default function PageParametresGroupe() {
                 Gestion des signataires (activez les notes de frais signées pour
                 y accéder)
               </p>
+            )}
+            {parametres.ndfSigneeActif && (
+              <LogoGroupe
+                logoPersonnalise={parametres.logoPersonnalise}
+                onChange={(logoPersonnalise) =>
+                  setParametres((actuels) => ({
+                    ...actuels,
+                    logoPersonnalise,
+                  }))
+                }
+              />
             )}
             <h2 className="text-lg font-semibold text-zinc-900">
               Moyens de paiement

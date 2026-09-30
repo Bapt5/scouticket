@@ -133,3 +133,24 @@ describe("construireHtmlNoteDeFrais", () => {
     expect(signatures).toContain("certificat de signature");
   });
 });
+
+describe("logo de l'en-tête", () => {
+  it("utilise le logo SGDF par défaut", () => {
+    const html = construireHtmlNoteDeFrais(note([]));
+    expect(html).toContain('alt="Scouts et Guides de France"');
+    expect(html).toContain("data:image/png;base64,");
+    expect(html).not.toContain('class="perso"');
+  });
+
+  it("remplace le logo SGDF par le logo du groupe", () => {
+    const html = construireHtmlNoteDeFrais({
+      ...note([]),
+      groupe: 'Groupe "Orsay"',
+      logoDataUri: "data:image/png;base64,AAAA",
+    });
+    expect(html).toContain('src="data:image/png;base64,AAAA"');
+    expect(html).toContain('class="perso"');
+    expect(html).toContain('alt="Groupe &quot;Orsay&quot;"');
+    expect(html).not.toContain("Scouts et Guides de France");
+  });
+});

@@ -19,6 +19,7 @@ const groupeAdmin = (
   convertirJustificatifsEnPdf = false,
   moyensPaiement = ["Espèces du groupe"],
   ndfSigneeActif = false,
+  logoPersonnalise = false,
 ) =>
   reponse({
     isAdmin: true,
@@ -27,6 +28,7 @@ const groupeAdmin = (
       convertirJustificatifsEnPdf,
       moyensPaiement,
       ndfSigneeActif,
+      logoPersonnalise,
     },
   });
 
@@ -239,5 +241,51 @@ describe("Page Paramètres du groupe", () => {
     expect(JSON.parse(appel?.[1].body)).toEqual({
       moyensPaiement: ["Espèces du groupe"],
     });
+  });
+
+  it("n'affiche le logo du document que si les notes de frais signées sont activées", async () => {
+    fetchMock.mockReturnValue(groupeAdmin(false));
+    const { unmount } = render(<PageParametresGroupe />);
+    await screen.findByRole("switch", { name: "Notes de frais signées" });
+    expect(screen.queryByText("Logo de la note de frais")).not.toBeInTheDocument();
+    unmount();
+
+    fetchMock.mockReturnValue(groupeAdmin(false, false, ["Espèces"], true));
+    render(<PageParametresGroupe />);
+    expect(await screen.findByText("Logo de la note de frais")).toBeInTheDocument();
+    expect(screen.getByText("Logo SGDF par défaut")).toBeInTheDocument();
+  });
+
+  it("importe puis rétablit le logo", async () => {
+    fetchMock.mockImplementation((url: string, options?: RequestInit) => {
+      if (url === "/api/group/parametres/logo")
+        return reponse({ success: true });
+      void options;
+      return groupeAdmin(false, false, ["Espèces"], true);
+    });
+    render(<PageParametresGroupe />);
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Modifier le logo" }),
+    );
+    const champ = await screen.findByLabelText("Importer un logo");
+    await userEvent.upload(
+      champ,
+      new File(["x"], "logo.png", { type: "image/png" }),
+    );
+
+    expect(await screen.findByAltText("Logo du groupe")).toBeInTheDocument();
+    const envoi = fetchMock.mock.calls.find(
+      ([url, options]) =>
+        url === "/api/group/parametres/logo" && options?.method === "PUT",
+    );
+    expect(envoi).toBeDefined();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Rétablir le logo SGDF" }),
+    );
+    expect(
+      await screen.findByAltText("Logo SGDF par défaut"),
+    ).toBeInTheDocument();
   });
 });
