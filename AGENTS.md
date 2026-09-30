@@ -6,7 +6,7 @@ Ce dépôt héberge une application **Next.js 16** (App Router) pour la gestion 
 
 - **TypeScript**
 - **Tailwind CSS** pour le style
-- **Better Auth** pour l'authentification, les organisations (groupes) et les invitations — pas Clerk
+- **Better Auth** pour l'authentification, les organisations (groupes) et les invitations, pas Clerk
 - **Nodemailer** (SMTP) pour l'envoi d'e-mails côté serveur
 - **PostgreSQL** pour les données Better Auth et les données propres à l'app (`scouticket_group_data`, `scouticket_user_default_group`)
 - Des fonctionnalités **Progressive Web App (PWA)** (manifest, service worker, support hors-ligne)

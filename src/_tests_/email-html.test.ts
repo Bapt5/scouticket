@@ -239,6 +239,52 @@ describe("templates HTML des e-mails", () => {
     expect(dernierMail().text).toContain("RIB : non fourni");
   });
 
+  describe("libellé de l’auteur de l’envoi", () => {
+    const envoyer = async (
+      typeEnvoi: "note-de-frais" | "depense-groupe",
+      libelleTypeAffiche?: string,
+    ) => {
+      await envoyerEmailDepense({
+        typeEnvoi,
+        libelleTypeAffiche,
+        emailUtilisateur: "membre@example.test",
+        date: "2026-01-01",
+        branche: "Groupe",
+        emailsTresoriers: ["tresorerie@example.test"],
+        montant: 5,
+        piecesJointes: [pieceJointe("a.png")],
+        detailsDepenses: [
+          {
+            date: "2026-01-01",
+            description: "",
+            activite: typeEnvoi === "note-de-frais" ? "Camp" : "",
+            modePaiement: typeEnvoi === "depense-groupe" ? "Espèces" : "",
+            lignes: [{ categorie: "Formation", montant: 5 }],
+          },
+        ],
+      });
+      return dernierMail().text as string;
+    };
+
+    it("affiche Déclarant pour une dépense avec moyen de paiement du groupe", async () => {
+      const texte = await envoyer("depense-groupe");
+      expect(texte).toContain("Déclarant : membre@example.test");
+      expect(texte).not.toContain("Demandeur");
+    });
+
+    it("garde Demandeur pour une note de frais", async () => {
+      expect(await envoyer("note-de-frais")).toContain(
+        "Demandeur : membre@example.test",
+      );
+    });
+
+    it("garde Demandeur pour une note de frais signée envoyée comme dépense de groupe", async () => {
+      expect(await envoyer("depense-groupe", "Note de frais")).toContain(
+        "Demandeur : membre@example.test",
+      );
+    });
+  });
+
   it("envoie à tous les trésoriers du groupe", async () => {
     await envoyerEmailDepense({
       typeEnvoi: "depense-groupe",

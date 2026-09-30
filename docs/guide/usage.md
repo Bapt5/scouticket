@@ -51,7 +51,7 @@ Renseignez la **date de la recette**, le **mode de paiement**, une ou plusieurs 
 
 - Ouverture de l’application déjà chargée : ✅
 - Préparation du formulaire : ✅
-- Envoi de l’e-mail : ❌ — une connexion est nécessaire.
+- Envoi de l’e-mail : ❌ (une connexion est nécessaire)
 
 ## Besoin d’un accès ?
 

@@ -68,14 +68,9 @@ export async function PATCH(requete: Request) {
     const erreurOrigine = verifierOrigineRequete(requete);
     if (erreurOrigine) return erreurOrigine;
 
-    const corps = schemaCorps.safeParse(
-      await requete.json().catch(() => null),
-    );
+    const corps = schemaCorps.safeParse(await requete.json().catch(() => null));
     if (!corps.success)
-      return NextResponse.json(
-        { error: "Données invalides" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Données invalides" }, { status: 400 });
     if (
       aDesDoublons(corps.data.responsables) ||
       aDesDoublons(corps.data.tresoriers)
@@ -111,10 +106,7 @@ export async function PATCH(requete: Request) {
     const responsables = resoudre(corps.data.responsables, "admin");
     const tresoriers = resoudre(corps.data.tresoriers, "owner");
     if (!responsables || !tresoriers)
-      return NextResponse.json(
-        { error: "Données invalides" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Données invalides" }, { status: 400 });
 
     const client = await pool.connect();
     try {

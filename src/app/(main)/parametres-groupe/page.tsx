@@ -123,8 +123,8 @@ export default function PageParametresGroupe() {
               </Link>
             ) : (
               <p className="text-sm text-zinc-400">
-                Gestion des signataires (activez les notes de frais signées
-                pour y accéder)
+                Gestion des signataires (activez les notes de frais signées pour
+                y accéder)
               </p>
             )}
             <h2 className="text-lg font-semibold text-zinc-900">

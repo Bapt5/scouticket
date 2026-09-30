@@ -602,6 +602,7 @@ export default function Home() {
                       }
                     }
                     moyensPaiement={groupe.parametres?.moyensPaiement}
+                    ndfSigneeActif={groupe.parametres?.ndfSigneeActif}
                     uniteInitiale={groupe.unitPreference}
                     aTresorier={groupe.aTresorier}
                     estAdmin={groupe.isAdmin}

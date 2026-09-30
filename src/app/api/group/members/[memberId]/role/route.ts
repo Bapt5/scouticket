@@ -133,7 +133,10 @@ export async function PATCH(
           WHERE user_id = $1 AND organization_id = $2`,
         [membre.userId, identifiantOrganisation],
       );
-    else if (estResponsable(corps.data.role) && membre.role !== corps.data.role) {
+    else if (
+      estResponsable(corps.data.role) &&
+      membre.role !== corps.data.role
+    ) {
       const ordre = await prochainOrdreSignataire(
         pool,
         identifiantOrganisation,

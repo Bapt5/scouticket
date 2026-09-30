@@ -12,6 +12,18 @@ Copiez `.env.example` vers `.env.local`, puis renseignez les variables suivantes
 
 Les événements `auth.audit.*` sont des lignes JSON sur stdout. OpenObserve doit ingérer les logs du conteneur applicatif ; ils ne contiennent ni e-mail, ni identifiant Better Auth brut, ni secret. Les champs `utilisateur` et `organisation` sont chiffrés avec AES-256-GCM et peuvent être déchiffrés avec `dechiffrerIdentifiant` et la même valeur de `AUDIT_LOG_SECRET`.
 
+## Note de frais signée
+
+| Variable                          |  Requis   | Description                                                                                                                                                                                                                                                                    |
+| --------------------------------- | :-------: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `NDF_SCELLEMENT_P12_BASE64`       |    ✅     | Certificat de scellement (PKCS#12 en base64) utilisé pour signer électroniquement le PDF des notes de frais signées. Généré avec `pnpm ndf:certificat`                                                                                                                         |
+| `NDF_SCELLEMENT_P12_MOT_DE_PASSE` |    ✅     | Mot de passe du certificat de scellement, généré avec lui                                                                                                                                                                                                                      |
+| `PUPPETEER_EXECUTABLE_PATH`       | Optionnel | **Développement local uniquement.** Chemin vers un Chrome/Chromium installé sur la machine, utilisé pour générer le PDF des notes de frais signées. À laisser vide en production : `@sparticuz/chromium` (Linux) est utilisé automatiquement quand cette variable est absente. |
+
+Requis pour signer une note de frais dès qu'un groupe active `ndf_signee_actif` (sinon la première signature échoue avec une erreur serveur). Voir [Note de frais signée](/technical/ndf-signee) pour le détail du circuit de signature et la génération du PDF (aucune variable supplémentaire en production : le rendu HTML→PDF utilise `@sparticuz/chromium`, embarqué, sans service externe).
+
+En développement local, `@sparticuz/chromium` ne fournit qu'un binaire Linux : sans `PUPPETEER_EXECUTABLE_PATH` pointant vers un Chrome/Chromium local, la génération échoue avec `Failed to launch the browser process`.
+
 ## OpenObserve RUM
 
 | Variable                               |  Requis   | Description                                    |

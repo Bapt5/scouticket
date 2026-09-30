@@ -8,6 +8,7 @@ import {
   type FormEvent,
 } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import {
   ClipboardDocumentListIcon,
   CheckCircleIcon,
@@ -30,7 +31,10 @@ import {
   type PieceJointeDepense,
   type TypeEnvoi,
 } from "@/constants/piecesJointes";
-import { MOYENS_PAIEMENT_PAR_DEFAUT } from "@/constants/configDepenses";
+import {
+  categoriesPourTypeEnvoi,
+  MOYENS_PAIEMENT_PAR_DEFAUT,
+} from "@/constants/configDepenses";
 import {
   analyserMontantSaisi,
   dateDuJour,
@@ -63,6 +67,8 @@ interface FormulaireDepenseProps {
   readonly emailUtilisateur: string;
   readonly units: UniteGroupe[];
   readonly moyensPaiement?: string[];
+  /** Note de frais signée active pour ce groupe : notice avant envoi (uniquement typeEnvoi note-de-frais). */
+  readonly ndfSigneeActif?: boolean;
   readonly nomenclature?: {
     format: string | null;
     anneeComptable: ParametresAnneeComptable;
@@ -84,6 +90,7 @@ export function FormulaireDepense({
   emailUtilisateur,
   units,
   moyensPaiement = MOYENS_PAIEMENT_PAR_DEFAUT as string[],
+  ndfSigneeActif = false,
   nomenclature,
   uniteInitiale = "",
   aTresorier,
@@ -94,8 +101,14 @@ export function FormulaireDepense({
   estAdmin = false,
   estEnLigne = true,
 }: FormulaireDepenseProps & { estEnLigne?: boolean }) {
+  const router = useRouter();
   const estNoteDeFrais = typeEnvoi === "note-de-frais";
   const estDepenseGroupe = typeEnvoi === "depense-groupe";
+  const libelleBoutonEnvoi = estNoteDeFrais
+    ? ndfSigneeActif
+      ? "Envoyer la note de frais pour signature"
+      : "Envoyer la note de frais"
+    : "Déclarer la dépense";
   const [formulaire, setFormulaire] = useState({
     branche: uniteInitiale || "",
   });
@@ -382,20 +395,40 @@ export function FormulaireDepense({
 
       const texteReponse = await reponse.text();
       let erreurApi = "";
+      let statutReponse: string | undefined;
+      let noteDeFraisId: string | undefined;
       if (texteReponse) {
         try {
-          const donnees = JSON.parse(texteReponse) as { error?: string };
+          const donnees = JSON.parse(texteReponse) as {
+            error?: string;
+            statut?: string;
+            noteDeFraisId?: string;
+          };
           erreurApi = donnees.error || "";
+          statutReponse = donnees.statut;
+          noteDeFraisId = donnees.noteDeFraisId;
         } catch {
           // Certaines erreurs plateforme (ex. 413) ne renvoient pas du JSON.
         }
       }
 
+      if (
+        reponse.ok &&
+        statutReponse === "en_attente_signature" &&
+        noteDeFraisId
+      ) {
+        // Note de frais signée : le circuit démarre par la propre signature
+        // du bénéficiaire (un e-mail « c'est votre tour de signer » vient
+        // d'être envoyé), donc on l'y emmène directement plutôt que de
+        // laisser un lien dans un message de confirmation.
+        router.push(`/note-de-frais/${noteDeFraisId}/signature`);
+        return;
+      }
+
       if (reponse.ok) {
         setStatutEnvoi({
           type: "succes",
-          message:
-            "Email envoyé avec succès ! La facture a été transmise à la trésorerie et une copie vous a été envoyée.",
+          message: `Email envoyé avec succès ! ${estNoteDeFrais ? "La note de frais a été transmise" : "La dépense a été déclarée et transmise"} à la trésorerie et une copie vous a été envoyée.`,
         });
         // Réinitialise les champs variables, garde la branche, puis vide les fichiers côté parent.
         setFormulaire((prev) => ({ branche: prev.branche }));
@@ -612,6 +645,7 @@ export function FormulaireDepense({
         </div>
         <LignesCategories
           idPrefixe={idPrefixe}
+          categories={categoriesPourTypeEnvoi(typeEnvoi)}
           lignes={detail.lignes}
           onChange={(lignes) => modifierDetailDepense(index, { lignes })}
           afficherErreurs={afficherErreursValidation}
@@ -648,6 +682,16 @@ export function FormulaireDepense({
         Informations de la dépense
       </h2>
 
+      {estNoteDeFrais && ndfSigneeActif && (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+          Ce groupe a activé la note de frais signée : après l&rsquo;envoi,
+          votre note de frais partira dans un circuit de signature électronique
+          (vous, puis un approbateur, puis un trésorier) avant d&rsquo;être
+          transmise à la trésorerie, en un seul PDF avec vos justificatifs. Vous
+          la signerez en premier, avec un code envoyé à {emailUtilisateur}.
+        </div>
+      )}
+
       {afficherErreursValidation && champsManquants.length > 0 && (
         <div
           ref={alerteValidationRef}
@@ -656,7 +700,11 @@ export function FormulaireDepense({
           className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800"
         >
           <p className="font-medium">
-            Il manque des informations pour envoyer la facture :
+            Il manque des informations pour{" "}
+            {estNoteDeFrais
+              ? "envoyer la note de frais"
+              : "déclarer la dépense"}{" "}
+            :
           </p>
           <ul className="mt-2 list-inside list-disc">
             {champsManquants.map((champ) => (
@@ -871,47 +919,49 @@ export function FormulaireDepense({
       )}
 
       <div className="space-y-4">
-        {formulaireEstValide && !statutEnvoi.type && (
-          <div className="p-3 bg-zinc-50 border border-zinc-200 rounded-lg">
-            <p className="text-sm text-zinc-800">
-              <span className="inline-flex items-center gap-2 font-medium">
-                <PaperAirplaneIcon className="w-4 h-4" aria-hidden="true" />{" "}
-                Email sera envoyé à :
-              </span>
-              <br />• Trésorerie : votre groupe
-              <br />• Vous : {emailUtilisateur}
-              <br />
-              <span className="inline-flex items-center gap-2 font-medium">
-                <svg
-                  className="w-4 h-4"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="7 10 12 5 17 10" />
-                  <line x1="12" x2="12" y1="5" y2="20" />
-                </svg>
-                Pièce(s) jointe(s) :
-              </span>
-              <br />
-              {declarationSansJustificatifActive ? (
-                <span>Aucune (dépense déclarée sans justificatif)</span>
-              ) : (
-                nomsFichiersApercu.map((nom, index) => (
-                  <span key={`${nom}-${index}`}>
-                    • {nom}
-                    <br />
-                  </span>
-                ))
-              )}
-            </p>
-          </div>
-        )}
+        {formulaireEstValide &&
+          !statutEnvoi.type &&
+          !(estNoteDeFrais && ndfSigneeActif) && (
+            <div className="p-3 bg-zinc-50 border border-zinc-200 rounded-lg">
+              <p className="text-sm text-zinc-800">
+                <span className="inline-flex items-center gap-2 font-medium">
+                  <PaperAirplaneIcon className="w-4 h-4" aria-hidden="true" />{" "}
+                  Email sera envoyé à :
+                </span>
+                <br />• Trésorerie : votre groupe
+                <br />• Vous : {emailUtilisateur}
+                <br />
+                <span className="inline-flex items-center gap-2 font-medium">
+                  <svg
+                    className="w-4 h-4"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 5 17 10" />
+                    <line x1="12" x2="12" y1="5" y2="20" />
+                  </svg>
+                  Pièce(s) jointe(s) :
+                </span>
+                <br />
+                {declarationSansJustificatifActive ? (
+                  <span>Aucune (dépense déclarée sans justificatif)</span>
+                ) : (
+                  nomsFichiersApercu.map((nom, index) => (
+                    <span key={`${nom}-${index}`}>
+                      • {nom}
+                      <br />
+                    </span>
+                  ))
+                )}
+              </p>
+            </div>
+          )}
 
         {!estEnLigne && (
           <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm flex items-start gap-2">
@@ -964,7 +1014,7 @@ export function FormulaireDepense({
           ) : (
             <span className="inline-flex items-center justify-center gap-2">
               <PaperAirplaneIcon className="w-5 h-5" aria-hidden="true" />{" "}
-              Envoyer la facture
+              {libelleBoutonEnvoi}
             </span>
           )}
         </button>

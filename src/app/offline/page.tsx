@@ -34,8 +34,8 @@ export default function OfflinePage() {
           désactivé.
         </p>
         <p>
-          Vous pouvez préparer votre facture puis réessayer quand la connexion
-          sera rétablie.
+          Vous pouvez préparer votre note de frais, votre dépense ou votre
+          recette puis réessayer quand la connexion sera rétablie.
         </p>
         <p className="text-zinc-500 text-sm">
           Cette page s&apos;affiche automatiquement si le réseau est

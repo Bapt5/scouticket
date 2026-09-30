@@ -189,7 +189,7 @@ Si vous avez un serveur SMTP personnalisé :
 
 ### Étape 2 : Configuration Better Auth
 
-Better Auth gère l’authentification depuis l’application. Configurez une base PostgreSQL, puis définissez `DATABASE_URL`, `BETTER_AUTH_SECRET` (une valeur longue et aléatoire), `AUDIT_LOG_SECRET` (une valeur différente, utilisée pour pseudonymiser les audits), `BETTER_AUTH_URL` et `APP_URL`. L’inscription e-mail/mot de passe requiert aussi la configuration SMTP afin d’envoyer les liens de vérification et de réinitialisation.
+Better Auth gère l’authentification depuis l’application. Configurez une base PostgreSQL, puis définissez `DATABASE_URL`, `BETTER_AUTH_SECRET` (une valeur longue et aléatoire), `AUDIT_LOG_SECRET` (une valeur différente, utilisée pour pseudonymiser les audits), `NDF_SCELLEMENT_P12_BASE64` et `NDF_SCELLEMENT_P12_MOT_DE_PASSE` (certificat de scellement des signatures électroniques des notes de frais signées, généré avec `pnpm ndf:certificat`, voir [Note de frais signée](docs/technical/ndf-signee.md)), `BETTER_AUTH_URL` et `APP_URL`. L’inscription e-mail/mot de passe requiert aussi la configuration SMTP afin d’envoyer les liens de vérification et de réinitialisation.
 
 Après le déploiement, exécutez `pnpm auth:migrate`, puis `pnpm db:migrate`. Cette dernière commande charge le fichier `.env` lorsqu’il existe. La première commande crée les tables Better Auth ; la seconde applique une seule fois chaque migration de `sql/` et l’historise dans PostgreSQL. Relancez ces deux commandes avant un déploiement qui introduit une migration. Google est optionnel : ajoutez `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET` pour l’activer ; si l’une des deux est absente, le bouton « Continuer avec Google » n’est pas affiché.
 
@@ -254,12 +254,12 @@ Vérifiez que :
 4. Confirmez votre email
 5. Connectez-vous
 
-#### 4.2 Tester l'envoi d'une facture
+#### 4.2 Tester l'envoi d'une note de frais
 
 1. Cliquez sur **"Prendre photo"** ou **"Importer fichier"**
 2. Choisissez un ou plusieurs justificatifs de test (image(s) et/ou PDF)
 3. Remplissez le formulaire (date, branche, type, montant, description)
-4. Cliquez sur **"Envoyer la facture"**
+4. Cliquez sur **"Envoyer la note de frais"** (ou **"Déclarer la dépense"** pour une dépense avec moyen de paiement du groupe)
 5. Vous devriez voir un message de confirmation ✅
 
 #### 5.4 Vérifier les emails

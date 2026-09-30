@@ -221,6 +221,36 @@ async function recupererListeSignataires(
   return { retenus, nonRetenus };
 }
 
+/** Signataire retenu du circuit, identifié par son id utilisateur (Better Auth). */
+export interface SignatairePriorite {
+  userId: string;
+  nom: string;
+  email: string;
+}
+
+/**
+ * Liste de priorité (retenus uniquement) des signataires d'une catégorie,
+ * identifiés par `userId`, utilisé pour résoudre le circuit de signature
+ * (contrairement à `MembreSignataire.id`, qui est un id de membre destiné à
+ * l'UI de gestion des signataires).
+ */
+export async function recupererOrdreSignatairesUserId(
+  identifiantOrganisation: string,
+  role: "admin" | "owner",
+): Promise<SignatairePriorite[]> {
+  const resultat = await pool.query<SignatairePriorite>(
+    `SELECT signataires.user_id AS "userId", "user".name AS nom, "user".email
+       FROM scouticket_signataires signataires
+       JOIN member ON member."userId" = signataires.user_id
+        AND member."organizationId" = signataires.organization_id
+       JOIN "user" ON "user".id = signataires.user_id
+      WHERE signataires.organization_id = $1 AND member.role = $2
+      ORDER BY signataires.ordre ASC`,
+    [identifiantOrganisation, role],
+  );
+  return resultat.rows;
+}
+
 /**
  * Liste de priorité des signataires du groupe pour les Responsables (rôle
  * admin) et les Trésoriers (rôle owner), avec les membres non retenus dans

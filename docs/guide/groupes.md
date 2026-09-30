@@ -13,12 +13,12 @@ Une fois les unités enregistrées, le groupe est prêt à recevoir des notes de
 
 Chaque groupe peut adapter ses unités à son fonctionnement. L’application propose au départ :
 
-- Farfadets — vert
-- Louveteaux-Jeannettes — orange
-- Scouts-Guides — bleu clair
-- Pionniers-Caravelles — rouge
-- Compagnons — turquoise
-- Groupe — bleu foncé
+- Farfadets : vert
+- Louveteaux-Jeannettes : orange
+- Scouts-Guides : bleu clair
+- Pionniers-Caravelles : rouge
+- Compagnons : turquoise
+- Groupe : bleu foncé
 
 Vous pouvez renommer ou supprimer une unité, en ajouter une autre et choisir sa couleur depuis **Administration** puis **Gérer les unités**. La couleur choisie apparaît dans l’e-mail de justificatif : elle aide la trésorerie à identifier rapidement l’unité concernée.
 

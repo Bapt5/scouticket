@@ -16,7 +16,7 @@ import {
 import type { DonneesEmailDepense } from "@/lib/email";
 import type { NextResponse } from "next/server";
 import { z } from "zod";
-import { LIBELLES_CATEGORIES_COMPTABLES } from "@/constants/configDepenses";
+import { categoriesPourTypeEnvoi } from "@/constants/configDepenses";
 import { totalDetails } from "@/lib/depenses";
 import { analyserDateIso } from "@/lib/nomenclature";
 import { journal } from "@/lib/logger";
@@ -201,8 +201,11 @@ export function validerCorpsRequete(
     rib = resultat.piece;
   }
 
+  const libellesAutorises = categoriesPourTypeEnvoi(
+    estNoteDeFrais ? "note-de-frais" : "depense-groupe",
+  ).map((categorie) => categorie.libelle);
   const estCategorieValide = (categorie: string) =>
-    LIBELLES_CATEGORIES_COMPTABLES.includes(categorie);
+    libellesAutorises.includes(categorie);
   const estMoyenPaiementValide = (moyen: string) =>
     moyensPaiementGroupe.includes(moyen);
 

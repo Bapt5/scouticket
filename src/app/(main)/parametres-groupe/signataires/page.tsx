@@ -18,8 +18,7 @@ const SIGNATAIRES_VIDE: Signataires = {
 };
 
 export default function PageSignataires() {
-  const [signataires, setSignataires] =
-    useState<Signataires>(SIGNATAIRES_VIDE);
+  const [signataires, setSignataires] = useState<Signataires>(SIGNATAIRES_VIDE);
   const [chargement, setChargement] = useState(true);
   const [accesAutorise, setAccesAutorise] = useState(false);
   const [enregistrement, setEnregistrement] = useState(false);
@@ -99,8 +98,8 @@ export default function PageSignataires() {
           Gestion des signataires
         </h1>
         <p className="mt-2 text-sm text-zinc-600">
-          Définissez, pour les Responsables de groupe et les Trésoriers,
-          l’ordre de priorité des signataires des notes de frais.
+          Définissez, pour les Responsables de groupe et les Trésoriers, l’ordre
+          de priorité des signataires des notes de frais.
         </p>
         {chargement ? (
           <p className="mt-5 text-sm text-zinc-600">Chargement…</p>
@@ -146,20 +145,20 @@ export default function PageSignataires() {
                   groupe prend le rôle de l’approbation.
                 </li>
                 <li>
-                  S’il n’y a personne d’autre chez les Responsables de
-                  groupe, le deuxième Trésorier non bénéficiaire approuve. Le
-                  premier Trésorier disponible traite toujours le virement.
+                  S’il n’y a personne d’autre chez les Responsables de groupe,
+                  le deuxième Trésorier non bénéficiaire approuve. Le premier
+                  Trésorier disponible traite toujours le virement.
                 </li>
                 <li>
-                  Si aucune solution n’est trouvée dans les deux listes,
-                  l’envoi de la note de frais échoue avec un message
-                  invitant à contacter un Trésorier ou un Responsable de
-                  groupe pour résoudre le problème.
+                  Si aucune solution n’est trouvée dans les deux listes, l’envoi
+                  de la note de frais échoue avec un message invitant à
+                  contacter un Trésorier ou un Responsable de groupe pour
+                  résoudre le problème.
                 </li>
               </ul>
               <p className="mt-2 pl-9 text-blue-700">
-                Cette règle n’est pas encore appliquée à l’envoi des notes de
-                frais ; elle le sera dans une prochaine étape.
+                Cette règle est appliquée dès le dépôt d’une note de frais, pour
+                choisir qui signe à chaque étape du circuit.
               </p>
             </div>
             {message && (

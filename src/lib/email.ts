@@ -29,6 +29,10 @@ export interface DonneesEmailDepense {
   /** Dépense avec moyen de paiement du groupe envoyée sans justificatif, sur
    * attestation d'un responsable (ex. virement interne à l'association). */
   sansJustificatifAttesteParResponsable?: boolean;
+  /** Remplace le libellé du type d'envoi dans l'objet et le titre de l'e-mail
+   * (ex. une note de frais signée, traitée comme une dépense de groupe une
+   * fois remboursée, doit rester présentée comme une note de frais). */
+  libelleTypeAffiche?: string;
   groupe?: string;
   couleur?: string;
   emailsTresoriers?: string[];
@@ -193,6 +197,7 @@ export const envoyerEmailDepense = async (donnees: DonneesEmailDepense) => {
     rib,
     detailsDepenses,
     sansJustificatifAttesteParResponsable = false,
+    libelleTypeAffiche,
     groupe = "Groupe scout",
     couleur = "#1E3A8A",
     emailsTresoriers,
@@ -203,7 +208,12 @@ export const envoyerEmailDepense = async (donnees: DonneesEmailDepense) => {
   const estNoteDeFrais = typeEnvoi === "note-de-frais";
   if (!emailsTresoriers || emailsTresoriers.length === 0)
     throw new Error("TREASURY_EMAIL_UNDEFINED");
-  const libelleType = LIBELLES_TYPES_ENVOI[typeEnvoi];
+  const libelleType = libelleTypeAffiche ?? LIBELLES_TYPES_ENVOI[typeEnvoi];
+  // Une note de frais (y compris signée, envoyée comme dépense de groupe une
+  // fois remboursée) est demandée par son auteur ; une dépense avec moyen de
+  // paiement du groupe est seulement déclarée.
+  const libelleAuteur =
+    estNoteDeFrais || libelleTypeAffiche ? "Demandeur" : "Déclarant";
   const sujet = `Scouticket - ${libelleType} - ${groupe} - ${branche} - ${date}`;
   const resultatCouleur = schemaCouleurHtml.safeParse(couleur);
   const couleurPrincipale = resultatCouleur.success
@@ -332,7 +342,7 @@ export const envoyerEmailDepense = async (donnees: DonneesEmailDepense) => {
               <td style="padding: 10px 0; ${estNoteDeFrais ? "" : "border-top: 1px solid #eee; "}border-bottom: 1px solid #eee; color: ${couleurPrincipale}; font-weight: bold; font-size: 18px; text-align: right;">${echapperHtml(formaterMontant(montant))}</td>
             </tr>
             <tr>
-              <td style="padding: 10px 0; border-bottom: 1px solid #eee; font-weight: bold; color: #374151;">Demandeur :</td>
+              <td style="padding: 10px 0; border-bottom: 1px solid #eee; font-weight: bold; color: #374151;">${libelleAuteur} :</td>
               <td style="padding: 10px 0; border-bottom: 1px solid #eee; color: #374151;">${echapperHtml(emailUtilisateur)}</td>
             </tr>
             ${
@@ -402,7 +412,7 @@ ${
         .join("\n")}\n`
     : ""
 }Total : ${formaterMontant(montant)}
-Demandeur : ${emailUtilisateur}
+${libelleAuteur} : ${emailUtilisateur}
 ${estNoteDeFrais ? `RIB : ${ribAnalyse ? "joint à ce message" : "non fourni"}` : ""}
 ${sansJustificatifAttesteParResponsable ? "\n⚠️ Dépense envoyée sans justificatif : un responsable du groupe a attesté qu'aucun justificatif n'était nécessaire (ex. virement interne à l'association).\n" : ""}
 Pièce(s) jointe(s) (${toutesPiecesJointes.length}) :

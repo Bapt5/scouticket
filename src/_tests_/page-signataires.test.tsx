@@ -53,7 +53,9 @@ describe("Page Gestion des signataires", () => {
           ? reponse({
               responsables: {
                 retenus: [],
-                nonRetenus: [{ id: "m1", nom: "Alice", email: "alice@test.fr" }],
+                nonRetenus: [
+                  { id: "m1", nom: "Alice", email: "alice@test.fr" },
+                ],
               },
               tresoriers: {
                 retenus: [{ id: "m3", nom: "Carla", email: "carla@test.fr" }],
