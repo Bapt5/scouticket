@@ -43,18 +43,18 @@ export async function resoudreSignataires(
     (membre) => membre.userId !== beneficiaireUserId,
   );
 
-  // Le 1er Trésorier non bénéficiaire traite toujours le virement, s'il existe.
-  const tresorierPourVirement = tresoriersDisponibles[0] ?? null;
-
-  // Visa : 1er Responsable non bénéficiaire ; à défaut, le 2e Trésorier non
-  // bénéficiaire (le 1er restant réservé au traitement du virement).
-  const responsableSignataire =
-    responsablesDisponibles[0] ?? tresoriersDisponibles[1] ?? null;
-
   // Traitement/virement : 1er Trésorier non bénéficiaire ; à défaut, le 1er
   // Responsable non bénéficiaire.
-  const tresorierSignataire =
-    tresorierPourVirement ?? responsablesDisponibles[0] ?? null;
+  const tresorierNormal = tresoriersDisponibles[0] ?? null;
+  const tresorierSignataire = tresorierNormal ?? responsablesDisponibles[0];
+
+  // Visa : 1er Responsable non bénéficiaire ; à défaut, le 2e Trésorier non
+  // bénéficiaire (le 1er restant réservé au traitement du virement). Quand un
+  // Responsable a dû prendre le traitement faute de Trésorier, le suivant de
+  // la liste des Responsables approuve.
+  const responsableSignataire = tresorierNormal
+    ? (responsablesDisponibles[0] ?? tresoriersDisponibles[1])
+    : responsablesDisponibles[1];
 
   if (!responsableSignataire || !tresorierSignataire) return null;
 
