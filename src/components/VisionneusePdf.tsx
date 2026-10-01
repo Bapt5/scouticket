@@ -30,11 +30,13 @@ export function VisionneusePdf({
   className,
 }: VisionneusePdfProps) {
   const [nombrePages, setNombrePages] = useState(0);
+  const [toutesPagesChargees, setToutesPagesChargees] = useState(false);
   const [largeur, setLargeur] = useState(0);
   const [erreur, setErreur] = useState(false);
   const [zoomChoisi, setZoomChoisi] = useState<number | null>(null);
   const conteneurRef = useRef<HTMLDivElement>(null);
   const atteintRef = useRef(false);
+  const pagesChargeesRef = useRef(new Set<number>());
 
   useEffect(() => {
     const el = conteneurRef.current;
@@ -59,21 +61,29 @@ export function VisionneusePdf({
     if (reste < 24) signalerBout();
   }
 
+  // Sur petit écran, une page paysage tient trop petite pour être lue :
+  // zoom par défaut plus grand, réglable, avec défilement horizontal.
+  const zoom = zoomChoisi ?? (largeur > 0 && largeur < 600 ? 2 : 1);
+  const indexZoom = NIVEAUX_ZOOM.indexOf(zoom);
+
+  // Les pages ne prennent leur hauteur qu'une fois chargées : avant, le
+  // conteneur est vide et semblerait « entièrement visible ».
+  function pageChargee(index: number) {
+    pagesChargeesRef.current.add(index);
+    if (pagesChargeesRef.current.size === nombrePages)
+      setToutesPagesChargees(true);
+  }
+
   // Document déjà entièrement visible sans avoir besoin de scroller (court, ou grand écran).
   useEffect(() => {
-    if (nombrePages === 0) return;
+    if (!toutesPagesChargees) return;
     const id = requestAnimationFrame(() => {
       const el = conteneurRef.current;
       if (el && el.scrollHeight <= el.clientHeight + 4) signalerBout();
     });
     return () => cancelAnimationFrame(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nombrePages, largeur]);
-
-  // Sur petit écran, une page paysage tient trop petite pour être lue :
-  // zoom par défaut plus grand, réglable, avec défilement horizontal.
-  const zoom = zoomChoisi ?? (largeur > 0 && largeur < 600 ? 2 : 1);
-  const indexZoom = NIVEAUX_ZOOM.indexOf(zoom);
+  }, [toutesPagesChargees, largeur, zoom]);
 
   return (
     <div className={`flex flex-col gap-2 ${className ?? ""}`}>
@@ -105,7 +115,11 @@ export function VisionneusePdf({
       >
         <Document
           file={url}
-          onLoadSuccess={({ numPages }) => setNombrePages(numPages)}
+          onLoadSuccess={({ numPages }) => {
+            pagesChargeesRef.current.clear();
+            setToutesPagesChargees(false);
+            setNombrePages(numPages);
+          }}
           onLoadError={() => setErreur(true)}
           loading={
             <p className="p-4 text-sm text-zinc-600">Chargement du document…</p>
@@ -122,6 +136,7 @@ export function VisionneusePdf({
               <Page
                 key={index}
                 pageNumber={index + 1}
+                onLoadSuccess={() => pageChargee(index)}
                 width={largeur * zoom}
                 renderTextLayer={false}
                 renderAnnotationLayer={false}
