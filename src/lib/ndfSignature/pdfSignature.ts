@@ -341,6 +341,10 @@ function ajouterRevision(
   return Buffer.concat([precedent, ...morceaux]);
 }
 
+/** Seule la première signature du circuit certifie le document. */
+const etapeCertifiante = (etape: EtapeSignature) =>
+  etape === ETAPES_SIGNATURE[0];
+
 export interface ParametresSignature {
   etape: EtapeSignature;
   /** Nom du signataire, affiché dans le rectangle. */
@@ -396,6 +400,9 @@ export async function signerChamp(
   plageOctets.push(PDFNumber.of(0));
   for (let i = 0; i < 3; i++)
     plageOctets.push(PDFName.of(DEFAULT_BYTE_RANGE_PLACEHOLDER));
+  // La première signature certifie le document (DocMDP, P=2) : seuls le
+  // remplissage et la signature des champs existants restent autorisés ensuite.
+  const certification = etapeCertifiante(parametres.etape);
   const signature = document.context.obj({
     Type: "Sig",
     Filter: "Adobe.PPKLite",
@@ -408,12 +415,35 @@ export async function signerChamp(
     M: PDFString.fromDate(parametres.date),
     Name: PDFString.of(textePourPolice(police, parametres.nom)),
     Location: PDFString.of("Scouticket"),
+    ...(certification && {
+      Reference: [
+        {
+          Type: "SigRef",
+          TransformMethod: "DocMDP",
+          TransformParams: { Type: "TransformParams", P: 2, V: "1.2" },
+        },
+      ],
+    }),
   });
   // PDFInvalidObject : pdf-lib ne doit pas relire/réécrire ce dictionnaire.
-  widget.set(
-    PDFName.of("V"),
-    document.context.register(PDFInvalidObject.of(octets(signature))),
+  const refSignature = document.context.register(
+    PDFInvalidObject.of(octets(signature)),
   );
+  widget.set(PDFName.of("V"), refSignature);
+  // Le champ signé est verrouillé : plus aucune modification de sa valeur.
+  widget.set(
+    PDFName.of("Lock"),
+    document.context.obj({
+      Type: "SigFieldLock",
+      Action: "Include",
+      Fields: [PDFString.of(nomChamp(parametres.etape))],
+    }),
+  );
+  if (certification)
+    document.catalog.set(
+      PDFName.of("Perms"),
+      document.context.obj({ DocMDP: refSignature }),
+    );
   acroForm.set(
     PDFName.of("SigFlags"),
     PDFNumber.of(SIG_FLAGS.SIGNATURES_EXIST | SIG_FLAGS.APPEND_ONLY),
