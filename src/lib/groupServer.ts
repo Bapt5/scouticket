@@ -4,7 +4,10 @@ import {
   type FormatAnneeComptable,
   type ReservationNumeros,
 } from "./nomenclature";
-import type { ParametresGroupe } from "./parametresGroupe";
+import {
+  PARAMETRES_GROUPE_PAR_DEFAUT,
+  type ParametresGroupe,
+} from "./parametresGroupe";
 import { MOYENS_PAIEMENT_PAR_DEFAUT } from "@/constants/configDepenses";
 import { pool } from "@/lib/baseDeDonnees";
 import type { PoolClient } from "pg";
@@ -21,6 +24,9 @@ export async function recupererGroupeActif(identifiantOrganisation: string) {
     convertir_justificatifs_pdf: boolean | null;
     moyens_paiement: string[] | null;
     ndf_signee_actif: boolean | null;
+    ndf_km_actif: boolean | null;
+    ndf_km_taux: number | null;
+    ndf_km_taux_maj: string | null;
     ndf_logo_present: boolean | null;
   }>(
     `SELECT organization.name, donnees.nomenclature_format,
@@ -32,6 +38,9 @@ export async function recupererGroupeActif(identifiantOrganisation: string) {
             donnees.convertir_justificatifs_pdf,
             donnees.moyens_paiement,
             donnees.ndf_signee_actif,
+            donnees.ndf_km_actif,
+            donnees.ndf_km_taux::float8 AS ndf_km_taux,
+            TO_CHAR(donnees.ndf_km_taux_maj, 'YYYY-MM-DD') AS ndf_km_taux_maj,
             (donnees.ndf_logo IS NOT NULL) AS ndf_logo_present
        FROM organization
        LEFT JOIN scouticket_group_data donnees
@@ -84,6 +93,11 @@ export async function recupererGroupeActif(identifiantOrganisation: string) {
       convertirJustificatifsEnPdf: groupe.convertir_justificatifs_pdf ?? false,
       moyensPaiement: groupe.moyens_paiement ?? [...MOYENS_PAIEMENT_PAR_DEFAUT],
       ndfSigneeActif: groupe.ndf_signee_actif ?? false,
+      kmActif:
+        (groupe.ndf_signee_actif ?? false) && (groupe.ndf_km_actif ?? false),
+      kmTaux: groupe.ndf_km_taux ?? PARAMETRES_GROUPE_PAR_DEFAUT.kmTaux,
+      kmTauxMajLe:
+        groupe.ndf_km_taux_maj ?? PARAMETRES_GROUPE_PAR_DEFAUT.kmTauxMajLe,
       logoPersonnalise:
         (groupe.ndf_signee_actif ?? false) &&
         (groupe.ndf_logo_present ?? false),

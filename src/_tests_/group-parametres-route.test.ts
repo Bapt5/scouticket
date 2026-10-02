@@ -55,6 +55,9 @@ describe("/api/group/parametres", () => {
         convertirJustificatifsEnPdf: false,
         moyensPaiement: ["Espèces du groupe"],
         ndfSigneeActif: false,
+        kmActif: false,
+        kmTaux: 0.354,
+        kmTauxMajLe: "2025-11-05",
       },
     });
     mocks.query.mockResolvedValue({ rowCount: 1, rows: [] });
@@ -74,6 +77,9 @@ describe("/api/group/parametres", () => {
         convertirJustificatifsEnPdf: false,
         moyensPaiement: ["Espèces du groupe"],
         ndfSigneeActif: false,
+        kmActif: false,
+        kmTaux: 0.354,
+        kmTauxMajLe: "2025-11-05",
       },
     });
   });
@@ -124,6 +130,9 @@ describe("/api/group/parametres", () => {
         convertirJustificatifsEnPdf: false,
         moyensPaiement: ["Espèces du groupe"],
         ndfSigneeActif: false,
+        kmActif: false,
+        kmTaux: 0.354,
+        kmTauxMajLe: "2025-11-05",
       },
     });
     expect(mocks.query.mock.calls[0][0]).toMatch(/ON CONFLICT/);
@@ -133,6 +142,9 @@ describe("/api/group/parametres", () => {
       false,
       JSON.stringify(["Espèces du groupe"]),
       false,
+      false,
+      0.354,
+      "2025-11-05",
     ]);
   });
 
@@ -143,6 +155,9 @@ describe("/api/group/parametres", () => {
         convertirJustificatifsEnPdf: false,
         moyensPaiement: ["Espèces du groupe"],
         ndfSigneeActif: false,
+        kmActif: false,
+        kmTaux: 0.354,
+        kmTauxMajLe: "2025-11-05",
       },
     });
 
@@ -160,6 +175,9 @@ describe("/api/group/parametres", () => {
       false,
       JSON.stringify(["Espèces du groupe"]),
       false,
+      false,
+      0.354,
+      "2025-11-05",
     ]);
   });
 
@@ -178,6 +196,9 @@ describe("/api/group/parametres", () => {
       true,
       JSON.stringify(["Espèces du groupe"]),
       false,
+      false,
+      0.354,
+      "2025-11-05",
     ]);
   });
 
@@ -198,6 +219,9 @@ describe("/api/group/parametres", () => {
       false,
       JSON.stringify(["Espèces du groupe", "Virement du groupe"]),
       false,
+      false,
+      0.354,
+      "2025-11-05",
     ]);
   });
 
@@ -217,7 +241,94 @@ describe("/api/group/parametres", () => {
       false,
       JSON.stringify(["Espèces du groupe"]),
       true,
+      false,
+      0.354,
+      "2025-11-05",
     ]);
+  });
+
+  it("PATCH refuse d'activer les km sans notes de frais signées", async () => {
+    const reponse = await patch({ kmActif: true });
+
+    expect(reponse.status).toBe(400);
+    expect(mocks.query).not.toHaveBeenCalled();
+  });
+
+  it("PATCH active les km quand les notes de frais signées sont actives", async () => {
+    mocks.recupererGroupeActif.mockResolvedValue({
+      parametres: {
+        scanJustificatifsActif: false,
+        convertirJustificatifsEnPdf: false,
+        moyensPaiement: ["Espèces du groupe"],
+        ndfSigneeActif: true,
+        kmActif: false,
+        kmTaux: 0.354,
+        kmTauxMajLe: "2025-11-05",
+      },
+    });
+
+    const reponse = await patch({ kmActif: true });
+
+    expect(reponse.status).toBe(200);
+    expect(mocks.query.mock.calls[0][1]).toEqual([
+      "org_1",
+      false,
+      false,
+      JSON.stringify(["Espèces du groupe"]),
+      true,
+      true,
+      0.354,
+      "2025-11-05",
+    ]);
+  });
+
+  it("PATCH désactive aussi les km quand les notes signées sont désactivées", async () => {
+    mocks.recupererGroupeActif.mockResolvedValue({
+      parametres: {
+        scanJustificatifsActif: false,
+        convertirJustificatifsEnPdf: false,
+        moyensPaiement: ["Espèces du groupe"],
+        ndfSigneeActif: true,
+        kmActif: true,
+        kmTaux: 0.4,
+        kmTauxMajLe: "2026-01-01",
+      },
+    });
+
+    const reponse = await patch({ ndfSigneeActif: false });
+
+    await expect(reponse.json()).resolves.toMatchObject({
+      parametres: { ndfSigneeActif: false, kmActif: false, kmTaux: 0.4 },
+    });
+    expect(mocks.query.mock.calls[0][1].slice(4)).toEqual([
+      false,
+      false,
+      0.4,
+      "2026-01-01",
+    ]);
+  });
+
+  it("PATCH met à jour la date du taux quand il change, pas sinon", async () => {
+    mocks.recupererGroupeActif.mockResolvedValue({
+      parametres: {
+        scanJustificatifsActif: false,
+        convertirJustificatifsEnPdf: false,
+        moyensPaiement: ["Espèces du groupe"],
+        ndfSigneeActif: true,
+        kmActif: true,
+        kmTaux: 0.354,
+        kmTauxMajLe: "2025-11-05",
+      },
+    });
+
+    await patch({ kmTaux: 0.354 });
+    expect(mocks.query.mock.calls[0][1][7]).toBe("2025-11-05");
+
+    await patch({ kmTaux: 0.4 });
+    expect(mocks.query.mock.calls[1][1][6]).toBe(0.4);
+    expect(mocks.query.mock.calls[1][1][7]).toBe(
+      new Date().toISOString().slice(0, 10),
+    );
   });
 
   it("PATCH relaie le refus de l'origine de la requête", async () => {

@@ -1,5 +1,8 @@
 import { pool } from "@/lib/baseDeDonnees";
-import type { DetailDepense } from "@/constants/piecesJointes";
+import type {
+  DetailDepense,
+  DonneesKilometrage,
+} from "@/constants/piecesJointes";
 import type { EtapeSignature } from "@/lib/ndfSignature/circuit";
 
 export type StatutNoteDeFraisSignee =
@@ -14,6 +17,7 @@ export interface DonneesNdfPourEnvoi {
   groupe: string;
   montant: number;
   detailsDepenses: DetailDepense[];
+  kilometrage?: DonneesKilometrage;
   emailsTresoriers: string[];
   rib?: {
     nomAffiche: string;

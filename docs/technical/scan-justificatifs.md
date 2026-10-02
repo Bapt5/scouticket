@@ -26,12 +26,13 @@ Ces échecs ne sont pas montrés aux membres (ils sont seulement journalisés da
 
 ## Paramètres du groupe
 
-Les paramètres sont stockés dans `scouticket_group_data` (migrations `sql/008_parametres_groupe.sql`, `sql/009_convertir_justificatifs_pdf.sql`, `sql/010_moyens_paiement.sql` et `sql/014_ndf_signee.sql`, à appliquer avec `pnpm db:migrate`) :
+Les paramètres sont stockés dans `scouticket_group_data` (migrations `sql/008_parametres_groupe.sql`, `sql/009_convertir_justificatifs_pdf.sql`, `sql/010_moyens_paiement.sql` et `sql/014_ndf_signee.sql` et `sql/019_ndf_kilometrique.sql`, à appliquer avec `pnpm db:migrate`) :
 
 - `scan_justificatifs_actif` : active le scan (défaut : `false`).
 - `convertir_justificatifs_pdf` : convertit les justificatifs en PDF avant l’envoi (défaut : `false`). Voir [Conversion en PDF](#conversion-en-pdf).
 - `moyens_paiement` (JSONB) : liste des moyens de paiement du groupe proposés lors d’une dépense de groupe. `NULL` (valeur par défaut) équivaut à la liste historique (`MOYENS_PAIEMENT_PAR_DEFAUT` dans `src/constants/configDepenses.ts`). Voir [Moyens de paiement](#moyens-de-paiement).
 - `ndf_signee_actif` : active le circuit de validation des notes de frais par signature électronique avant envoi au trésorier (défaut : `false`). Une fois activé, un lien **Gestion des signataires** apparaît vers `/parametres-groupe/signataires` (voir [Signataires des notes de frais](#signataires-des-notes-de-frais)) et `POST /api/send-expense` dépose la note de frais dans le circuit de signature au lieu de l’envoyer immédiatement. Voir [Note de frais signée](/technical/ndf-signee) pour le détail du circuit.
+- `ndf_km_actif`, `ndf_km_taux`, `ndf_km_taux_maj` : saisie de kilomètres dans les notes de frais signées (défaut : `false`, 0,354 € / km, 05/11/25). Activable seulement avec `ndf_signee_actif` ; la date de mise à jour est fixée par le serveur quand le taux change. Voir [Notes de frais kilométriques](/technical/ndf-signee#notes-de-frais-kilometriques).
 
 `GET /api/group/parametres` est lisible par tous les membres ; `PATCH /api/group/parametres` (mise à jour partielle) est réservé aux responsables. Les paramètres sont aussi renvoyés par `GET /api/group/config` (`parametres`), ce qui évite un appel supplémentaire depuis l’accueil. La page est conçue pour accueillir d’autres paramètres : il suffit d’ajouter une colonne, un champ dans `src/lib/parametresGroupe.ts` et un `InterrupteurParametre`.
 

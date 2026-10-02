@@ -11,6 +11,12 @@ export const MAX_TOTAL_ATTACHMENTS_SIZE_BYTES = 20 * 1024 * 1024; // 20MB
 
 export const MAX_LIGNES_PAR_JUSTIFICATIF = 20;
 
+/** Nombre de lignes du tableau du modèle SGDF : pièces et lignes km confondues. */
+export const MAX_LIGNES_NOTE_DE_FRAIS = 12;
+/** Bornes de saisie d'une ligne kilométrique. */
+export const DISTANCE_MAX_KM_PAR_LIGNE = 9999;
+export const LONGUEUR_MIN_OBJET_DEPLACEMENT = 10;
+
 export const MIME_EXTENSION_MAP: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
@@ -28,6 +34,25 @@ export interface PieceJointeDepense {
 
 export interface LigneDepense {
   categorie: string;
+  montant: number;
+}
+
+/** Déplacement à rembourser au taux kilométrique du groupe. */
+export interface LigneKilometrique {
+  date: string;
+  distanceKm: number;
+  activite: string;
+  objet: string;
+}
+
+/** Kilomètres d'une note de frais, avec le taux du groupe figé au dépôt. */
+export interface DonneesKilometrage {
+  lignes: LigneKilometrique[];
+  /** Taux du kilomètre en euros. */
+  taux: number;
+  /** Date (AAAA-MM-JJ) de mise à jour du taux. */
+  tauxMajLe: string;
+  /** Montant remboursé (total km x taux, arrondi au centime). */
   montant: number;
 }
 

@@ -5,6 +5,10 @@ import {
   versDetailDepense,
   ventilerParCategorie,
   detailSaisiComplet,
+  distanceSaisieValide,
+  ligneKilometriqueComplete,
+  montantKilometrique,
+  totalKilometres,
   type DetailSaisie,
 } from "@/lib/depenses";
 import type { DetailDepense } from "@/constants/piecesJointes";
@@ -139,5 +143,39 @@ describe("depenses", () => {
       modePaiement: "Espèces du groupe",
       activite: "",
     });
+  });
+});
+
+describe("kilomètres", () => {
+  it("arrondit le montant km x taux au centime", () => {
+    expect(montantKilometrique(142.5, 0.354)).toBe(50.45);
+    expect(montantKilometrique(100, 0.354)).toBe(35.4);
+    expect(montantKilometrique(0, 0.354)).toBe(0);
+  });
+
+  it("totalise les distances au centième", () => {
+    expect(totalKilometres([{ distanceKm: 0.1 }, { distanceKm: 0.2 }])).toBe(
+      0.3,
+    );
+  });
+
+  it("valide la distance saisie", () => {
+    expect(distanceSaisieValide("42,5")).toBe(true);
+    expect(distanceSaisieValide("0")).toBe(false);
+    expect(distanceSaisieValide("")).toBe(false);
+    expect(distanceSaisieValide("1,234")).toBe(false);
+    expect(distanceSaisieValide("2001")).toBe(false);
+  });
+
+  it("exige date, activité, objet précis et distance", () => {
+    const ligne = {
+      date: "2026-09-04",
+      distanceKm: "10",
+      activite: "Camp",
+      objet: "Paris - Rambouillet",
+    };
+    expect(ligneKilometriqueComplete(ligne)).toBe(true);
+    expect(ligneKilometriqueComplete({ ...ligne, objet: "court" })).toBe(false);
+    expect(ligneKilometriqueComplete({ ...ligne, activite: " " })).toBe(false);
   });
 });

@@ -1,8 +1,10 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { useState } from "react";
 import { FormulaireDepense } from "@/components/FormulaireDepense";
 import type { UniteGroupe } from "@/lib/group";
+import type { LigneKilometriqueSaisie } from "@/lib/depenses";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
@@ -451,5 +453,100 @@ describe("FormulaireDepense", () => {
     expect(corps.expenses).toHaveLength(1);
 
     vi.unstubAllGlobals();
+  });
+
+  describe("kilomètres", () => {
+    const ligneKm = (
+      extra: Partial<LigneKilometriqueSaisie> = {},
+    ): LigneKilometriqueSaisie => ({
+      date: "2026-09-04",
+      distanceKm: "100",
+      activite: "Camp",
+      objet: "Paris - Rambouillet aller-retour",
+      ...extra,
+    });
+
+    const Hote = ({ initiales }: { initiales: LigneKilometriqueSaisie[] }) => {
+      const [lignes, setLignes] = useState(initiales);
+      return (
+        <FormulaireDepense
+          typeEnvoi="note-de-frais"
+          piecesJointes={[]}
+          emailUtilisateur="test@example.test"
+          units={UNITES_TEST}
+          uniteInitiale="groupe"
+          aTresorier
+          ndfSigneeActif
+          kilometrages={lignes}
+          onKilometragesChange={setLignes}
+          kmTaux={0.354}
+        />
+      );
+    };
+
+    it("affiche une section repliable par ligne km avec le montant estimé", () => {
+      render(<Hote initiales={[ligneKm()]} />);
+
+      expect(screen.getByText("Kilomètres (1)")).toBeInTheDocument();
+      expect(screen.getByText("Complet")).toBeInTheDocument();
+      expect(
+        screen.getByText(/Total : 100 km, soit 35.40 € au taux de 0.354/),
+      ).toBeInTheDocument();
+    });
+
+    it("signale une ligne incomplète à l'envoi sans exiger de justificatif", async () => {
+      const utilisateur = userEvent.setup();
+      render(<Hote initiales={[ligneKm({ objet: "" })]} />);
+
+      await utilisateur.click(
+        screen.getByRole("button", {
+          name: "Envoyer la note de frais pour signature",
+        }),
+      );
+
+      const alerte = screen.getByRole("alert");
+      expect(alerte).toHaveTextContent("les informations du déplacement 1");
+      expect(alerte).not.toHaveTextContent("un justificatif");
+    });
+
+    it("envoie les kilomètres avec la note", async () => {
+      const utilisateur = userEvent.setup();
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        text: async () => JSON.stringify({ error: "refus test" }),
+      });
+      vi.stubGlobal("fetch", fetchMock);
+      render(<Hote initiales={[ligneKm()]} />);
+
+      await utilisateur.click(
+        screen.getByRole("button", {
+          name: "Envoyer la note de frais pour signature",
+        }),
+      );
+
+      const corps = JSON.parse(fetchMock.mock.calls[0][1].body);
+      expect(corps.kilometrages).toEqual([
+        {
+          date: "2026-09-04",
+          distanceKm: 100,
+          activite: "Camp",
+          objet: "Paris - Rambouillet aller-retour",
+        },
+      ]);
+      expect(corps.expenses).toEqual([]);
+      vi.unstubAllGlobals();
+    });
+
+    it("supprime une ligne km", async () => {
+      const utilisateur = userEvent.setup();
+      render(<Hote initiales={[ligneKm()]} />);
+
+      await utilisateur.click(
+        screen.getByRole("button", { name: "Supprimer 100 km" }),
+      );
+
+      expect(screen.queryByText("Kilomètres (1)")).not.toBeInTheDocument();
+    });
   });
 });

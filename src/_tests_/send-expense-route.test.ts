@@ -143,9 +143,11 @@ describe("POST /api/send-expense", () => {
 
     await POST(REQUETE_BASE() as never);
 
-    expect(mocks.validerCorpsRequete).toHaveBeenCalledWith(expect.anything(), [
-      "Carte de procurement",
-    ]);
+    expect(mocks.validerCorpsRequete).toHaveBeenCalledWith(
+      expect.anything(),
+      ["Carte de procurement"],
+      undefined,
+    );
   });
 
   it("autorise un membre ayant accès à l’unité soumise", async () => {

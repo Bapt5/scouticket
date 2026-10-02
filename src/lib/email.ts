@@ -6,6 +6,7 @@ import {
   type PieceJointeDepense,
   type DetailDepense,
   type DetailRecette,
+  type DonneesKilometrage,
   type TypeEnvoi,
 } from "@/constants/piecesJointes";
 import { LIBELLES_TYPES_ENVOI } from "@/constants/piecesJointes";
@@ -26,6 +27,8 @@ export interface DonneesEmailDepense {
   /** Un élément par pièce jointe, dans le même ordre ; un élément sans pièce
    * jointe correspondante lorsque `sansJustificatifAttesteParResponsable`. */
   detailsDepenses: DetailDepense[];
+  /** Kilomètres d'une note de frais (déjà inclus dans `montant`). */
+  kilometrage?: DonneesKilometrage;
   /** Dépense avec moyen de paiement du groupe envoyée sans justificatif, sur
    * attestation d'un responsable (ex. virement interne à l'association). */
   sansJustificatifAttesteParResponsable?: boolean;

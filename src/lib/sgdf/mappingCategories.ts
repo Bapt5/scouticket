@@ -2,8 +2,9 @@
  * Correspondance entre les catégories comptables de l'app
  * (`src/constants/configDepenses.ts`) et les 3 colonnes de frais du
  * template SGDF (`TRANSPORT avec justificatifs`, `HEBERGEMENT/INTENDANCE`,
- * `AUTRE FRAIS EN MISSION`). L'app ne capture pas de kilométrage : la
- * colonne "TRANSPORT Nb kilomètres" du template reste donc toujours à 0.
+ * `AUTRE FRAIS EN MISSION`). Les kilomètres (colonne "TRANSPORT Nb
+ * kilomètres") ne passent pas par ce mapping : ils sont saisis à part et leur
+ * montant est calculé dans `remplirModele.ts`.
  * Toute catégorie non listée ci-dessous tombe par défaut dans "autreFrais".
  * Seules les catégories autorisées en note de frais
  * (`categoriesPourTypeEnvoi("note-de-frais")`) peuvent arriver ici : les

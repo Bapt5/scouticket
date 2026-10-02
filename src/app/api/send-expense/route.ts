@@ -83,6 +83,12 @@ export async function POST(req: NextRequest) {
       const { donneesEmail, error } = validerCorpsRequete(
         body,
         group.parametres.moyensPaiement,
+        group.parametres.kmActif
+          ? {
+              taux: group.parametres.kmTaux,
+              tauxMajLe: group.parametres.kmTauxMajLe,
+            }
+          : undefined,
       );
       if (error || !donneesEmail) return error as NextResponse;
       if (group.emailsTresoriers.length === 0)

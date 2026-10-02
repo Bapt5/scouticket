@@ -5,6 +5,7 @@ import Link from "next/link";
 import { InterrupteurParametre } from "@/components/InterrupteurParametre";
 import { LogoGroupe } from "@/components/LogoGroupe";
 import { SelecteurMoyensPaiement } from "@/components/SelecteurMoyensPaiement";
+import { TauxKilometre } from "@/components/TauxKilometre";
 import { clientAuth } from "@/lib/auth-client";
 import {
   PARAMETRES_GROUPE_PAR_DEFAUT,
@@ -127,6 +128,26 @@ export default function PageParametresGroupe() {
                 Gestion des signataires (activez les notes de frais signées pour
                 y accéder)
               </p>
+            )}
+            <InterrupteurParametre
+              id="ndf-km"
+              titre="Notes de frais kilométriques"
+              description={
+                parametres.ndfSigneeActif
+                  ? "Permet d’ajouter des kilomètres dans une note de frais, remboursés selon le taux du kilomètre ci-dessous."
+                  : "Permet d’ajouter des kilomètres dans une note de frais (activez d’abord les notes de frais signées)."
+              }
+              actif={parametres.kmActif}
+              desactive={enregistrement || !parametres.ndfSigneeActif}
+              onChange={(actif) => modifier({ kmActif: actif })}
+            />
+            {parametres.kmActif && (
+              <TauxKilometre
+                taux={parametres.kmTaux}
+                misAJourLe={parametres.kmTauxMajLe}
+                desactive={enregistrement}
+                onChange={(kmTaux) => modifier({ kmTaux })}
+              />
             )}
             {parametres.ndfSigneeActif && (
               <LogoGroupe

@@ -61,6 +61,7 @@ export async function deposerNoteDeFraisSignee(params: {
       lignes: detail.lignes,
     }));
 
+  const kilometrage = params.donneesEmail.kilometrage;
   const logoDataUri = await recupererLogoGroupeEnDataUri(
     params.identifiantOrganisation,
   );
@@ -70,6 +71,16 @@ export async function deposerNoteDeFraisSignee(params: {
     demandeur: params.beneficiaireNom,
     unite: params.donneesEmail.branche,
     pieces,
+    kilometrage: kilometrage && {
+      lignes: kilometrage.lignes.map((ligne) => ({
+        date: versDateAffichee(ligne.date),
+        activite: ligne.activite,
+        objet: ligne.objet,
+        distanceKm: ligne.distanceKm,
+      })),
+      taux: kilometrage.taux,
+      tauxMajLe: kilometrage.tauxMajLe,
+    },
     responsableNom: signataires.responsable.nom,
     tresorierNom: signataires.tresorier.nom,
     logoDataUri,
@@ -94,6 +105,7 @@ export async function deposerNoteDeFraisSignee(params: {
     groupe: params.donneesEmail.groupe ?? "",
     montant: params.donneesEmail.montant,
     detailsDepenses: params.donneesEmail.detailsDepenses,
+    kilometrage,
     emailsTresoriers: params.donneesEmail.emailsTresoriers ?? [],
     rib: params.donneesEmail.rib,
   };

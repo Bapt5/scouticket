@@ -1,7 +1,10 @@
-import type {
-  DetailDepense,
-  LigneDepense,
-  TypeEnvoi,
+import {
+  DISTANCE_MAX_KM_PAR_LIGNE,
+  LONGUEUR_MIN_OBJET_DEPLACEMENT,
+  type DetailDepense,
+  type LigneDepense,
+  type LigneKilometrique,
+  type TypeEnvoi,
 } from "@/constants/piecesJointes";
 import type { DepenseNomenclature } from "@/lib/nomenclature";
 
@@ -25,6 +28,21 @@ export interface DetailSaisie {
 }
 
 export const dateDuJour = () => new Date().toISOString().split("T")[0];
+
+// Ligne kilométrique telle que saisie dans le formulaire.
+export interface LigneKilometriqueSaisie {
+  date: string;
+  distanceKm: string;
+  activite: string;
+  objet: string;
+}
+
+export const ligneKilometriqueVide = (): LigneKilometriqueSaisie => ({
+  date: dateDuJour(),
+  distanceKm: "",
+  activite: "",
+  objet: "",
+});
 
 export const detailSaisieVide = (): DetailSaisie => ({
   date: dateDuJour(),
@@ -124,3 +142,55 @@ export const ventilerParCategorie = (
     montant: totalLignes([{ montant }]),
   }));
 };
+
+// ─── Kilomètres ───
+
+export const CATEGORIE_COMPTABLE_KILOMETRES =
+  "Remboursement via Ndf frais de transport";
+
+// Distance en km, au plus 2 décimales (ex. "42,5").
+export const analyserDistanceSaisie = (distance: string) =>
+  analyserMontantSaisi(distance);
+
+export const distanceSaisieValide = (distance: string) => {
+  const valeur = analyserDistanceSaisie(distance);
+  return (
+    Number.isFinite(valeur) &&
+    valeur > 0 &&
+    valeur <= DISTANCE_MAX_KM_PAR_LIGNE &&
+    Math.round(valeur * 100) / 100 === valeur
+  );
+};
+
+export const ligneKilometriqueComplete = (ligne: LigneKilometriqueSaisie) =>
+  Boolean(ligne.date) &&
+  Boolean(ligne.activite.trim()) &&
+  ligne.objet.trim().length >= LONGUEUR_MIN_OBJET_DEPLACEMENT &&
+  distanceSaisieValide(ligne.distanceKm);
+
+export const versLigneKilometrique = (
+  ligne: LigneKilometriqueSaisie,
+): LigneKilometrique => ({
+  date: ligne.date,
+  distanceKm: analyserDistanceSaisie(ligne.distanceKm),
+  activite: ligne.activite.trim(),
+  objet: ligne.objet.trim(),
+});
+
+// Total en km, arrondi au centième.
+export const totalKilometres = (
+  lignes: readonly Pick<LigneKilometrique, "distanceKm">[],
+) =>
+  Math.round(
+    lignes.reduce(
+      (total, ligne) =>
+        total + (Number.isFinite(ligne.distanceKm) ? ligne.distanceKm : 0),
+      0,
+    ) * 100,
+  ) / 100;
+
+// Montant remboursé (€) pour un total de km : calcul en entiers (centièmes de
+// km x dix-millièmes d'euro) pour éviter les dérives des flottants.
+export const montantKilometrique = (totalKm: number, taux: number) =>
+  Math.round((Math.round(totalKm * 100) * Math.round(taux * 10000)) / 10000) /
+  100;

@@ -65,6 +65,9 @@ describe("recupererGroupeActif", () => {
             convertir_justificatifs_pdf: true,
             moyens_paiement: ["Espèces du groupe"],
             ndf_signee_actif: true,
+            ndf_km_actif: true,
+            ndf_km_taux: 0.4,
+            ndf_km_taux_maj: "2026-01-15",
             ndf_logo_present: true,
           },
         ],
@@ -85,6 +88,9 @@ describe("recupererGroupeActif", () => {
         "Chèque du groupe",
       ],
       ndfSigneeActif: false,
+      kmActif: false,
+      kmTaux: 0.354,
+      kmTauxMajLe: "2025-11-05",
       logoPersonnalise: false,
     });
     expect(avec.parametres).toEqual({
@@ -92,6 +98,9 @@ describe("recupererGroupeActif", () => {
       convertirJustificatifsEnPdf: true,
       moyensPaiement: ["Espèces du groupe"],
       ndfSigneeActif: true,
+      kmActif: true,
+      kmTaux: 0.4,
+      kmTauxMajLe: "2026-01-15",
       logoPersonnalise: true,
     });
   });

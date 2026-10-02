@@ -4,7 +4,9 @@ import {
   type PieceJointeDepense,
   type DetailDepense,
   type LigneDepense,
+  type DonneesKilometrage,
   TYPES_ENVOI,
+  MAX_LIGNES_NOTE_DE_FRAIS,
 } from "@/constants/piecesJointes";
 import {
   MAX_ATTACHMENT_COUNT,
@@ -17,7 +19,13 @@ import type { DonneesEmailDepense } from "@/lib/email";
 import type { NextResponse } from "next/server";
 import { z } from "zod";
 import { categoriesPourTypeEnvoi } from "@/constants/configDepenses";
-import { totalDetails } from "@/lib/depenses";
+import {
+  distanceSaisieValide,
+  ligneKilometriqueComplete,
+  montantKilometrique,
+  totalDetails,
+  totalKilometres,
+} from "@/lib/depenses";
 import { analyserDateIso } from "@/lib/nomenclature";
 import { journal } from "@/lib/logger";
 
@@ -80,6 +88,8 @@ export function validerPieceJointe(brute: unknown, nom: string): ResultatPiece {
 export function validerCorpsRequete(
   body: unknown,
   moyensPaiementGroupe: readonly string[],
+  /** Paramètres kilométriques du groupe ; sans eux, toute ligne km est refusée. */
+  parametresKm?: { taux: number; tauxMajLe: string },
 ): {
   donneesEmail?: DonneesEmailDepense;
   error?: NextResponse;
@@ -106,6 +116,16 @@ export function validerCorpsRequete(
             .max(MAX_LIGNES_PAR_JUSTIFICATIF),
         }),
       ),
+      kilometrages: z
+        .array(
+          z.object({
+            date: z.string(),
+            distanceKm: z.number(),
+            activite: z.string(),
+            objet: z.string(),
+          }),
+        )
+        .optional(),
       attachments: z.array(z.any()).optional(),
       rib: z.any().optional(),
       // Dépense avec moyen de paiement du groupe uniquement : attestation du
@@ -140,8 +160,45 @@ export function validerCorpsRequete(
     b.withoutReceipt === true &&
     piecesJointesBrutes.length === 0;
 
+  // ─── Kilomètres (note de frais, si le groupe les active) ───
+  const kilometragesBruts = b.kilometrages ?? [];
+  if (kilometragesBruts.length > 0) {
+    if (!estNoteDeFrais || !parametresKm) {
+      return {
+        error: jsonError("Les kilomètres ne sont pas activés", 403),
+      };
+    }
+    for (let i = 0; i < kilometragesBruts.length; i++) {
+      const ligne = kilometragesBruts[i];
+      if (
+        !analyserDateIso(ligne.date) ||
+        !distanceSaisieValide(String(ligne.distanceKm)) ||
+        !ligneKilometriqueComplete({
+          date: ligne.date,
+          distanceKm: String(ligne.distanceKm),
+          activite: ligne.activite,
+          objet: ligne.objet,
+        })
+      ) {
+        return { error: jsonError(`Kilométrage invalide (#${i + 1})`, 400) };
+      }
+    }
+  }
+  if (
+    piecesJointesBrutes.length + kilometragesBruts.length >
+    MAX_LIGNES_NOTE_DE_FRAIS
+  ) {
+    return {
+      error: jsonError(
+        `Trop de lignes (maximum ${MAX_LIGNES_NOTE_DE_FRAIS}, justificatifs et kilomètres confondus)`,
+        400,
+      ),
+    };
+  }
+
   if (
     piecesJointesBrutes.length === 0 &&
+    kilometragesBruts.length === 0 &&
     !sansJustificatifAttesteParResponsable
   ) {
     return { error: jsonError("Aucun justificatif fourni", 400) };
@@ -265,12 +322,27 @@ export function validerCorpsRequete(
     });
   }
 
+  let kilometrage: DonneesKilometrage | undefined;
+  if (kilometragesBruts.length > 0 && parametresKm) {
+    const lignes = kilometragesBruts.map((ligne) => ({
+      date: ligne.date,
+      distanceKm: ligne.distanceKm,
+      activite: ligne.activite.trim(),
+      objet: ligne.objet.trim(),
+    }));
+    kilometrage = {
+      lignes,
+      taux: parametresKm.taux,
+      tauxMajLe: parametresKm.tauxMajLe,
+      montant: montantKilometrique(totalKilometres(lignes), parametresKm.taux),
+    };
+  }
+
   // Date de référence (objet du mail, nomenclature) : la plus ancienne.
-  const dateReference = detailsDepenses
-    .map((detail) => detail.date)
-    .reduce((plusAncienne, date) =>
-      date < plusAncienne ? date : plusAncienne,
-    );
+  const dateReference = [
+    ...detailsDepenses.map((detail) => detail.date),
+    ...(kilometrage?.lignes.map((ligne) => ligne.date) ?? []),
+  ].reduce((plusAncienne, date) => (date < plusAncienne ? date : plusAncienne));
 
   return {
     donneesEmail: {
@@ -278,9 +350,13 @@ export function validerCorpsRequete(
       emailUtilisateur: b.userEmail,
       date: dateReference,
       branche: b.unitId,
-      montant: totalDetails(detailsDepenses),
+      montant:
+        Math.round(
+          (totalDetails(detailsDepenses) + (kilometrage?.montant ?? 0)) * 100,
+        ) / 100,
       piecesJointes: piecesJointesNormalisees,
       detailsDepenses,
+      kilometrage,
       rib,
       sansJustificatifAttesteParResponsable,
     },
