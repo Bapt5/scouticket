@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Feuille de remboursement de frais</title>
+    <style>
+      @page {
+        size: A4 landscape;
+        margin: 10mm 12mm;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        font-family: "Aptos", "Calibri", "Segoe UI", Arial, sans-serif;
+        color: #000;
+        margin: 0;
+        font-size: 12px;
+      }
+      .page {
+        width: 273mm;
+      }
+      .entete {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        margin-bottom: 6px;
+      }
+      .entete .logo img {
+        width: 62mm;
+        height: auto;
+      }
+      .entete .titre {
+        flex: 1;
+        text-align: center;
+        font-size: 24px;
+        font-weight: bold;
+        padding-top: 10px;
+      }
+      .entete .groupe {
+        text-align: center;
+        min-width: 60mm;
+      }
+      .entete .groupe .libelle {
+        font-size: 9px;
+        font-weight: bold;
+      }
+      .entete .groupe .nom {
+        font-size: 22px;
+        border-bottom: 1px solid #000;
+        padding: 2px 6px;
+      }
+
+      .instructions {
+        display: flex;
+        gap: 8px;
+        font-size: 10px;
+        margin-bottom: 8px;
+      }
+      .instructions .libelle {
+        font-weight: bold;
+        white-space: nowrap;
+      }
+
+      .identite {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 8px;
+      }
+      .identite .bloc {
+        flex: 1;
+        border: 1px solid #000;
+      }
+      .identite .bloc .titre-champ {
+        font-weight: bold;
+        text-align: center;
+        font-size: 11px;
+        border-bottom: 1px solid #000;
+        padding: 2px;
+        background: #f2f2f2;
+      }
+      .identite .bloc .valeur {
+        text-align: center;
+        font-size: 16px;
+        padding: 6px;
+        min-height: 20px;
+      }
+      .identite .paiement {
+        width: 55mm;
+        border: 1px solid #000;
+        text-align: center;
+        padding: 4px;
+        font-size: 10px;
+      }
+      .identite .paiement .titre-champ {
+        font-weight: bold;
+      }
+      .identite .paiement .sous-titre {
+        font-size: 13px;
+        margin-top: 4px;
+      }
+
+      table.lignes {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 4px;
+      }
+      table.lignes th,
+      table.lignes td {
+        border: 1px solid #000;
+        padding: 2px 4px;
+        text-align: center;
+        vertical-align: middle;
+        overflow: hidden;
+      }
+      table.lignes thead th {
+        font-size: 8px;
+        font-weight: bold;
+        line-height: 1.1;
+        background: #f2f2f2;
+      }
+      table.lignes tbody td {
+        font-size: 13px;
+        height: 18px;
+      }
+      table.lignes td.description,
+      table.lignes td.activite {
+        text-align: left;
+      }
+      table.lignes tfoot td {
+        font-weight: bold;
+        font-size: 12px;
+      }
+      table.lignes tfoot td.libelle-total {
+        text-align: right;
+        font-size: 9px;
+      }
+
+      .apres-tableau {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 11px;
+        margin-bottom: 8px;
+      }
+      .apres-tableau .taux {
+        text-align: right;
+      }
+      .apres-tableau .total-general {
+        text-align: right;
+        font-weight: bold;
+      }
+      .apres-tableau .total-general .montant {
+        font-size: 15px;
+      }
+
+      .signatures {
+        display: flex;
+        gap: 0;
+        border: 1px solid #000;
+      }
+      .signatures .colonne {
+        flex: 1;
+        border-right: 1px solid #000;
+        padding: 6px 8px;
+        font-size: 11px;
+      }
+      .signatures .colonne:last-child {
+        border-right: none;
+      }
+      .signatures .colonne .intitule {
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 10px;
+        min-height: 42px;
+      }
+      .signatures .ligne-champ {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 6px;
+      }
+      .signatures .ligne-champ .label {
+        white-space: nowrap;
+      }
+      .signatures .ligne-champ .valeur {
+        border-bottom: 1px solid #000;
+        flex: 1;
+        min-height: 14px;
+      }
+      .signatures .zone-signature {
+        margin-top: 10px;
+        min-height: 30px;
+        font-style: italic;
+        font-size: 10px;
+        color: #555;
+      }
+      .signatures .tresorier-extra {
+        margin-top: 8px;
+        font-size: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <div class="entete">
+        <div class="logo">
+          <img
+            src="../../assets/sgdf/logo.png"
+            alt="Scouts et Guides de France"
+          />
+        </div>
+        <div class="titre">FEUILLE DE REMBOURSEMENT DE FRAIS</div>
+        <div class="groupe">
+          <div class="libelle">Groupe :</div>
+          <div class="nom">Groupe Orsay</div>
+        </div>
+      </div>
+
+      <div class="instructions">
+        <span class="libelle">Instructions :</span>
+        <span>
+          Remplir une ligne par pièce justificative. Numéroter les pièces et
+          reporter ce numéro dans la première colonne. Joindre les
+          justificatifs. Faire signer à votre responsable d'unité ou de groupe,
+          avant d'envoyer à votre trésorier.
+        </span>
+      </div>
+
+      <div class="identite">
+        <div class="bloc">
+          <div class="titre-champ">NOM - PRENOM DU DEMANDEUR</div>
+          <div class="valeur">Camille Martin</div>
+        </div>
+        <div class="bloc">
+          <div class="titre-champ">UNITE</div>
+          <div class="valeur">Louveteaux</div>
+        </div>
+        <div class="paiement">
+          <div class="titre-champ">PAIEMENT PAR VIREMENT</div>
+          <div class="sous-titre">Joindre un RIB</div>
+        </div>
+      </div>
+
+      <table class="lignes">
+        <colgroup>
+          <col style="width: 6.75%" />
+          <col style="width: 10.65%" />
+          <col style="width: 10.03%" />
+          <col style="width: 37.94%" />
+          <col style="width: 6.7%" />
+          <col style="width: 10.65%" />
+          <col style="width: 10.6%" />
+          <col style="width: 6.7%" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th>N° de pièce</th>
+            <th>DATE des dépenses</th>
+            <th>ACTIVITE LIEE<br />(journée, WE, camp)</th>
+            <th>DESCRIPTION</th>
+            <th>TRANSPORT<br />avec justificatifs</th>
+            <th>TRANSPORT<br />Nb kilomètres</th>
+            <th>HEBERGEMENT<br />INTENDANCE</th>
+            <th>AUTRE FRAIS<br />EN MISSION</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td>03/09/2026</td>
+            <td class="activite">Camp d'été</td>
+            <td class="description">Billets de train A/R pour le camp</td>
+            <td>48,20 €</td>
+            <td></td>
+            <td></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td>05/09/2026</td>
+            <td class="activite">Camp d'été</td>
+            <td class="description">
+              Courses intendance (supermarché Leclerc)
+            </td>
+            <td></td>
+            <td></td>
+            <td>76,45 €</td>
+            <td></td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td>06/09/2026</td>
+            <td class="activite">Camp d'été</td>
+            <td class="description">Pharmacie (trousse de secours)</td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td>12,90 €</td>
+          </tr>
+          <!-- Lignes vides jusqu'à 12 au total, une ligne = une pièce jointe -->
+          <tr>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="4" class="libelle-total">TOTAL COLONNES :</td>
+            <td>48,20 €</td>
+            <td>0,00 €</td>
+            <td>76,45 €</td>
+            <td>12,90 €</td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <div class="apres-tableau">
+        <div class="taux">
+          Taux du kilomètre utilisé : (mis à jour le 05/11/25)
+          <strong>0,354 €</strong>
+        </div>
+        <div class="total-general">
+          Total : <span class="montant">137,55 €</span>
+        </div>
+      </div>
+
+      <div class="signatures">
+        <div class="colonne">
+          <div class="intitule">Signature du demandeur</div>
+          <div class="ligne-champ">
+            <span class="label">Nom :</span>
+            <span class="valeur">Camille Martin</span>
+          </div>
+          <div class="zone-signature">
+            Signature électronique : voir le certificat de signature en fin de
+            document.
+          </div>
+        </div>
+        <div class="colonne">
+          <div class="intitule">
+            Visa pour approbation du responsable d'unité<br />
+            (ou du responsable de groupe si le demandeur est le responsable
+            d'unité)
+          </div>
+          <div class="ligne-champ">
+            <span class="label">Nom :</span>
+            <span class="valeur">Alex Dupont</span>
+          </div>
+          <div class="zone-signature">
+            Signature électronique : voir le certificat de signature en fin de
+            document.
+          </div>
+        </div>
+        <div class="colonne">
+          <div class="intitule">
+            Traitement par le trésorier<br />
+            (la même personne ne peut pas valider la NDF et effectuer le
+            règlement)
+          </div>
+          <div class="ligne-champ">
+            <span class="label">Nom :</span>
+            <span class="valeur">Jordan Petit</span>
+          </div>
+          <div class="zone-signature">
+            Signature électronique : voir le certificat de signature en fin de
+            document.
+          </div>
+          <div class="tresorier-extra">
+            <span>Somme à rembourser : <strong>137,55 €</strong></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

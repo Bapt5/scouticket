@@ -59,17 +59,19 @@ export async function PATCH(requete: Request) {
     // La ligne du groupe peut ne pas exister encore : upsert.
     await pool.query(
       `INSERT INTO scouticket_group_data
-         (organization_id, scan_justificatifs_actif, convertir_justificatifs_pdf, moyens_paiement)
-       VALUES ($1, $2, $3, $4)
+         (organization_id, scan_justificatifs_actif, convertir_justificatifs_pdf, moyens_paiement, ndf_signee_actif)
+       VALUES ($1, $2, $3, $4, $5)
        ON CONFLICT (organization_id) DO UPDATE
          SET scan_justificatifs_actif = EXCLUDED.scan_justificatifs_actif,
              convertir_justificatifs_pdf = EXCLUDED.convertir_justificatifs_pdf,
-             moyens_paiement = EXCLUDED.moyens_paiement`,
+             moyens_paiement = EXCLUDED.moyens_paiement,
+             ndf_signee_actif = EXCLUDED.ndf_signee_actif`,
       [
         identifiantOrganisation,
         parametres.scanJustificatifsActif,
         parametres.convertirJustificatifsEnPdf,
         JSON.stringify(parametres.moyensPaiement),
+        parametres.ndfSigneeActif,
       ],
     );
 

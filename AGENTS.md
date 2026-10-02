@@ -6,7 +6,7 @@ Ce dépôt héberge une application **Next.js 16** (App Router) pour la gestion 
 
 - **TypeScript**
 - **Tailwind CSS** pour le style
-- **Clerk** pour l'authentification
+- **Better Auth** pour l'authentification, les organisations (groupes) et les invitations, pas Clerk
 - **Nodemailer** (SMTP) pour l'envoi d'e-mails côté serveur
 - Des fonctionnalités **Progressive Web App (PWA)** (manifest, service worker, support hors-ligne)
 

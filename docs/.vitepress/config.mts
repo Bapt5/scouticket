@@ -40,6 +40,11 @@ const metadonneesPages: Record<string, { titre: string; description: string }> =
       description:
         "Activez et comprenez le recadrage automatique des justificatifs avec Scanic : paramètres du groupe, ML auto-hébergé et fonctionnement.",
     },
+    "technical/ndf-signee.md": {
+      titre: "Note de frais signée",
+      description:
+        "Comprenez le circuit de signature électronique à 3 niveaux des notes de frais Scouticket : dépôt, code de vérification, chaînage cryptographique et certificat.",
+    },
     "technical/local-installation.md": {
       titre: "Installation locale",
       description:
@@ -168,6 +173,10 @@ export default defineConfig({
           {
             text: "Scan des justificatifs",
             link: "/technical/scan-justificatifs",
+          },
+          {
+            text: "Note de frais signée",
+            link: "/technical/ndf-signee",
           },
           {
             text: "Variables d'environnement",

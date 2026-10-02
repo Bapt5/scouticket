@@ -45,7 +45,6 @@ export default function proxy(requete: NextRequest) {
     chemin === "/maintenance" ||
     chemin === "/forgot-password" ||
     chemin === "/reset-password" ||
-    chemin === "/verify-treasury" ||
     chemin === "/offline" ||
     chemin === "/invitation" ||
     // Utilisées avant qu'une session n'existe pour préremplir/valider l'inscription par invitation.

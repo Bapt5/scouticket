@@ -157,8 +157,7 @@ export const CATEGORIES_COMPTABLES: readonly CategorieComptable[] = [
   },
   {
     libelle: "Péage-Parking",
-    description:
-      "Ticket de péage payé avec la carte du groupe, ainsi que les parkings",
+    description: "Tickets de péage, ainsi que les parkings",
   },
   {
     libelle: "Remboursement via Ndf frais de transport",
@@ -215,6 +214,49 @@ export const CATEGORIES_COMPTABLES: readonly CategorieComptable[] = [
 
 export const LIBELLES_CATEGORIES_COMPTABLES: readonly string[] =
   CATEGORIES_COMPTABLES.map((categorie) => categorie.libelle);
+
+/** Catégories réservées au paiement par moyen de paiement du groupe : jamais avancées par un membre. */
+const CATEGORIES_MOYEN_PAIEMENT_GROUPE_UNIQUEMENT: ReadonlySet<string> =
+  new Set([
+    "Assurances",
+    "Autres cotisations",
+    "CAF : Reversion PSCAF",
+    "Carburant",
+    "Eau",
+    "Electricité",
+    "Flux financiers entre structures (SAUF la participation aux activités)",
+    "Frais Bancaires",
+    "Frais communication et Internet",
+    "Gaz : abonnement au réseau",
+    "Loyer et Charges locatives",
+    "Participation Activités",
+    "Reversion Subvention",
+    "Taxe de séjour",
+    "Taxes foncières",
+    "Taxes habitations",
+    "Transport collectif : en Autocar",
+    "Transport collectif : en Avion",
+    "Transport collectif : en Bateau",
+    "Transport collectif en commun (RER, métro, Tram, bus, etc.)",
+    "Transport collectif Train",
+    "Travaux, Gros entretiens",
+  ]);
+
+/** Catégories réservées aux notes de frais (un membre avance la dépense). */
+const CATEGORIES_NOTE_DE_FRAIS_UNIQUEMENT: ReadonlySet<string> = new Set([
+  "Remboursement via Ndf frais de transport",
+]);
+
+/** Catégories comptables proposées (et acceptées) pour un type d'envoi de dépense. */
+export function categoriesPourTypeEnvoi(
+  typeEnvoi: "note-de-frais" | "depense-groupe",
+): readonly CategorieComptable[] {
+  return CATEGORIES_COMPTABLES.filter((categorie) =>
+    typeEnvoi === "note-de-frais"
+      ? !CATEGORIES_MOYEN_PAIEMENT_GROUPE_UNIQUEMENT.has(categorie.libelle)
+      : !CATEGORIES_NOTE_DE_FRAIS_UNIQUEMENT.has(categorie.libelle),
+  );
+}
 
 /** Liste par défaut des moyens de paiement du groupe, tant qu'aucune n'a été personnalisée. */
 export const MOYENS_PAIEMENT_PAR_DEFAUT: readonly string[] = [

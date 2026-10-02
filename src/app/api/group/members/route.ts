@@ -23,10 +23,20 @@ export async function GET(requete: Request) {
         "SELECT name FROM organization WHERE id = $1",
         [identifiantOrganisation],
       ),
-      pool.query<{ id: string; nom: string; email: string; role: string }>(
-        `SELECT member.id, "user".name AS nom, "user".email, member.role
+      pool.query<{
+        id: string;
+        nom: string;
+        email: string;
+        role: string;
+        recoitNotifications: boolean;
+      }>(
+        `SELECT member.id, "user".name AS nom, "user".email, member.role,
+                notif.user_id IS NOT NULL AS "recoitNotifications"
            FROM member
            JOIN "user" ON "user".id = member."userId"
+           LEFT JOIN scouticket_notification_tresorerie notif
+             ON notif.user_id = member."userId"
+            AND notif.organization_id = member."organizationId"
           WHERE member."organizationId" = $1
           ORDER BY "user".name ASC, "user".email ASC`,
         [identifiantOrganisation],

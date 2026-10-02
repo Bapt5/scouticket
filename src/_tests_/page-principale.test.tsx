@@ -78,7 +78,7 @@ describe("Page principale", () => {
           Promise.resolve({
             units: [{ id: "groupe", label: "Groupe", color: "#1E3A8A" }],
             configured: true,
-            treasuryVerified: true,
+            aTresorier: true,
             isAdmin: true,
           }),
       }),
@@ -116,7 +116,7 @@ describe("Page principale", () => {
           Promise.resolve({
             units: [{ id: "groupe", label: "Groupe", color: "#1E3A8A" }],
             configured: true,
-            treasuryVerified: true,
+            aTresorier: true,
             isAdmin: false,
             parametres: { scanJustificatifsActif: true },
           }),
@@ -145,7 +145,7 @@ describe("Page principale", () => {
           Promise.resolve({
             units: [{ id: "groupe", label: "Groupe", color: "#1E3A8A" }],
             configured: true,
-            treasuryVerified: true,
+            aTresorier: true,
             isAdmin: false,
           }),
       }),

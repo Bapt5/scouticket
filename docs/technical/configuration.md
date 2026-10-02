@@ -16,13 +16,13 @@ Le mode « adhésion obligatoire » est recommandé : l’application est conçu
 
 ## Configuration SMTP
 
-Configurez un serveur SMTP qui peut envoyer les e-mails de justificatifs et de validation de trésorerie. Consultez la [référence des variables d’environnement](/technical/environment-variables) pour les valeurs attendues.
+Configurez un serveur SMTP qui peut envoyer les e-mails de justificatifs. Consultez la [référence des variables d’environnement](/technical/environment-variables) pour les valeurs attendues.
 
 Pour Gmail, activez la validation en deux étapes et créez un mot de passe d’application. Pour les autres fournisseurs, utilisez les paramètres SMTP fournis par votre hébergeur.
 
 ## Configuration dans l’application
 
-Après le déploiement, le responsable crée son groupe dans l’application. Il configure alors l’adresse de trésorerie, les unités et leurs couleurs. L’adresse doit être confirmée depuis l’e-mail de validation avant le premier envoi de justificatif.
+Après le déploiement, le créateur du groupe (Trésorier, rôle `owner`) configure les unités et leurs couleurs dans l’application. Les notes de frais peuvent être envoyées dès que le groupe compte au moins un Trésorier, ce qui est automatiquement le cas dès sa création.
 
 Le format de nom des justificatifs (`/gestion-nomenclature`, `GET`/`PATCH /api/group/nomenclature`, responsables uniquement) est facultatif : sans format, le nom historique est conservé. La page gère séparément le format et les compteurs des dépenses et des recettes (paramètre `domaine` du `PATCH`, `"depense"` par défaut), l’année comptable restant commune aux deux. Il n’y a aucune variable d’environnement à ajouter.
 

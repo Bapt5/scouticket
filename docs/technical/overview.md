@@ -4,11 +4,11 @@
 
 - Capture photo et import de justificatifs (images/PDF)
 - Deux onglets de premier niveau : **Dépenses** et **Recettes**
-- Dépenses — deux types d’envoi : **note de frais** (plusieurs justificatifs avec date, activité liée et description, RIB facultatif joint au mail) et **dépense avec moyen de paiement du groupe** (un seul justificatif, moyen de paiement du groupe) ; chaque justificatif est une section repliable avec une ou plusieurs lignes (montant + catégorie comptable). Le RIB, comme les justificatifs, n’est jamais stocké
-- Recettes — signalement d’un encaissement à venir (virement, chèque, liquide ou carte bancaire) avec une ou plusieurs lignes (montant + catégorie comptable) ; **aucun justificatif obligatoire**, une pièce jointe reste possible mais facultative
-- Envoi automatique par email (trésorerie + utilisateur)
-- Groupes indépendants : unités, couleurs et adresse de trésorerie propres à chaque groupe
-- Validation de l’adresse de trésorerie avant le premier envoi
+- Dépenses : deux types d’envoi : **note de frais** (plusieurs justificatifs avec date, activité liée et description, RIB facultatif joint au mail) et **dépense avec moyen de paiement du groupe** (un seul justificatif, moyen de paiement du groupe) ; chaque justificatif est une section repliable avec une ou plusieurs lignes (montant + catégorie comptable). Le RIB, comme les justificatifs, n’est jamais stocké
+- Recettes : signalement d’un encaissement à venir (virement, chèque, liquide ou carte bancaire) avec une ou plusieurs lignes (montant + catégorie comptable) ; **aucun justificatif obligatoire**, une pièce jointe reste possible mais facultative
+- Envoi automatique par email (Trésoriers du groupe + utilisateur)
+- Groupes indépendants : unités et couleurs propres à chaque groupe
+- Trois rôles : Membre, Responsable de groupe (admin) et Trésorier (owner) ; parmi les Trésoriers, un responsable choisit dans la gestion des membres lesquels reçoivent les envois (au moins un obligatoirement)
 - Support PWA (installation écran d’accueil)
 - Mode hors ligne partiel (préparation possible, envoi en ligne)
 
@@ -36,15 +36,14 @@ flowchart TD
   accueil --> groupeActif{Groupe actif ?}
   groupeActif -- Non --> choix[Choisir un groupe ou en créer un]
   choix --> creation[Créer l’organisation Better Auth]
-  creation --> proprietaire[Créateur : rôle owner]
+  creation --> proprietaire[Créateur : rôle owner, Trésorier]
   proprietaire --> groupePrincipal[Définir le groupe principal\net le rendre actif]
   choix --> groupePrincipal
   groupePrincipal --> configuration
 
   groupeActif -- Oui --> configuration{Groupe configuré ?}
-  configuration -- Non, owner ou admin --> configurer[Configurer trésorerie et unités]
+  configuration -- Non, owner ou admin --> configurer[Configurer les unités]
   configurer --> donnees[(PostgreSQL : scouticket_group_data)]
-  configurer --> validationTresorerie[E-mail de validation de la trésorerie]
   configuration -- Oui --> depense[Créer et envoyer une note de frais]
 
   proprietaire --> gestion[/Gestion des membres/]
@@ -68,7 +67,7 @@ flowchart TD
 ```mermaid
 sequenceDiagram
   autonumber
-  actor Responsable
+  actor Trésorier
   actor Membre
   participant Client as Navigateur / UI React
   participant Proxy as Proxy Next.js
@@ -78,21 +77,21 @@ sequenceDiagram
   participant SMTP as Serveur SMTP
   participant Boite as Boîte e-mail
 
-  Note over Responsable,Boite: Création du compte et du premier groupe
-  Responsable->>Client: Ouvre une route privée
+  Note over Trésorier,Boite: Création du compte et du premier groupe
+  Trésorier->>Client: Ouvre une route privée
   Client->>Proxy: Requête HTTP
   Proxy-->>Client: Redirection vers /sign-in si aucune session
-  Responsable->>Client: Inscription par e-mail et mot de passe
+  Trésorier->>Client: Inscription par e-mail et mot de passe
   Client->>Auth: POST /api/auth/sign-up/email
   Auth->>DB: Crée user, account et demande de vérification
   Auth->>SMTP: Envoie le lien de confirmation
   SMTP->>Boite: E-mail de vérification
-  Responsable->>Boite: Ouvre le lien de confirmation
+  Trésorier->>Boite: Ouvre le lien de confirmation
   Boite->>Auth: Validation de l’adresse e-mail
   Auth->>DB: Marque l’adresse vérifiée et crée la session
   Auth-->>Client: Retour vers callbackURL, sinon /
 
-  Responsable->>Client: Crée un groupe depuis l’accueil
+  Trésorier->>Client: Crée un groupe depuis l’accueil
   Client->>Auth: organization.create(nom, slug)
   Auth->>DB: Crée organization et member(owner)
   Auth-->>Client: Identifiant de l’organisation créée
@@ -100,22 +99,20 @@ sequenceDiagram
   Client->>API: POST /api/user/default-group
   API->>DB: Enregistre scouticket_user_default_group
 
-  Responsable->>Client: Renseigne trésorerie et unités
+  Trésorier->>Client: Configure les unités du groupe
   Client->>API: POST /api/group/config
   API->>Auth: Lit session et activeOrganizationId
   API->>DB: Vérifie le rôle owner/admin
   API->>DB: Écrit scouticket_group_data
-  API->>SMTP: Envoie le lien de validation trésorerie
-  SMTP->>Boite: E-mail de validation
 
-  Note over Responsable,Boite: Invitation du membre
-  Responsable->>Client: Ouvre /gestion-membres
+  Note over Trésorier,Boite: Invitation du membre
+  Trésorier->>Client: Ouvre /gestion-membres
   Client->>API: GET /api/group/members
   API->>Auth: Lit session et groupe actif
   API->>DB: Vérifie rôle owner/admin et liste invitations pending
   API-->>Client: Organisation et invitations en attente
-  Client-->>Responsable: Affiche la gestion des membres
-  Responsable->>Client: Invite adresse@email.fr
+  Client-->>Trésorier: Affiche la gestion des membres
+  Trésorier->>Client: Invite adresse@email.fr
   Client->>Auth: organization.inviteMember(email, member)
   Auth->>DB: Crée invitation(status pending)
   Auth->>SMTP: Déclenche sendInvitationEmail
@@ -166,13 +163,19 @@ sequenceDiagram
 
 L'application n'a pas de base de données persistante pour les justificatifs. Les pièces jointes sont transmises par e-mail et ne sont pas stockées par l’application.
 
-Better Auth gère les comptes, les organisations, les rôles et les invitations. L’application stocke la configuration des groupes (adresse de trésorerie et état de validation) dans PostgreSQL, dans `scouticket_group_data`. Les unités de chaque groupe sont dans une table dédiée, `scouticket_unites` (une ligne par unité, clé composite `(organization_id, id)`, avec son ordre d’affichage). L’id d’une unité est un identifiant opaque généré côté base (`appliquerUnites` dans `src/lib/groupServer.ts`) au moment de sa création, jamais dérivé de son libellé : renommer une unité ne change donc jamais son id.
+Better Auth gère les comptes, les organisations, les rôles (member/admin/owner, affichés comme Membre/Responsable de groupe/Trésorier) et les invitations. Les Trésoriers d'un groupe sont les membres ayant le rôle `owner` ; leurs adresses e-mail sont résolues à l'envoi, il n'y a pas d'adresse de trésorerie dédiée. Parmi les Trésoriers, seuls ceux marqués comme destinataires (table `scouticket_notification_tresorerie`, une ligne par trésorier qui reçoit les mails) reçoivent effectivement les envois ; un responsable gère cette case à cocher par trésorier depuis `/gestion-membres`, avec l'invariant qu'au moins un trésorier reste toujours destinataire (vérifié côté client et par les routes `PATCH /api/group/members/[memberId]/notifications` et `PATCH /api/group/members/[memberId]/role`). L’application stocke la configuration des groupes dans PostgreSQL, dans `scouticket_group_data`. Les unités de chaque groupe sont dans une table dédiée, `scouticket_unites` (une ligne par unité, clé composite `(organization_id, id)`, avec son ordre d’affichage). L’id d’une unité est un identifiant opaque généré côté base (`appliquerUnites` dans `src/lib/groupServer.ts`) au moment de sa création, jamais dérivé de son libellé : renommer une unité ne change donc jamais son id.
 
 La nomenclature des justificatifs est aussi stockée dans `scouticket_group_data` (migration `sql/007_nomenclature_justificatifs.sql`) : `nomenclature_format` (`NULL` = le nom du fichier importé est conservé), le début et l’affichage de l’année comptable (`annee_comptable_*`) et les compteurs de numérotation `compteur_global` et `compteurs_comptables` (JSONB indexé par année de début). Ces compteurs ne contiennent ni donnée personnelle ni justificatif. Quand un format est défini, `POST /api/send-expense` calcule les noms **côté serveur** (`src/lib/nomenclature.ts` ; le client n’envoie aucun nom normalisé, seulement `originalFileName`) et réserve les numéros dans une transaction (`reserverNumeros`, verrou `FOR UPDATE` sur la ligne du groupe) qui n’est validée (`COMMIT`) qu’après l’envoi SMTP : un échec annule la réservation (`ROLLBACK`) et ne laisse aucun trou. L’année comptable et le compteur comptable dépendent de la date du justificatif, pas de la date d’envoi.
 
 Les recettes suivent le même moteur de nomenclature (`src/lib/nomenclature.ts`, inchangé) mais avec leur propre format et leurs propres compteurs, stockés dans des colonnes dédiées de `scouticket_group_data` (migration `sql/011_nomenclature_recettes.sql`) : `nomenclature_format_recette`, `compteur_global_recette`, `compteurs_comptables_recette`. L’année comptable (`annee_comptable_*`) reste en revanche **partagée** entre dépenses et recettes : une seule définition pour tout le groupe. La page `/gestion-nomenclature` édite les deux domaines via un bascule « Dépenses »/« Recettes » (`GET`/`PATCH /api/group/nomenclature`, champ `domaine` sur le PATCH, `"depense"` par défaut) ; l’année comptable n’y est modifiable que depuis l’onglet « Dépenses », pour éviter que les deux onglets n’écrasent la même valeur partagée en concurrence. Comme une recette n’a pas de justificatif obligatoire, la référence générée par la nomenclature (quand un format recette est configuré) doit rester visible même sans pièce jointe à nommer : `POST /api/send-recette` réserve donc toujours un numéro (`reserverNumeros(..., "recette")`) dès qu’un format est défini, qu’une pièce jointe soit présente ou non, et transmet cette référence textuelle (sans extension) à `envoyerEmailRecette` pour affichage dans le corps de l’e-mail (voir « Référence » dans [Les e-mails de justificatifs et de recettes](/guide/e-mails)). Une pièce jointe facultative, quand elle existe, est en plus renommée avec la même référence (avec son extension). `POST /api/send-expense` transmet de la même façon une référence à `envoyerEmailDepense` pour chaque justificatif, en plus du nom du fichier joint, afin que les trois types d’e-mails (note de frais, dépense de groupe, recette) affichent systématiquement la nomenclature de chaque ligne quand un format est configuré.
 
 Les paramètres activables du groupe (page `/parametres-groupe`, `GET`/`PATCH /api/group/parametres`, écriture réservée aux responsables) sont aussi dans `scouticket_group_data` (migration `sql/008_parametres_groupe.sql`) : `scan_justificatifs_actif` (`false` par défaut). Il pilote le recadrage automatique des justificatifs avec Scanic, exécuté uniquement dans le navigateur (voir [Scan automatique des justificatifs](/technical/scan-justificatifs)). `convertir_justificatifs_pdf` (migration `sql/009_convertir_justificatifs_pdf.sql`, `false` par défaut) fait convertir les justificatifs en PDF côté serveur lors de l’envoi.
+
+Quand le paramètre `ndf_signee_actif` (`scouticket_group_data`, migration `sql/014_ndf_signee.sql`) est activé, `/parametres-groupe/signataires` (responsables uniquement) permet de définir une liste de priorité des signataires des notes de frais, séparément pour les Responsables de groupe et les Trésoriers, stockée dans `scouticket_signataires` (migration `sql/015_signataires.sql`, une ligne par membre retenu avec son rang ; absence de ligne = membre exclu du circuit). Voir [Signataires des notes de frais](/technical/scan-justificatifs#signataires-des-notes-de-frais) pour le détail du modèle et de la règle de remplacement en cas de conflit d’intérêt, et [Note de frais signée](/technical/ndf-signee) pour le circuit de signature électronique à 3 niveaux qui l’applique.
+
+**Logo personnalisé** : quand `ndf_signee_actif` est activé, les responsables peuvent importer le logo de leur groupe pour l’en-tête du PDF (`scouticket_group_data.ndf_logo`, migration `sql/018_ndf_logo_groupe.sql`). Donnée institutionnelle, non personnelle, PNG normalisé et borné (500 Ko), supprimable et supprimée avec le groupe. Voir [Note de frais signée](/technical/ndf-signee#logo-personnalise-du-document).
+
+**Exception temporaire au principe de non-conservation des justificatifs** (voir « Informations personnelles » plus haut) : le temps du circuit de signature d’une note de frais signée, la note et son PDF (page note de frais + justificatifs + pages de signature) sont persistés dans `scouticket_notes_de_frais_signees`. Dès que le circuit se termine, validé ou refusé, la ligne est **supprimée** avec ses codes de vérification : rien ne reste en base, la preuve des signatures (identité, adresse IP, user-agent, dates du code de vérification) étant portée par le PDF signé lui-même, envoyé par e-mail. Voir [Note de frais signée](/technical/ndf-signee) pour le détail.
 
 Par défaut, un membre simple (rôle `member`) ne peut soumettre une dépense que pour les unités qui lui ont été explicitement attribuées par un responsable (owner/admin) depuis `/gestion-membres` ; l’absence de ligne pour une unité donnée dans `scouticket_acces_unite_membre` signifie qu’il n’y a pas accès. Les responsables (owner/admin) ne sont jamais restreints : ils ont toujours accès à toutes les unités de leur groupe, sans qu’aucune ligne ne soit nécessaire. Cette restriction est vérifiée à l’envoi d’une dépense (`POST /api/send-expense`) et lors du choix d’une unité par défaut (`POST /api/user/unit-preference`).
 

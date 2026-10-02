@@ -17,7 +17,7 @@ const baseBody = {
   unitId: "groupe",
 };
 
-const ligne = { category: "Carburant", amount: 18 };
+const ligne = { category: "Formation", amount: 18 };
 
 const noteDeFrais = (extra: Record<string, unknown> = {}) => ({
   ...baseBody,
@@ -59,7 +59,7 @@ describe("validerCorpsRequete : note de frais", () => {
           {
             date: "2026-08-16",
             activity: "Week-end",
-            lines: [{ category: "Carburant", amount: 30 }],
+            lines: [{ category: "Formation", amount: 30 }],
           },
         ],
       }),
@@ -144,13 +144,28 @@ describe("validerCorpsRequete : note de frais", () => {
     expect(
       requete([{ category: "Catégorie inconnue", amount: 20 }]).error?.status,
     ).toBe(400);
-    expect(requete([{ category: "Carburant", amount: 0 }]).error?.status).toBe(
+    expect(requete([{ category: "Formation", amount: 0 }]).error?.status).toBe(
       400,
     );
     expect(
-      requete([{ category: "Carburant", amount: "abc" }]).error?.status,
+      requete([{ category: "Formation", amount: "abc" }]).error?.status,
     ).toBe(400);
     expect(requete([]).error?.status).toBe(400);
+  });
+
+  it("refuse en note de frais une catégorie réservée au moyen de paiement du groupe", () => {
+    const resultat = valider(
+      noteDeFrais({
+        expenses: [
+          {
+            date: "2026-08-16",
+            activity: "Camp",
+            lines: [{ category: "Carburant", amount: 20 }],
+          },
+        ],
+      }),
+    );
+    expect(resultat.error?.status).toBe(400);
   });
 });
 

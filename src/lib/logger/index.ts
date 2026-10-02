@@ -11,7 +11,8 @@ export type CategorieJournal =
   | "invitation"
   | "preference_unite"
   | "framework"
-  | "auth";
+  | "auth"
+  | "note-de-frais-signee";
 
 export type ValeurDetailJournal = string | number | boolean | null;
 

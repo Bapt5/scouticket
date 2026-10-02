@@ -54,6 +54,7 @@ describe("/api/group/parametres", () => {
         scanJustificatifsActif: false,
         convertirJustificatifsEnPdf: false,
         moyensPaiement: ["Espèces du groupe"],
+        ndfSigneeActif: false,
       },
     });
     mocks.query.mockResolvedValue({ rowCount: 1, rows: [] });
@@ -72,6 +73,7 @@ describe("/api/group/parametres", () => {
         scanJustificatifsActif: false,
         convertirJustificatifsEnPdf: false,
         moyensPaiement: ["Espèces du groupe"],
+        ndfSigneeActif: false,
       },
     });
   });
@@ -121,6 +123,7 @@ describe("/api/group/parametres", () => {
         scanJustificatifsActif: true,
         convertirJustificatifsEnPdf: false,
         moyensPaiement: ["Espèces du groupe"],
+        ndfSigneeActif: false,
       },
     });
     expect(mocks.query.mock.calls[0][0]).toMatch(/ON CONFLICT/);
@@ -129,6 +132,7 @@ describe("/api/group/parametres", () => {
       true,
       false,
       JSON.stringify(["Espèces du groupe"]),
+      false,
     ]);
   });
 
@@ -138,6 +142,7 @@ describe("/api/group/parametres", () => {
         scanJustificatifsActif: true,
         convertirJustificatifsEnPdf: false,
         moyensPaiement: ["Espèces du groupe"],
+        ndfSigneeActif: false,
       },
     });
 
@@ -154,6 +159,7 @@ describe("/api/group/parametres", () => {
       false,
       false,
       JSON.stringify(["Espèces du groupe"]),
+      false,
     ]);
   });
 
@@ -171,6 +177,7 @@ describe("/api/group/parametres", () => {
       false,
       true,
       JSON.stringify(["Espèces du groupe"]),
+      false,
     ]);
   });
 
@@ -190,6 +197,26 @@ describe("/api/group/parametres", () => {
       false,
       false,
       JSON.stringify(["Espèces du groupe", "Virement du groupe"]),
+      false,
+    ]);
+  });
+
+  it("PATCH active les notes de frais signées sans toucher aux autres réglages", async () => {
+    const reponse = await patch({ ndfSigneeActif: true });
+
+    await expect(reponse.json()).resolves.toMatchObject({
+      parametres: {
+        scanJustificatifsActif: false,
+        convertirJustificatifsEnPdf: false,
+        ndfSigneeActif: true,
+      },
+    });
+    expect(mocks.query.mock.calls[0][1]).toEqual([
+      "org_1",
+      false,
+      false,
+      JSON.stringify(["Espèces du groupe"]),
+      true,
     ]);
   });
 

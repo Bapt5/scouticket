@@ -7,10 +7,7 @@ import { FormulaireDepense } from "@/components/FormulaireDepense";
 import { FormulaireRecette } from "@/components/FormulaireRecette";
 import { CapturePhoto } from "@/components/PhotoCapture";
 import { InviteInstallation } from "@/components/InstallPrompt";
-import {
-  AttenteValidationTresorerie,
-  ConfigurationGroupe,
-} from "@/components/GroupSetup";
+import { ConfigurationGroupe } from "@/components/GroupSetup";
 import { useStatutEnLigne } from "@/lib/useOnlineStatus";
 import {
   LIBELLES_TYPES_ENVOI,
@@ -32,9 +29,8 @@ type Groupe = {
   };
   parametres?: ParametresGroupe;
   configured: boolean;
-  treasuryVerified: boolean;
+  aTresorier: boolean;
   isAdmin: boolean;
-  treasuryEmail?: string;
   unitPreference: string;
 };
 
@@ -98,7 +94,6 @@ export default function Home() {
     useState(false);
   const [choixManuelGroupe, setChoixManuelGroupe] = useState(false);
   const [administrationOuverte, setAdministrationOuverte] = useState(false);
-  const [editionConfiguration, setEditionConfiguration] = useState(false);
   const [invitations, setInvitations] = useState<InvitationEnAttente[]>([]);
   const [groupeAQuitter, setGroupeAQuitter] = useState<string | null>(null);
   const [departEnCours, setDepartEnCours] = useState(false);
@@ -212,35 +207,6 @@ export default function Home() {
   useEffect(() => {
     chargerGroupe();
   }, [chargerGroupe]);
-
-  useEffect(() => {
-    if (
-      !organisation ||
-      !groupe?.configured ||
-      groupe.treasuryVerified ||
-      !estEnLigne
-    )
-      return;
-
-    const actualiserSiVisible = () => {
-      if (document.visibilityState === "visible") void chargerGroupe(true);
-    };
-    const identifiantIntervalle = window.setInterval(
-      actualiserSiVisible,
-      15_000,
-    );
-    document.addEventListener("visibilitychange", actualiserSiVisible);
-    return () => {
-      window.clearInterval(identifiantIntervalle);
-      document.removeEventListener("visibilitychange", actualiserSiVisible);
-    };
-  }, [
-    chargerGroupe,
-    estEnLigne,
-    groupe?.configured,
-    groupe?.treasuryVerified,
-    organisation,
-  ]);
 
   if (isPending)
     return (
@@ -446,29 +412,12 @@ export default function Home() {
               <div className="h-10 rounded bg-zinc-200" />
               <div className="h-36 rounded-xl bg-zinc-100" />
             </div>
-          ) : (!groupe?.configured && groupe?.isAdmin) ||
-            (groupe?.configured &&
-              !groupe.treasuryVerified &&
-              groupe.isAdmin &&
-              editionConfiguration) ? (
-            <ConfigurationGroupe
-              key={`${groupe?.treasuryEmail ?? "nouveau"}-${groupe?.units.length ?? 0}`}
-              onSaved={() => {
-                setEditionConfiguration(false);
-                void chargerGroupe();
-              }}
-              emailInitial={groupe?.treasuryEmail}
-              unitesInitiales={groupe?.configured ? groupe.units : undefined}
-            />
+          ) : !groupe?.configured && groupe?.isAdmin ? (
+            <ConfigurationGroupe onSaved={() => void chargerGroupe()} />
           ) : !groupe?.configured ? (
             <p className="text-sm text-zinc-600">
               Votre responsable doit terminer la configuration du groupe.
             </p>
-          ) : !groupe.treasuryVerified ? (
-            <AttenteValidationTresorerie
-              estAdmin={groupe.isAdmin}
-              onModifier={() => setEditionConfiguration(true)}
-            />
           ) : (
             <>
               <div className="space-y-2">
@@ -653,8 +602,9 @@ export default function Home() {
                       }
                     }
                     moyensPaiement={groupe.parametres?.moyensPaiement}
+                    ndfSigneeActif={groupe.parametres?.ndfSigneeActif}
                     uniteInitiale={groupe.unitPreference}
-                    treasuryVerified={groupe.treasuryVerified}
+                    aTresorier={groupe.aTresorier}
                     estAdmin={groupe.isAdmin}
                     onChangementUnite={(unitId) =>
                       void fetch("/api/user/unit-preference", {
@@ -689,7 +639,7 @@ export default function Home() {
                     emailUtilisateur={session.user.email}
                     units={groupe.units}
                     uniteInitiale={groupe.unitPreference}
-                    treasuryVerified={groupe.treasuryVerified}
+                    aTresorier={groupe.aTresorier}
                     scanActive={groupe.parametres?.scanJustificatifsActif}
                     onChangementUnite={(unitId) =>
                       void fetch("/api/user/unit-preference", {

@@ -26,11 +26,12 @@ Ces échecs ne sont pas montrés aux membres (ils sont seulement journalisés da
 
 ## Paramètres du groupe
 
-Les paramètres sont stockés dans `scouticket_group_data` (migrations `sql/008_parametres_groupe.sql`, `sql/009_convertir_justificatifs_pdf.sql` et `sql/010_moyens_paiement.sql`, à appliquer avec `pnpm db:migrate`) :
+Les paramètres sont stockés dans `scouticket_group_data` (migrations `sql/008_parametres_groupe.sql`, `sql/009_convertir_justificatifs_pdf.sql`, `sql/010_moyens_paiement.sql` et `sql/014_ndf_signee.sql`, à appliquer avec `pnpm db:migrate`) :
 
 - `scan_justificatifs_actif` : active le scan (défaut : `false`).
 - `convertir_justificatifs_pdf` : convertit les justificatifs en PDF avant l’envoi (défaut : `false`). Voir [Conversion en PDF](#conversion-en-pdf).
 - `moyens_paiement` (JSONB) : liste des moyens de paiement du groupe proposés lors d’une dépense de groupe. `NULL` (valeur par défaut) équivaut à la liste historique (`MOYENS_PAIEMENT_PAR_DEFAUT` dans `src/constants/configDepenses.ts`). Voir [Moyens de paiement](#moyens-de-paiement).
+- `ndf_signee_actif` : active le circuit de validation des notes de frais par signature électronique avant envoi au trésorier (défaut : `false`). Une fois activé, un lien **Gestion des signataires** apparaît vers `/parametres-groupe/signataires` (voir [Signataires des notes de frais](#signataires-des-notes-de-frais)) et `POST /api/send-expense` dépose la note de frais dans le circuit de signature au lieu de l’envoyer immédiatement. Voir [Note de frais signée](/technical/ndf-signee) pour le détail du circuit.
 
 `GET /api/group/parametres` est lisible par tous les membres ; `PATCH /api/group/parametres` (mise à jour partielle) est réservé aux responsables. Les paramètres sont aussi renvoyés par `GET /api/group/config` (`parametres`), ce qui évite un appel supplémentaire depuis l’accueil. La page est conçue pour accueillir d’autres paramètres : il suffit d’ajouter une colonne, un champ dans `src/lib/parametresGroupe.ts` et un `InterrupteurParametre`.
 
@@ -39,6 +40,16 @@ Les paramètres sont stockés dans `scouticket_group_data` (migrations `sql/008_
 Sur `/parametres-groupe`, la section **Moyens de paiement** (`src/components/SelecteurMoyensPaiement.tsx`) permet aux responsables de personnaliser la liste proposée dans le formulaire de dépense de groupe (`FormulaireDepense`) : un champ texte permet de saisir un nouveau moyen (bouton **Ajouter**, désactivé si le texte est vide, déjà présent ou si la limite de 20 moyens est atteinte), et la liste des moyens existants (défilable au-delà de 4 lignes) permet d'en retirer un via son icône poubelle, sauf s’il ne reste qu’un seul moyen.
 
 La liste est validée côté serveur (`schemaMiseAJourParametresGroupe` dans `src/lib/parametresGroupe.ts`) : 1 à 20 moyens, chacun non vide (max 50 caractères), sans doublon une fois les accents et la casse ignorés. `POST /api/send-expense` valide le moyen de paiement soumis contre la liste du groupe actif (`estMoyenPaiementValide` dans `src/lib/api/validateBody.ts`), et non plus contre une constante globale.
+
+## Signataires des notes de frais
+
+Quand `ndf_signee_actif` est activé, `/parametres-groupe/signataires` (responsables uniquement) permet de définir, séparément pour les **Responsables de groupe** (rôle `admin`) et les **Trésoriers** (rôle `owner`), une liste de priorité ordonnée des signataires : qui signe/valide en premier, et qui prend le relais en cas de conflit d’intérêt (le bénéficiaire de la dépense ne peut pas signer sa propre note de frais).
+
+- Stockage : table `scouticket_signataires` (`sql/015_signataires.sql`, `(organization_id, user_id, ordre)`). Présence d’une ligne = ce membre fait partie du circuit de signature ; la catégorie (Responsables/Trésoriers) est dérivée du rôle courant du membre au moment de la lecture, pas stockée. Absence de ligne = membre exclu de la liste, tout en conservant son rôle. À la création de la table, tous les responsables/trésoriers existants sont inclus par défaut, ordonnés alphabétiquement.
+- Synchronisation : `PATCH /api/group/members/[memberId]/role` (`src/lib/groupServer.ts`, `prochainOrdreSignataire`) retire un membre du circuit s’il perd son rôle de responsable/trésorier, et l’ajoute en fin de la liste correspondante s’il devient responsable ou trésorier (y compris lors d’un passage direct `admin` ↔ `owner`, pour éviter un rang dupliqué avec un signataire déjà présent dans la nouvelle catégorie).
+- API : `GET`/`PATCH /api/group/signataires` (`recupererSignataires` dans `src/lib/groupServer.ts`), réservées aux responsables comme `/api/group/members`, car la réponse expose noms et e-mails des membres. `PATCH` remplace intégralement l’ordre des deux catégories.
+- UI : `src/components/ListePrioriteSignataires.tsx` (monter/descendre/retirer/réintégrer), utilisé par `src/app/(main)/parametres-groupe/signataires/page.tsx`.
+- **Règle de remplacement en cas de conflit d’intérêt** (affichée sur la page, appliquée au dépôt d’une note de frais par `resoudreSignataires`, `src/lib/ndfSignature/circuit.ts`) : si le bénéficiaire devrait signer, il est remplacé par le signataire suivant dans la même liste ; à défaut chez les Trésoriers, le premier Responsable non bénéficiaire valide ; à défaut chez les Responsables, le deuxième Trésorier non bénéficiaire approuve (le premier Trésorier disponible traitant toujours le virement) ; si aucune solution n’est trouvée, le dépôt échoue avec un message invitant à contacter un Trésorier ou un Responsable de groupe.
 
 ## Conversion en PDF
 
