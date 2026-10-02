@@ -4,27 +4,23 @@ Cette page s’adresse aux responsables de groupe. Eux seuls peuvent configurer 
 
 ## Créer et configurer le groupe
 
-1. Créez votre compte, puis créez le groupe depuis le sélecteur de groupe en haut de l’application.
-2. À l’étape **1 — E-mail**, renseignez l’adresse de la trésorerie qui doit recevoir les justificatifs.
-3. À l’étape **2 — Unités**, adaptez les unités de votre groupe puis envoyez la demande de validation.
-4. À l’étape **3 — Validation**, la trésorerie reçoit un e-mail de confirmation. Cet écran reste affiché à tous les membres tant que le lien n’est pas confirmé ; il se débloque automatiquement après validation.
+1. Créez votre compte, puis créez le groupe depuis le sélecteur de groupe en haut de l’application. Vous devenez automatiquement Trésorier de ce groupe (rôle `owner`).
+2. Adaptez les unités de votre groupe puis enregistrez la configuration.
 
-Les responsables peuvent renvoyer l’e-mail ou modifier l’adresse et les unités depuis l’écran de validation. Si l’e-mail n’arrive pas, vérifiez les courriers indésirables avant de demander un nouvel envoi.
-
-![Écran d’attente de validation de la trésorerie](/guide/validation-tresorerie.png)
+Une fois les unités enregistrées, le groupe est prêt à recevoir des notes de frais. Le Trésorier peut ensuite promouvoir d’autres membres (voir [Inviter les membres](#inviter-les-membres)) au rôle Trésorier ou Responsable de groupe.
 
 ## Unités, branches et couleurs
 
 Chaque groupe peut adapter ses unités à son fonctionnement. L’application propose au départ :
 
-- Farfadets — vert
-- Louveteaux-Jeannettes — orange
-- Scouts-Guides — bleu clair
-- Pionniers-Caravelles — rouge
-- Compagnons — turquoise
-- Groupe — bleu foncé
+- Farfadets : vert
+- Louveteaux-Jeannettes : orange
+- Scouts-Guides : bleu clair
+- Pionniers-Caravelles : rouge
+- Compagnons : turquoise
+- Groupe : bleu foncé
 
-Vous pouvez renommer ou supprimer une unité, en ajouter une autre et choisir sa couleur depuis **Administration** puis **Gérer les unités**. Cette page ne modifie pas l’adresse de trésorerie. La couleur choisie apparaît dans l’e-mail de justificatif : elle aide la trésorerie à identifier rapidement l’unité concernée.
+Vous pouvez renommer ou supprimer une unité, en ajouter une autre et choisir sa couleur depuis **Administration** puis **Gérer les unités**. La couleur choisie apparaît dans l’e-mail de justificatif : elle aide la trésorerie à identifier rapidement l’unité concernée.
 
 Conservez au moins une unité : un justificatif doit toujours être rattaché à une unité du groupe.
 
@@ -57,9 +53,9 @@ Depuis **Administration**, choisissez **Gérer les membres** et saisissez son ad
 
 La personne invitée se connecte avec l’adresse e-mail qui a reçu l’invitation. Si elle crée son compte, elle confirme d’abord cette adresse depuis le lien reçu par e-mail. Sur l’accueil, un bandeau **« invitation en attente »** indique le nom du groupe et propose **Voir l’invitation**. Il apparaît sur l’écran **Bienvenue**, même avant que la personne ne rejoigne son premier groupe, et reste visible si elle utilise déjà un autre groupe. Elle doit accepter l’invitation pour rejoindre le nouveau groupe.
 
-Depuis la fiche d’un membre (clic sur son nom dans la liste), un responsable peut aussi changer son rôle (Membre, Administrateur ou Responsable) grâce à la liste déroulante en haut de la fenêtre, puis cliquer sur **Enregistrer les modifications**. Seul un responsable (rôle Responsable) peut modifier le rôle d’un autre responsable ou promouvoir un membre au rang de responsable. Votre propre rôle ne peut pas être modifié depuis cet écran, pour éviter de vous retirer accidentellement vos responsabilités.
+Depuis la fiche d’un membre (clic sur son nom dans la liste), un responsable peut aussi changer son rôle (Membre, Responsable de groupe ou Trésorier) grâce à la liste déroulante en haut de la fenêtre, puis cliquer sur **Enregistrer les modifications**. Seul un Trésorier peut modifier le rôle d’un autre Trésorier ou promouvoir un membre au rang de Trésorier. Votre propre rôle ne peut pas être modifié depuis cet écran, pour éviter de vous retirer accidentellement vos responsabilités.
 
-Les membres invités n’ont pas accès à la configuration du groupe, à l’adresse de trésorerie ni à la gestion des invitations.
+Les membres invités n’ont pas accès à la configuration du groupe ni à la gestion des invitations.
 
 ![Menu Administration de Scouticket](/guide/administration-groupe.png)
 
@@ -75,6 +71,10 @@ Le traitement se fait dans votre navigateur : aucune image n’est envoyée à u
 ## Conversion des justificatifs en PDF
 
 Depuis **Paramètres du groupe**, les responsables peuvent activer la conversion des justificatifs en PDF. Désactivée par défaut, les justificatifs sont envoyés à la trésorerie dans leur format d’origine. Activée, chaque photo ou image est convertie en PDF (un PDF par justificatif) avant l’envoi par e-mail ; les PDF sont envoyés tels quels. Rien n’est conservé par Scouticket.
+
+## Logo des notes de frais signées
+
+Quand les **notes de frais signées** sont activées, les responsables peuvent remplacer le logo SGDF affiché en haut du document depuis **Paramètres du groupe** (bloc « Logo de la note de frais »). Formats acceptés : PNG, JPEG ou WebP, 1 Mo maximum, de 100x30 à 2000x2000 px. N’y placez aucune donnée personnelle. Le bouton **Rétablir le logo SGDF** supprime le logo personnalisé. Le changement ne s’applique qu’aux notes de frais déposées ensuite.
 
 ## Moyens de paiement du groupe
 

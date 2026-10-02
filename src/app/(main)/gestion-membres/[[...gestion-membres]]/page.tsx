@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { clientAuth } from "@/lib/auth-client";
 import { GestionAccesUniteMembre } from "@/components/GestionAccesUniteMembre";
+import { libelleRole } from "@/lib/roles";
 
 type Invitation = {
   id: string;
@@ -12,7 +13,13 @@ type Invitation = {
   expiresAt: string | Date;
   expiree: boolean;
 };
-type Membre = { id: string; nom: string; email: string; role: string };
+type Membre = {
+  id: string;
+  nom: string;
+  email: string;
+  role: string;
+  recoitNotifications: boolean;
+};
 
 function traduireMessageErreurInvitation(erreur: unknown) {
   const code =
@@ -235,11 +242,7 @@ export default function PageGestionMembres() {
                     )}
                   </span>
                   <span className="shrink-0 text-zinc-600">
-                    {membre.role === "owner"
-                      ? "Responsable"
-                      : membre.role === "admin"
-                        ? "Administrateur"
-                        : "Membre"}
+                    {libelleRole(membre.role)}
                   </span>
                 </button>
               </li>
@@ -294,6 +297,16 @@ export default function PageGestionMembres() {
           membre={membreSelectionne}
           estMoi={membreSelectionne.id === moi.id}
           roleAppelant={moi.role}
+          estDernierTresorierNotifie={
+            membreSelectionne.role === "owner" &&
+            membreSelectionne.recoitNotifications &&
+            !membres.some(
+              (membre) =>
+                membre.id !== membreSelectionne.id &&
+                membre.role === "owner" &&
+                membre.recoitNotifications,
+            )
+          }
           onClose={() => setMembreSelectionne(undefined)}
           onRoleModifie={(membreId, role) => {
             setMembres((precedents) =>
@@ -303,6 +316,20 @@ export default function PageGestionMembres() {
             );
             setMembreSelectionne((precedent) =>
               precedent?.id === membreId ? { ...precedent, role } : precedent,
+            );
+          }}
+          onNotificationsModifiees={(membreId, recoit) => {
+            setMembres((precedents) =>
+              precedents.map((membre) =>
+                membre.id === membreId
+                  ? { ...membre, recoitNotifications: recoit }
+                  : membre,
+              ),
+            );
+            setMembreSelectionne((precedent) =>
+              precedent?.id === membreId
+                ? { ...precedent, recoitNotifications: recoit }
+                : precedent,
             );
           }}
           onMembreRetire={(membreId) => {

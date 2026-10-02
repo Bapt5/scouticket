@@ -3,7 +3,7 @@
 ## Avant de commencer
 
 - Vous devez appartenir à un groupe.
-- Votre responsable doit avoir terminé la configuration du groupe et la trésorerie doit avoir confirmé son adresse e-mail.
+- Votre responsable doit avoir terminé la configuration du groupe et le groupe doit avoir au moins un Trésorier.
 - Une connexion internet est nécessaire pour l’envoi.
 
 ## Envoyer un justificatif de dépense
@@ -51,7 +51,7 @@ Renseignez la **date de la recette**, le **mode de paiement**, une ou plusieurs 
 
 - Ouverture de l’application déjà chargée : ✅
 - Préparation du formulaire : ✅
-- Envoi de l’e-mail : ❌ — une connexion est nécessaire.
+- Envoi de l’e-mail : ❌ (une connexion est nécessaire)
 
 ## Besoin d’un accès ?
 

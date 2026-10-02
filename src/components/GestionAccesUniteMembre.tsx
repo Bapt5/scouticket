@@ -3,14 +3,15 @@
 import { useEffect, useState } from "react";
 import { CheckIcon, MinusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import type { UniteGroupe } from "@/lib/group";
+import { libelleRole } from "@/lib/roles";
 
-type Membre = { id: string; nom: string; email: string; role: string };
-
-function libelleRole(role: string) {
-  if (role === "owner") return "Responsable";
-  if (role === "admin") return "Administrateur";
-  return "Membre";
-}
+type Membre = {
+  id: string;
+  nom: string;
+  email: string;
+  role: string;
+  recoitNotifications: boolean;
+};
 
 const estResponsableRole = (role: string) =>
   role === "admin" || role === "owner";
@@ -19,19 +20,29 @@ export function GestionAccesUniteMembre({
   membre,
   estMoi,
   roleAppelant,
+  estDernierTresorierNotifie,
   onClose,
   onMembreRetire,
   onRoleModifie,
+  onNotificationsModifiees,
 }: {
   readonly membre: Membre;
   readonly estMoi: boolean;
   readonly roleAppelant: string;
+  readonly estDernierTresorierNotifie: boolean;
   readonly onClose: () => void;
   readonly onMembreRetire: (membreId: string) => void;
   readonly onRoleModifie: (membreId: string, role: string) => void;
+  readonly onNotificationsModifiees: (
+    membreId: string,
+    recoit: boolean,
+  ) => void;
 }) {
   const [chargement, setChargement] = useState(true);
   const [role, setRole] = useState(membre.role);
+  const [recoitNotifications, setRecoitNotifications] = useState(
+    membre.recoitNotifications || membre.role !== "owner",
+  );
   const [unites, setUnites] = useState<UniteGroupe[]>([]);
   const [uniteIdsAutorisees, setUniteIdsAutorisees] = useState<Set<string>>(
     new Set(),
@@ -102,6 +113,10 @@ export function GestionAccesUniteMembre({
     !estMoi && !(membre.role === "owner" && roleAppelant !== "owner");
   const accesTotalAffiche = estResponsableRole(role);
   const roleAChange = peutModifierRole && role !== membre.role;
+  const notificationsInitiales =
+    membre.recoitNotifications || membre.role !== "owner";
+  const notificationsOntChange =
+    role === "owner" && recoitNotifications !== notificationsInitiales;
 
   const enregistrer = async () => {
     setEnregistrement(true);
@@ -141,6 +156,29 @@ export function GestionAccesUniteMembre({
           setMessage("Impossible d’enregistrer les modifications. Réessayez.");
           return;
         }
+      }
+      if (notificationsOntChange) {
+        const reponseNotifications = await fetch(
+          `/api/group/members/${membre.id}/notifications`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ recoit: recoitNotifications }),
+          },
+        );
+        if (!reponseNotifications.ok) {
+          const corps = (await reponseNotifications
+            .json()
+            .catch(() => null)) as {
+            error?: string;
+          } | null;
+          setMessage(
+            corps?.error ??
+              "Impossible d’enregistrer les modifications. Réessayez.",
+          );
+          return;
+        }
+        onNotificationsModifiees(membre.id, recoitNotifications);
       }
       setMessage("Modifications enregistrées.");
     } finally {
@@ -197,9 +235,9 @@ export function GestionAccesUniteMembre({
                 className="mt-1 rounded-lg border border-zinc-300 bg-white px-2 py-1 text-sm text-zinc-900 outline-none focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A]/20"
               >
                 <option value="member">Membre</option>
-                <option value="admin">Administrateur</option>
+                <option value="admin">Responsable de groupe</option>
                 {roleAppelant === "owner" && (
-                  <option value="owner">Responsable</option>
+                  <option value="owner">Trésorier</option>
                 )}
               </select>
             ) : (
@@ -221,10 +259,44 @@ export function GestionAccesUniteMembre({
         <div className="min-h-0 flex-1 overflow-y-auto p-6">
           {chargement ? (
             <p className="text-sm text-zinc-600">Chargement…</p>
+          ) : role === "owner" ? (
+            <div className="space-y-4">
+              <p className="text-sm text-zinc-600">
+                Ce membre a accès à toutes les unités du groupe (Trésorier ou
+                Responsable de groupe).
+              </p>
+              <label
+                className={`flex items-start gap-3 rounded-xl border p-3 text-sm ${
+                  recoitNotifications
+                    ? "border-[#1E3A8A] bg-blue-50"
+                    : "border-zinc-200"
+                } ${estDernierTresorierNotifie ? "opacity-60" : ""}`}
+              >
+                <input
+                  type="checkbox"
+                  checked={recoitNotifications}
+                  disabled={estDernierTresorierNotifie && recoitNotifications}
+                  onChange={(event) =>
+                    setRecoitNotifications(event.target.checked)
+                  }
+                  className="mt-0.5 h-4 w-4 shrink-0"
+                />
+                <span>
+                  <span className="block font-medium text-zinc-800">
+                    Reçoit les e-mails de notes de frais, dépenses et recettes
+                  </span>
+                  {estDernierTresorierNotifie && recoitNotifications && (
+                    <span className="mt-1 block text-xs text-zinc-500">
+                      Au moins un trésorier doit recevoir les mails.
+                    </span>
+                  )}
+                </span>
+              </label>
+            </div>
           ) : accesTotalAffiche ? (
             <p className="text-sm text-zinc-600">
-              Ce membre a accès à toutes les unités du groupe (responsable ou
-              administrateur).
+              Ce membre a accès à toutes les unités du groupe (Trésorier ou
+              Responsable de groupe).
             </p>
           ) : unites.length === 0 ? (
             <p className="text-sm text-zinc-600">
@@ -305,18 +377,19 @@ export function GestionAccesUniteMembre({
 
         <div className="shrink-0 border-t border-zinc-200 p-6">
           {message && <p className="mb-3 text-sm text-zinc-600">{message}</p>}
-          {!chargement && (peutModifierRole || !accesTotalAffiche) && (
-            <button
-              type="button"
-              disabled={enregistrement}
-              onClick={() => void enregistrer()}
-              className="w-full rounded-xl bg-[#1E3A8A] p-3 font-semibold text-white shadow-sm transition-colors hover:bg-[#162d69] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {enregistrement
-                ? "Enregistrement…"
-                : "Enregistrer les modifications"}
-            </button>
-          )}
+          {!chargement &&
+            (peutModifierRole || !accesTotalAffiche || role === "owner") && (
+              <button
+                type="button"
+                disabled={enregistrement}
+                onClick={() => void enregistrer()}
+                className="w-full rounded-xl bg-[#1E3A8A] p-3 font-semibold text-white shadow-sm transition-colors hover:bg-[#162d69] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {enregistrement
+                  ? "Enregistrement…"
+                  : "Enregistrer les modifications"}
+              </button>
+            )}
           {membre.role !== "owner" &&
             (confirmationRetrait ? (
               <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3">

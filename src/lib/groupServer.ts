@@ -1,5 +1,4 @@
 import type { UniteBrouillon, UniteGroupe } from "./group";
-import type { ValidationTresorerie } from "./treasuryVerification";
 import {
   PARAMETRES_ANNEE_COMPTABLE_PAR_DEFAUT,
   type FormatAnneeComptable,
@@ -13,8 +12,6 @@ import type { PoolClient } from "pg";
 export async function recupererGroupeActif(identifiantOrganisation: string) {
   const resultat = await pool.query<{
     name: string;
-    treasury_email: string | null;
-    treasury_verification: unknown;
     nomenclature_format: string | null;
     nomenclature_format_recette: string | null;
     annee_comptable_debut_mois: number | null;
@@ -23,16 +20,19 @@ export async function recupererGroupeActif(identifiantOrganisation: string) {
     scan_justificatifs_actif: boolean | null;
     convertir_justificatifs_pdf: boolean | null;
     moyens_paiement: string[] | null;
+    ndf_signee_actif: boolean | null;
+    ndf_logo_present: boolean | null;
   }>(
-    `SELECT organization.name, donnees.treasury_email,
-            donnees.treasury_verification, donnees.nomenclature_format,
+    `SELECT organization.name, donnees.nomenclature_format,
             donnees.nomenclature_format_recette,
             donnees.annee_comptable_debut_mois,
             donnees.annee_comptable_debut_jour,
             donnees.annee_comptable_format,
             donnees.scan_justificatifs_actif,
             donnees.convertir_justificatifs_pdf,
-            donnees.moyens_paiement
+            donnees.moyens_paiement,
+            donnees.ndf_signee_actif,
+            (donnees.ndf_logo IS NOT NULL) AS ndf_logo_present
        FROM organization
        LEFT JOIN scouticket_group_data donnees
          ON donnees.organization_id = organization.id
@@ -42,19 +42,28 @@ export async function recupererGroupeActif(identifiantOrganisation: string) {
   const groupe = resultat.rows[0];
   if (!groupe) throw new Error("ORGANISATION_INTRouvable");
 
-  const unites = await pool.query<UniteGroupe>(
-    `SELECT id, label, color FROM scouticket_unites
-      WHERE organization_id = $1 ORDER BY ordre ASC`,
-    [identifiantOrganisation],
-  );
+  const [unites, tresoriers] = await Promise.all([
+    pool.query<UniteGroupe>(
+      `SELECT id, label, color FROM scouticket_unites
+        WHERE organization_id = $1 ORDER BY ordre ASC`,
+      [identifiantOrganisation],
+    ),
+    pool.query<{ email: string }>(
+      `SELECT "user".email
+         FROM member
+         JOIN "user" ON "user".id = member."userId"
+         JOIN scouticket_notification_tresorerie notif
+           ON notif.user_id = member."userId"
+          AND notif.organization_id = member."organizationId"
+        WHERE member."organizationId" = $1 AND member.role = 'owner'`,
+      [identifiantOrganisation],
+    ),
+  ]);
 
   return {
     organisation: { id: identifiantOrganisation, name: groupe.name },
     unites: unites.rows,
-    emailTresorerie: groupe.treasury_email ?? "",
-    validation: (groupe.treasury_verification ?? {
-      status: "pending",
-    }) as ValidationTresorerie,
+    emailsTresoriers: tresoriers.rows.map((ligne) => ligne.email),
     nomenclature: {
       anneeComptable: {
         mois:
@@ -74,6 +83,10 @@ export async function recupererGroupeActif(identifiantOrganisation: string) {
       scanJustificatifsActif: groupe.scan_justificatifs_actif ?? false,
       convertirJustificatifsEnPdf: groupe.convertir_justificatifs_pdf ?? false,
       moyensPaiement: groupe.moyens_paiement ?? [...MOYENS_PAIEMENT_PAR_DEFAUT],
+      ndfSigneeActif: groupe.ndf_signee_actif ?? false,
+      logoPersonnalise:
+        (groupe.ndf_signee_actif ?? false) &&
+        (groupe.ndf_logo_present ?? false),
     } satisfies ParametresGroupe,
   };
 }
@@ -154,6 +167,129 @@ export async function recupererRoleMembre(
 /** Un responsable (owner/admin) a toujours accès à toutes les unités de son groupe. */
 export function estResponsable(role: string | null) {
   return role === "admin" || role === "owner";
+}
+
+/**
+ * Nombre de trésoriers (rôle owner) qui reçoivent actuellement les mails de
+ * notes de frais/dépenses/recettes dans ce groupe, hors le membre exclu le
+ * cas échéant (pour vérifier l'invariant avant de le désactiver lui-même).
+ */
+export async function compterTresoriersNotifies(
+  identifiantOrganisation: string,
+  identifiantUtilisateurExclu?: string,
+): Promise<number> {
+  const resultat = await pool.query<{ count: string }>(
+    `SELECT COUNT(*)
+       FROM member
+       JOIN scouticket_notification_tresorerie notif
+         ON notif.user_id = member."userId"
+        AND notif.organization_id = member."organizationId"
+      WHERE member."organizationId" = $1 AND member.role = 'owner'
+        AND ($2::text IS NULL OR member."userId" != $2)`,
+    [identifiantOrganisation, identifiantUtilisateurExclu ?? null],
+  );
+  return Number(resultat.rows[0]?.count ?? 0);
+}
+
+/** Membre potentiellement signataire, tel qu'exposé par l'API. */
+export interface MembreSignataire {
+  id: string;
+  nom: string;
+  email: string;
+}
+
+async function recupererListeSignataires(
+  identifiantOrganisation: string,
+  role: "admin" | "owner",
+): Promise<{ retenus: MembreSignataire[]; nonRetenus: MembreSignataire[] }> {
+  const resultat = await pool.query<{
+    id: string;
+    nom: string;
+    email: string;
+    ordre: number | null;
+  }>(
+    `SELECT member.id, "user".name AS nom, "user".email, signataires.ordre
+       FROM member
+       JOIN "user" ON "user".id = member."userId"
+       LEFT JOIN scouticket_signataires signataires
+         ON signataires.user_id = member."userId"
+        AND signataires.organization_id = member."organizationId"
+      WHERE member."organizationId" = $1 AND member.role = $2
+      ORDER BY signataires.ordre IS NULL, signataires.ordre ASC,
+               "user".name ASC, "user".email ASC`,
+    [identifiantOrganisation, role],
+  );
+  const retenus: MembreSignataire[] = [];
+  const nonRetenus: MembreSignataire[] = [];
+  for (const { ordre, ...membre } of resultat.rows)
+    (ordre === null ? nonRetenus : retenus).push(membre);
+  return { retenus, nonRetenus };
+}
+
+/** Signataire retenu du circuit, identifié par son id utilisateur (Better Auth). */
+export interface SignatairePriorite {
+  userId: string;
+  nom: string;
+  email: string;
+}
+
+/**
+ * Liste de priorité (retenus uniquement) des signataires d'une catégorie,
+ * identifiés par `userId`, utilisé pour résoudre le circuit de signature
+ * (contrairement à `MembreSignataire.id`, qui est un id de membre destiné à
+ * l'UI de gestion des signataires).
+ */
+export async function recupererOrdreSignatairesUserId(
+  identifiantOrganisation: string,
+  role: "admin" | "owner",
+): Promise<SignatairePriorite[]> {
+  const resultat = await pool.query<SignatairePriorite>(
+    `SELECT signataires.user_id AS "userId", "user".name AS nom, "user".email
+       FROM scouticket_signataires signataires
+       JOIN member ON member."userId" = signataires.user_id
+        AND member."organizationId" = signataires.organization_id
+       JOIN "user" ON "user".id = signataires.user_id
+      WHERE signataires.organization_id = $1 AND member.role = $2
+      ORDER BY signataires.ordre ASC`,
+    [identifiantOrganisation, role],
+  );
+  return resultat.rows;
+}
+
+/**
+ * Liste de priorité des signataires du groupe pour les Responsables (rôle
+ * admin) et les Trésoriers (rôle owner), avec les membres non retenus dans
+ * chaque catégorie (rôle admin/owner mais exclus du circuit de signature).
+ */
+export async function recupererSignataires(identifiantOrganisation: string) {
+  const [responsables, tresoriers] = await Promise.all([
+    recupererListeSignataires(identifiantOrganisation, "admin"),
+    recupererListeSignataires(identifiantOrganisation, "owner"),
+  ]);
+  return { responsables, tresoriers };
+}
+
+/**
+ * Prochain rang disponible pour ajouter un signataire en fin de liste d'une
+ * catégorie (rôle admin ou owner) donnée. Utilisé aussi bien pour une
+ * première insertion (promotion) que pour replacer un signataire qui change
+ * de catégorie (ex. admin devenu owner), afin d'éviter un rang dupliqué avec
+ * un signataire déjà présent dans la nouvelle catégorie.
+ */
+export async function prochainOrdreSignataire(
+  executeur: { query: typeof pool.query },
+  identifiantOrganisation: string,
+  role: "admin" | "owner",
+): Promise<number> {
+  const resultat = await executeur.query<{ prochain: number }>(
+    `SELECT COALESCE(MAX(signataires.ordre), 0) + 1 AS prochain
+       FROM scouticket_signataires signataires
+       JOIN member ON member."userId" = signataires.user_id
+        AND member."organizationId" = signataires.organization_id
+      WHERE member."organizationId" = $1 AND member.role = $2`,
+    [identifiantOrganisation, role],
+  );
+  return Number(resultat.rows[0]?.prochain ?? 1);
 }
 
 /** Unités qu'un membre simple est explicitement autorisé à utiliser. */

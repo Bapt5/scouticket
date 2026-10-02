@@ -23,7 +23,7 @@
 
 - Variables d’environnement complètes
 - Domaine Clerk bien configuré
-- Test d’envoi vers trésorerie + utilisateur validé
+- Test d’envoi vers Trésorier(s) + utilisateur validé
 - Fonctionnalité Organizations et création d’organisations activées dans Clerk
-- Adresse de trésorerie du groupe confirmée depuis l’e-mail reçu
+- Le groupe compte au moins un membre avec le rôle Trésorier
 - Build local et déploiement sans erreur

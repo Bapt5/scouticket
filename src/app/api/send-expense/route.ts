@@ -1,16 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { envoyerEmailDepense, type DonneesEmailDepense } from "@/lib/email";
+import { envoyerEmailDepense } from "@/lib/email";
 import { assainirSegmentNomFichier, devinerExtension } from "@/lib/attachments";
-import {
-  analyserDateIso,
-  calculerReservation,
-  dedoublonnerNomsFichiers,
-  genererNomsNomenclature,
-  type ParametresAnneeComptable,
-} from "@/lib/nomenclature";
-import { versDepenseNomenclature } from "@/lib/depenses";
+import { analyserDateIso, dedoublonnerNomsFichiers } from "@/lib/nomenclature";
+import { envoyerAvecNomenclature } from "@/lib/envoiNomenclature";
 import { convertirPiecesJointesEnPdf } from "@/lib/conversionJustificatifs";
-import { pool } from "@/lib/baseDeDonnees";
+import { deposerNoteDeFraisSignee } from "@/lib/ndfSignature/depot";
 import { jsonError, verifierErreurSmtp } from "@/lib/api/utils";
 import { validerCorpsRequete } from "@/lib/api/validateBody";
 import {
@@ -18,7 +12,6 @@ import {
   recupererGroupeActif,
   recupererRoleMembre,
   recupererUnitesAutoriseesMembre,
-  reserverNumeros,
 } from "@/lib/groupServer";
 import {
   reponseRateLimit,
@@ -42,73 +35,6 @@ function validateEnv() {
     return jsonError("Configuration serveur manquante", 500);
   }
   return null;
-}
-
-/**
- * Les numéros globaux sont réservés dans une transaction validée seulement
- * après l'envoi : un échec SMTP n'en consomme aucun.
- */
-async function envoyerAvecNomenclature(
-  donneesEmail: DonneesEmailDepense,
-  identifiantOrganisation: string,
-  format: string,
-  anneeComptable: ParametresAnneeComptable,
-) {
-  const depenses = donneesEmail.detailsDepenses.map(versDepenseNomenclature);
-  const client = await pool.connect();
-  try {
-    await client.query("BEGIN");
-    // Un numéro par dépense, pas par pièce jointe : une dépense sans
-    // justificatif (attestée par un responsable) réserve tout de même un
-    // numéro, comme une recette envoyée sans pièce jointe.
-    const reservation = calculerReservation(
-      format,
-      donneesEmail.date,
-      depenses.length,
-      anneeComptable,
-    );
-    const numeros =
-      reservation.global > 0 || reservation.comptable
-        ? await reserverNumeros(client, identifiantOrganisation, reservation)
-        : {};
-    const noms = genererNomsNomenclature({
-      format,
-      parametresAnnee: anneeComptable,
-      date: donneesEmail.date,
-      branche: donneesEmail.branche,
-      depenses,
-      extensions: donneesEmail.piecesJointes.map((piece) =>
-        devinerExtension(piece.typeMime, piece.nomFichierOriginal),
-      ),
-      ...numeros,
-    });
-    donneesEmail.piecesJointes = donneesEmail.piecesJointes.map(
-      (piece, index) => ({ ...piece, nomFichierNormalise: noms[index] }),
-    );
-    // Référence textuelle (sans extension) affichée dans le corps de
-    // l'e-mail, en plus du nom de la pièce jointe : mêmes numéros déjà
-    // réservés ci-dessus, aucune nouvelle réservation.
-    const references = genererNomsNomenclature({
-      format,
-      parametresAnnee: anneeComptable,
-      date: donneesEmail.date,
-      branche: donneesEmail.branche,
-      depenses,
-      extensions: depenses.map(() => null),
-      ...numeros,
-    });
-    donneesEmail.detailsDepenses = donneesEmail.detailsDepenses.map(
-      (detail, index) => ({ ...detail, reference: references[index] }),
-    );
-    const resultat = await envoyerEmailDepense(donneesEmail);
-    await client.query("COMMIT");
-    return resultat;
-  } catch (erreur) {
-    await client.query("ROLLBACK");
-    throw erreur;
-  } finally {
-    client.release();
-  }
 }
 
 export async function POST(req: NextRequest) {
@@ -159,11 +85,8 @@ export async function POST(req: NextRequest) {
         group.parametres.moyensPaiement,
       );
       if (error || !donneesEmail) return error as NextResponse;
-      if (group.validation.status !== "verified" || !group.emailTresorerie)
-        return jsonError(
-          "La trésorerie doit confirmer son adresse avant les envois",
-          403,
-        );
+      if (group.emailsTresoriers.length === 0)
+        return jsonError("Aucun trésorier n'est configuré pour ce groupe", 403);
       const unit = group.unites.find(
         (item) => item.id === donneesEmail.branche,
       );
@@ -194,7 +117,7 @@ export async function POST(req: NextRequest) {
       donneesEmail.branche = unit.label;
       donneesEmail.groupe = group.organisation.name;
       donneesEmail.couleur = unit.color;
-      donneesEmail.emailTresorerie = group.emailTresorerie;
+      donneesEmail.emailsTresoriers = group.emailsTresoriers;
 
       // Avant le nommage : les extensions doivent refléter le format converti.
       if (group.parametres.convertirJustificatifsEnPdf)
@@ -211,6 +134,34 @@ export async function POST(req: NextRequest) {
           ...donneesEmail.rib,
           nomFichierNormalise: `RIB - ${assainirSegmentNomFichier(nomDemandeur)}.${devinerExtension(donneesEmail.rib.typeMime, donneesEmail.rib.nomFichierOriginal)}`,
         };
+      }
+
+      // Note de frais signée : au lieu d'un envoi immédiat, on dépose le
+      // document dans le circuit de signature à 3 niveaux (bénéficiaire ->
+      // responsable -> trésorier). L'envoi réel au(x) trésorier(s) n'a lieu
+      // qu'après la 3e signature (voir src/lib/ndfSignature/signer.ts).
+      if (
+        group.parametres.ndfSigneeActif &&
+        donneesEmail.typeEnvoi === "note-de-frais"
+      ) {
+        const depot = await deposerNoteDeFraisSignee({
+          identifiantOrganisation,
+          beneficiaireUserId: identifiantUtilisateur,
+          beneficiaireNom: session.user.name?.trim() || userEmail.split("@")[0],
+          donneesEmail,
+        });
+        if (depot.statut === "aucun_signataire_disponible")
+          return jsonError(
+            "Aucun signataire disponible pour valider cette note de frais (conflit d'intérêt). Contactez un trésorier ou un responsable de groupe.",
+            409,
+          );
+        return NextResponse.json({
+          success: true,
+          statut: "en_attente_signature",
+          noteDeFraisId: depot.id,
+          message:
+            "Votre note de frais a été déposée et attend maintenant votre signature électronique.",
+        });
       }
 
       const { anneeComptable, depense } = group.nomenclature;

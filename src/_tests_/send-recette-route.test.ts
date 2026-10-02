@@ -99,8 +99,7 @@ describe("POST /api/send-recette", () => {
     mocks.recupererGroupeActif.mockResolvedValue({
       organisation: { id: "org_1", name: "Groupe test" },
       unites: [{ id: "farfadets", label: "Farfadets", color: "#6CC24A" }],
-      emailTresorerie: "tresorerie@example.test",
-      validation: { status: "verified" },
+      emailsTresoriers: ["tresorerie@example.test"],
       nomenclature: {
         anneeComptable: { mois: 9, jour: 1, format: "debut-fin" },
         depense: { format: null },
@@ -124,12 +123,11 @@ describe("POST /api/send-recette", () => {
     expect(mocks.envoyerEmailRecette).toHaveBeenCalledTimes(1);
   });
 
-  it("refuse tant que la trésorerie n'a pas confirmé son adresse", async () => {
+  it("refuse tant que le groupe n'a aucun trésorier", async () => {
     mocks.recupererGroupeActif.mockResolvedValue({
       organisation: { id: "org_1", name: "Groupe test" },
       unites: [{ id: "farfadets", label: "Farfadets", color: "#6CC24A" }],
-      emailTresorerie: "",
-      validation: { status: "pending" },
+      emailsTresoriers: [],
       nomenclature: {
         anneeComptable: { mois: 9, jour: 1, format: "debut-fin" },
         depense: { format: null },
@@ -166,8 +164,7 @@ describe("POST /api/send-recette", () => {
       mocks.recupererGroupeActif.mockResolvedValue({
         organisation: { id: "org_1", name: "Groupe test" },
         unites: [{ id: "farfadets", label: "Farfadets", color: "#6CC24A" }],
-        emailTresorerie: "tresorerie@example.test",
-        validation: { status: "verified" },
+        emailsTresoriers: ["tresorerie@example.test"],
         nomenclature: {
           anneeComptable: { mois: 9, jour: 1, format: "debut-fin" },
           depense: { format: null },
@@ -219,8 +216,7 @@ describe("POST /api/send-recette", () => {
       mocks.recupererGroupeActif.mockResolvedValue({
         organisation: { id: "org_1", name: "Groupe test" },
         unites: [{ id: "farfadets", label: "Farfadets", color: "#6CC24A" }],
-        emailTresorerie: "tresorerie@example.test",
-        validation: { status: "verified" },
+        emailsTresoriers: ["tresorerie@example.test"],
         nomenclature: {
           anneeComptable: { mois: 9, jour: 1, format: "debut-fin" },
           depense: { format: null },

@@ -15,7 +15,6 @@ vi.mock("nodemailer", () => ({
 }));
 
 import { envoyerEmailDepense, envoyerMail } from "@/lib/email";
-import { envoyerEmailValidationTresorerie } from "@/lib/treasuryEmail";
 
 const pieceJointe = (nom: string) => ({
   nomAffiche: nom,
@@ -77,7 +76,7 @@ describe("templates HTML des e-mails", () => {
       ],
       groupe: texteDangereux,
       couleur: `#123456; background-image: url("${texteDangereux}")`,
-      emailTresorerie: "tresorerie@example.test",
+      emailsTresoriers: ["tresorerie@example.test"],
       montant: 12,
       piecesJointes: [
         {
@@ -107,7 +106,7 @@ describe("templates HTML des e-mails", () => {
       emailUtilisateur: "membre@example.test",
       date: "2026-01-01",
       branche: "Groupe",
-      emailTresorerie: "tresorerie@example.test",
+      emailsTresoriers: ["tresorerie@example.test"],
       montant: 30,
       piecesJointes: [pieceJointe("a.png")],
       detailsDepenses: [
@@ -145,7 +144,7 @@ describe("templates HTML des e-mails", () => {
       emailUtilisateur: "membre@example.test",
       date: "2026-01-01",
       branche: "Groupe",
-      emailTresorerie: "tresorerie@example.test",
+      emailsTresoriers: ["tresorerie@example.test"],
       montant: 30,
       piecesJointes: [],
       sansJustificatifAttesteParResponsable: true,
@@ -176,7 +175,7 @@ describe("templates HTML des e-mails", () => {
       emailUtilisateur: "membre@example.test",
       date: "2026-01-01",
       branche: "Groupe",
-      emailTresorerie: "tresorerie@example.test",
+      emailsTresoriers: ["tresorerie@example.test"],
       montant: 15,
       piecesJointes: [pieceJointe("a.png"), pieceJointe("b.png")],
       rib: { ...pieceJointe("rib.pdf"), nomFichierNormalise: "RIB - rib.pdf" },
@@ -223,7 +222,7 @@ describe("templates HTML des e-mails", () => {
       emailUtilisateur: "membre@example.test",
       date: "2026-01-01",
       branche: "Groupe",
-      emailTresorerie: "tresorerie@example.test",
+      emailsTresoriers: ["tresorerie@example.test"],
       montant: 5,
       piecesJointes: [pieceJointe("a.png")],
       detailsDepenses: [
@@ -240,24 +239,74 @@ describe("templates HTML des e-mails", () => {
     expect(dernierMail().text).toContain("RIB : non fourni");
   });
 
-  it("met en forme, échappe et lie l’e-mail de vérification", async () => {
-    await envoyerEmailValidationTresorerie({
-      destinataire: "tresorerie@example.test",
-      nomGroupe: texteDangereux,
-      url: `https://example.test/verifier?nom=${texteDangereux}`,
+  describe("libellé de l’auteur de l’envoi", () => {
+    const envoyer = async (
+      typeEnvoi: "note-de-frais" | "depense-groupe",
+      libelleTypeAffiche?: string,
+    ) => {
+      await envoyerEmailDepense({
+        typeEnvoi,
+        libelleTypeAffiche,
+        emailUtilisateur: "membre@example.test",
+        date: "2026-01-01",
+        branche: "Groupe",
+        emailsTresoriers: ["tresorerie@example.test"],
+        montant: 5,
+        piecesJointes: [pieceJointe("a.png")],
+        detailsDepenses: [
+          {
+            date: "2026-01-01",
+            description: "",
+            activite: typeEnvoi === "note-de-frais" ? "Camp" : "",
+            modePaiement: typeEnvoi === "depense-groupe" ? "Espèces" : "",
+            lignes: [{ categorie: "Formation", montant: 5 }],
+          },
+        ],
+      });
+      return dernierMail().text as string;
+    };
+
+    it("affiche Déclarant pour une dépense avec moyen de paiement du groupe", async () => {
+      const texte = await envoyer("depense-groupe");
+      expect(texte).toContain("Déclarant : membre@example.test");
+      expect(texte).not.toContain("Demandeur");
     });
 
-    const html = envoyerMailSimule.mock.calls[0][0].html as string;
-    expect(html).toContain(
-      "&lt;img src=x onerror=&quot;alerte()&quot;&gt; &amp; &#39;test&#39;",
+    it("garde Demandeur pour une note de frais", async () => {
+      expect(await envoyer("note-de-frais")).toContain(
+        "Demandeur : membre@example.test",
+      );
+    });
+
+    it("garde Demandeur pour une note de frais signée envoyée comme dépense de groupe", async () => {
+      expect(await envoyer("depense-groupe", "Note de frais")).toContain(
+        "Demandeur : membre@example.test",
+      );
+    });
+  });
+
+  it("envoie à tous les trésoriers du groupe", async () => {
+    await envoyerEmailDepense({
+      typeEnvoi: "depense-groupe",
+      emailUtilisateur: "membre@example.test",
+      date: "2026-01-01",
+      branche: "Groupe",
+      emailsTresoriers: ["tresorier1@example.test", "tresorier2@example.test"],
+      montant: 5,
+      piecesJointes: [pieceJointe("a.png")],
+      detailsDepenses: [
+        {
+          date: "2026-01-01",
+          description: "",
+          activite: "",
+          modePaiement: "Espèces du groupe",
+          lignes: [{ categorie: "Carburant", montant: 5 }],
+        },
+      ],
+    });
+
+    expect(dernierMail().to).toBe(
+      "tresorier1@example.test, tresorier2@example.test",
     );
-    expect(html).toContain('href="https://example.test/verifier?nom=&lt;img');
-    expect(html).not.toContain('<img src=x onerror="alerte()">');
-    expect(html).toContain("📜 Scouticket");
-    expect(html).toContain("Confirmation de la trésorerie");
-    expect(html).toContain("Confirmer le rattachement");
-    expect(html).toContain("background-color: #1E3A8A");
-    expect(html).toContain("background-color: #FBB042");
-    expect(html).toContain("Ce lien expire dans 48 heures.");
   });
 });

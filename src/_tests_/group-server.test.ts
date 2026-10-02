@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({ query: vi.fn() }));
 vi.mock("@/lib/baseDeDonnees", () => ({ pool: { query: mocks.query } }));
 
 import {
+  compterTresoriersNotifies,
   estResponsable,
   recupererGroupeActif,
   recupererUnitesAutoriseesMembre,
@@ -29,21 +30,14 @@ describe("recupererGroupeActif", () => {
 
   it("renvoie les unités triées par ordre, issues de scouticket_unites", async () => {
     mocks.query
-      .mockResolvedValueOnce({
-        rows: [
-          {
-            name: "Groupe test",
-            treasury_email: "tresorerie@example.test",
-            treasury_verification: { status: "verified" },
-          },
-        ],
-      })
+      .mockResolvedValueOnce({ rows: [{ name: "Groupe test" }] })
       .mockResolvedValueOnce({
         rows: [
           { id: "farfadets", label: "Farfadets", color: "#6CC24A" },
           { id: "groupe", label: "Groupe", color: "#1E3A8A" },
         ],
-      });
+      })
+      .mockResolvedValueOnce({ rows: [{ email: "tresorier@example.test" }] });
 
     const groupe = await recupererGroupeActif("org_1");
 
@@ -51,13 +45,17 @@ describe("recupererGroupeActif", () => {
       { id: "farfadets", label: "Farfadets", color: "#6CC24A" },
       { id: "groupe", label: "Groupe", color: "#1E3A8A" },
     ]);
+    expect(groupe.emailsTresoriers).toEqual(["tresorier@example.test"]);
     expect(mocks.query.mock.calls[1][0]).toMatch(/ORDER BY ordre ASC/);
     expect(mocks.query.mock.calls[1][1]).toEqual(["org_1"]);
+    expect(mocks.query.mock.calls[2][0]).toMatch(/role = 'owner'/);
+    expect(mocks.query.mock.calls[2][1]).toEqual(["org_1"]);
   });
 
   it("lit les paramètres du groupe avec des défauts désactivés", async () => {
     mocks.query
       .mockResolvedValueOnce({ rows: [{ name: "Sans paramètres" }] })
+      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({
         rows: [
@@ -66,9 +64,12 @@ describe("recupererGroupeActif", () => {
             scan_justificatifs_actif: true,
             convertir_justificatifs_pdf: true,
             moyens_paiement: ["Espèces du groupe"],
+            ndf_signee_actif: true,
+            ndf_logo_present: true,
           },
         ],
       })
+      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] });
 
     const sans = await recupererGroupeActif("org_1");
@@ -83,11 +84,15 @@ describe("recupererGroupeActif", () => {
         "Virement du groupe",
         "Chèque du groupe",
       ],
+      ndfSigneeActif: false,
+      logoPersonnalise: false,
     });
     expect(avec.parametres).toEqual({
       scanJustificatifsActif: true,
       convertirJustificatifsEnPdf: true,
       moyensPaiement: ["Espèces du groupe"],
+      ndfSigneeActif: true,
+      logoPersonnalise: true,
     });
   });
 
@@ -95,6 +100,19 @@ describe("recupererGroupeActif", () => {
     mocks.query.mockResolvedValueOnce({ rows: [] });
 
     await expect(recupererGroupeActif("org_inconnu")).rejects.toThrow();
+  });
+});
+
+describe("compterTresoriersNotifies", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("compte les trésoriers notifiés, hors le membre exclu", async () => {
+    mocks.query.mockResolvedValueOnce({ rows: [{ count: "2" }] });
+
+    const nombre = await compterTresoriersNotifies("org_1", "user_2");
+
+    expect(nombre).toBe(2);
+    expect(mocks.query.mock.calls[0][1]).toEqual(["org_1", "user_2"]);
   });
 });
 

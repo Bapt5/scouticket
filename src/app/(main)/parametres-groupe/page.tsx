@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { InterrupteurParametre } from "@/components/InterrupteurParametre";
+import { LogoGroupe } from "@/components/LogoGroupe";
 import { SelecteurMoyensPaiement } from "@/components/SelecteurMoyensPaiement";
 import { clientAuth } from "@/lib/auth-client";
 import {
@@ -103,6 +104,41 @@ export default function PageParametresGroupe() {
                 modifier({ convertirJustificatifsEnPdf: actif })
               }
             />
+            <h2 className="text-lg font-semibold text-zinc-900">
+              Notes de frais
+            </h2>
+            <InterrupteurParametre
+              id="ndf-signee"
+              titre="Notes de frais signées"
+              description="Active la validation des notes de frais par signature avant envoi au trésorier."
+              actif={parametres.ndfSigneeActif}
+              desactive={enregistrement}
+              onChange={(actif) => modifier({ ndfSigneeActif: actif })}
+            />
+            {parametres.ndfSigneeActif ? (
+              <Link
+                href="/parametres-groupe/signataires"
+                className="block text-sm font-medium text-[#1E3A8A]"
+              >
+                Gestion des signataires →
+              </Link>
+            ) : (
+              <p className="text-sm text-zinc-400">
+                Gestion des signataires (activez les notes de frais signées pour
+                y accéder)
+              </p>
+            )}
+            {parametres.ndfSigneeActif && (
+              <LogoGroupe
+                logoPersonnalise={parametres.logoPersonnalise}
+                onChange={(logoPersonnalise) =>
+                  setParametres((actuels) => ({
+                    ...actuels,
+                    logoPersonnalise,
+                  }))
+                }
+              />
+            )}
             <h2 className="text-lg font-semibold text-zinc-900">
               Moyens de paiement
             </h2>

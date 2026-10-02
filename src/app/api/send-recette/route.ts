@@ -160,11 +160,8 @@ export async function POST(req: NextRequest) {
       const group = await recupererGroupeActif(identifiantOrganisation);
       const { donneesEmail, error } = validerCorpsRequeteRecette(body);
       if (error || !donneesEmail) return error as NextResponse;
-      if (group.validation.status !== "verified" || !group.emailTresorerie)
-        return jsonError(
-          "La trésorerie doit confirmer son adresse avant les envois",
-          403,
-        );
+      if (group.emailsTresoriers.length === 0)
+        return jsonError("Aucun trésorier n'est configuré pour ce groupe", 403);
       const unit = group.unites.find(
         (item) => item.id === donneesEmail.branche,
       );
@@ -184,7 +181,7 @@ export async function POST(req: NextRequest) {
       donneesEmail.branche = unit.label;
       donneesEmail.groupe = group.organisation.name;
       donneesEmail.couleur = unit.color;
-      donneesEmail.emailTresorerie = group.emailTresorerie;
+      donneesEmail.emailsTresoriers = group.emailsTresoriers;
 
       if (group.parametres.convertirJustificatifsEnPdf)
         donneesEmail.piecesJointes = await convertirPiecesJointesEnPdf(

@@ -4,6 +4,10 @@ import { describe, expect, it, vi } from "vitest";
 import { FormulaireDepense } from "@/components/FormulaireDepense";
 import type { UniteGroupe } from "@/lib/group";
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
 const UNITES_TEST: UniteGroupe[] = [
   { id: "farfadets", label: "Farfadets", color: "#6CC24A" },
   {
@@ -33,7 +37,7 @@ describe("FormulaireDepense", () => {
         piecesJointes={[]}
         emailUtilisateur="test@example.test"
         units={UNITES_TEST}
-        treasuryVerified
+        aTresorier
         onChangementUnite={onChangementUnite}
       />,
     );
@@ -54,7 +58,7 @@ describe("FormulaireDepense", () => {
         emailUtilisateur="test@example.test"
         units={UNITES_TEST}
         uniteInitiale="groupe"
-        treasuryVerified
+        aTresorier
         onChangementUnite={onChangementUnite}
       />,
     );
@@ -82,19 +86,19 @@ describe("FormulaireDepense", () => {
         piecesJointes={[]}
         emailUtilisateur="test@example.test"
         units={UNITES_TEST}
-        treasuryVerified
+        aTresorier
       />,
     );
 
     const envoyer = screen.getByRole("button", {
-      name: "Envoyer la facture",
+      name: "Déclarer la dépense",
     });
     expect(envoyer).toBeEnabled();
 
     await utilisateur.click(envoyer);
 
     expect(screen.getByRole("alert")).toHaveTextContent(
-      "Il manque des informations pour envoyer la facture",
+      "Il manque des informations pour déclarer la dépense",
     );
     expect(screen.getByRole("alert")).toHaveTextContent("un justificatif");
     expect(screen.getByText("Sélectionnez une unité.")).toBeInTheDocument();
@@ -109,12 +113,12 @@ describe("FormulaireDepense", () => {
         emailUtilisateur="test@example.test"
         units={UNITES_TEST}
         uniteInitiale="groupe"
-        treasuryVerified
+        aTresorier
       />,
     );
 
     await utilisateur.click(
-      screen.getByRole("button", { name: "Envoyer la facture" }),
+      screen.getByRole("button", { name: "Déclarer la dépense" }),
     );
     expect(
       screen.getByText("Sélectionnez un moyen de paiement."),
@@ -146,12 +150,12 @@ describe("FormulaireDepense", () => {
         emailUtilisateur="test@example.test"
         units={UNITES_TEST}
         uniteInitiale="groupe"
-        treasuryVerified
+        aTresorier
       />,
     );
 
     await utilisateur.click(
-      screen.getByRole("button", { name: "Envoyer la facture" }),
+      screen.getByRole("button", { name: "Déclarer la dépense" }),
     );
 
     const alerte = screen.getByRole("alert");
@@ -175,7 +179,7 @@ describe("FormulaireDepense", () => {
         ]}
         emailUtilisateur="test@example.test"
         units={UNITES_TEST}
-        treasuryVerified
+        aTresorier
       />,
     );
 
@@ -199,7 +203,7 @@ describe("FormulaireDepense", () => {
         emailUtilisateur="test@example.test"
         units={UNITES_TEST}
         uniteInitiale="groupe"
-        treasuryVerified
+        aTresorier
       />,
     );
 
@@ -239,7 +243,7 @@ describe("FormulaireDepense", () => {
         emailUtilisateur="test@example.test"
         units={UNITES_TEST}
         uniteInitiale="groupe"
-        treasuryVerified
+        aTresorier
       />,
     );
 
@@ -265,7 +269,7 @@ describe("FormulaireDepense", () => {
         emailUtilisateur="test@example.test"
         units={UNITES_TEST}
         uniteInitiale="groupe"
-        treasuryVerified
+        aTresorier
       />,
     );
 
@@ -280,7 +284,7 @@ describe("FormulaireDepense", () => {
     expect(screen.queryByLabelText("Moyen de paiement *")).toBeNull();
 
     await utilisateur.click(
-      screen.getByRole("button", { name: "Envoyer la facture" }),
+      screen.getByRole("button", { name: "Envoyer la note de frais" }),
     );
     expect(screen.getByRole("alert")).toHaveTextContent(
       "l’activité liée du justificatif 1",
@@ -295,7 +299,7 @@ describe("FormulaireDepense", () => {
         emailUtilisateur="test@example.test"
         units={UNITES_TEST}
         uniteInitiale="groupe"
-        treasuryVerified
+        aTresorier
       />,
     );
 
@@ -315,7 +319,7 @@ describe("FormulaireDepense", () => {
         units={UNITES_TEST}
         moyensPaiement={["Cagnotte en ligne"]}
         uniteInitiale="groupe"
-        treasuryVerified
+        aTresorier
       />,
     );
 
@@ -332,7 +336,7 @@ describe("FormulaireDepense", () => {
         emailUtilisateur="test@example.test"
         units={UNITES_TEST}
         uniteInitiale="groupe"
-        treasuryVerified
+        aTresorier
         estAdmin
       />,
     );
@@ -350,7 +354,7 @@ describe("FormulaireDepense", () => {
         emailUtilisateur="test@example.test"
         units={UNITES_TEST}
         uniteInitiale="groupe"
-        treasuryVerified
+        aTresorier
         estAdmin={false}
       />,
     );
@@ -368,7 +372,7 @@ describe("FormulaireDepense", () => {
         emailUtilisateur="test@example.test"
         units={UNITES_TEST}
         uniteInitiale="groupe"
-        treasuryVerified
+        aTresorier
         estAdmin
       />,
     );
@@ -387,7 +391,7 @@ describe("FormulaireDepense", () => {
         emailUtilisateur="test@example.test"
         units={UNITES_TEST}
         uniteInitiale="groupe"
-        treasuryVerified
+        aTresorier
         estAdmin
       />,
     );
@@ -414,7 +418,7 @@ describe("FormulaireDepense", () => {
         emailUtilisateur="test@example.test"
         units={UNITES_TEST}
         uniteInitiale="groupe"
-        treasuryVerified
+        aTresorier
         estAdmin
       />,
     );
@@ -434,7 +438,7 @@ describe("FormulaireDepense", () => {
       screen.getByRole("option", { name: /^Gaz : achat de bouteille/ }),
     );
     await utilisateur.click(
-      screen.getByRole("button", { name: "Envoyer la facture" }),
+      screen.getByRole("button", { name: "Déclarer la dépense" }),
     );
 
     expect(fetchSimule).toHaveBeenCalledWith(

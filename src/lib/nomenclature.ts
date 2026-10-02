@@ -231,7 +231,7 @@ export interface ParametresGenerationNoms {
   date: string;
   branche: string;
   depenses: DepenseNomenclature[];
-  /** `null` : pas d'extension ajoutée — utilisé pour la référence textuelle affichée dans l'e-mail quand il n'y a pas de pièce jointe à nommer. */
+  /** `null` : pas d'extension ajoutée, utilisé pour la référence textuelle affichée dans l'e-mail quand il n'y a pas de pièce jointe à nommer. */
   extensions: (string | null)[];
   /** Premier numéro attribué (dernier + 1) ; ignoré si la variable est absente du format. */
   premierGlobal?: number;
