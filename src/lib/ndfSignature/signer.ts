@@ -22,6 +22,7 @@ import {
 import { envoyerCodeVerification } from "@/lib/ndfSignature/depot";
 import { construireDossierPreuve } from "@/lib/ndfSignature/dossierPreuve";
 import { signerChamp } from "@/lib/ndfSignature/pdfSignature";
+import { CATEGORIE_COMPTABLE_KILOMETRES } from "@/lib/depenses";
 import { envoyerEmailDepense, type DonneesEmailDepense } from "@/lib/email";
 import { envoyerAvecNomenclature } from "@/lib/envoiNomenclature";
 import { dedoublonnerNomsFichiers } from "@/lib/nomenclature";
@@ -268,7 +269,17 @@ export async function traiterSignature(params: {
     modePaiement: MODE_PAIEMENT_NOTE_DE_FRAIS_SIGNEE,
     activite: "",
     description: `Remboursement note de frais signée de ${note.donneesNdf.emailUtilisateur}`,
-    lignes: note.donneesNdf.detailsDepenses.flatMap((detail) => detail.lignes),
+    lignes: [
+      ...note.donneesNdf.detailsDepenses.flatMap((detail) => detail.lignes),
+      ...(note.donneesNdf.kilometrage
+        ? [
+            {
+              categorie: CATEGORIE_COMPTABLE_KILOMETRES,
+              montant: note.donneesNdf.kilometrage.montant,
+            },
+          ]
+        : []),
+    ],
   };
   const pieceFinale: PieceJointeDepense = {
     nomAffiche: nomFichierBase,

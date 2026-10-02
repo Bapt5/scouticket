@@ -235,4 +235,38 @@ describe("CapturePhoto", () => {
     expect(onAttachmentsAdd).not.toHaveBeenCalled();
     expect(screen.queryByText(/Impossible de traiter/)).not.toBeInTheDocument();
   });
+
+  it("n'affiche le bouton kilomètres que si le parent le demande", async () => {
+    const { rerender } = render(
+      <CapturePhoto onAttachmentsAdd={vi.fn()} currentCount={0} />,
+    );
+    expect(
+      screen.queryByRole("button", { name: /Ajouter des kilomètres/ }),
+    ).not.toBeInTheDocument();
+
+    const onAjouterKilometres = vi.fn();
+    rerender(
+      <CapturePhoto
+        onAttachmentsAdd={vi.fn()}
+        currentCount={0}
+        onAjouterKilometres={onAjouterKilometres}
+      />,
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: /Ajouter des kilomètres/ }),
+    );
+    expect(onAjouterKilometres).toHaveBeenCalledOnce();
+
+    rerender(
+      <CapturePhoto
+        onAttachmentsAdd={vi.fn()}
+        currentCount={0}
+        onAjouterKilometres={onAjouterKilometres}
+        kilometresDesactive
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: /Ajouter des kilomètres/ }),
+    ).toBeDisabled();
+  });
 });

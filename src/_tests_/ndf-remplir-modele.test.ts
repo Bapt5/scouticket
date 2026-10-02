@@ -84,10 +84,87 @@ describe("construireHtmlNoteDeFrais", () => {
 
     const totaux = cellules(html, "tfoot");
     expect(totaux[1]).toMatch(/^12,50\s€$/);
-    expect(totaux[2]).toMatch(/^0,00\s€$/);
+    expect(totaux[2]).toBe("");
     expect(totaux[3]).toMatch(/^20,00\s€$/);
     expect(totaux[4]).toMatch(/^5,00\s€$/);
     expect(normaliser(html)).toMatch(/Somme à rembourser : <strong>37,50\s€/);
+  });
+
+  describe("kilomètres", () => {
+    const kilometrage = {
+      lignes: [
+        {
+          date: "04/09/2026",
+          activite: "Camp",
+          objet: "Paris - Rambouillet",
+          distanceKm: 42.5,
+        },
+        {
+          date: "05/09/2026",
+          activite: "WE",
+          objet: "Retour",
+          distanceKm: 100,
+        },
+      ],
+      taux: 0.354,
+      tauxMajLe: "2025-11-05",
+    };
+
+    it("numérote les lignes km après les pièces et remplit la colonne km", () => {
+      const html = construireHtmlNoteDeFrais({
+        ...note([piece(1, [{ categorie: "Formation", montant: 5 }])]),
+        kilometrage,
+      });
+      const lignes = cellules(html, "tbody");
+      expect(lignes.slice(8, 16)).toEqual([
+        "2",
+        "04/09/2026",
+        "Camp",
+        "Paris - Rambouillet",
+        "",
+        "42,5 km",
+        "",
+        "",
+      ]);
+      expect(lignes[16]).toBe("3");
+    });
+
+    it("totalise les km, affiche le montant km x taux et l'ajoute au total", () => {
+      const html = construireHtmlNoteDeFrais({
+        ...note([piece(1, [{ categorie: "Formation", montant: 5 }])]),
+        kilometrage,
+      });
+      const totaux = cellules(html, "tfoot");
+      expect(totaux[2]).toBe("142,5 km");
+      // 142,5 km x 0,354 = 50,445 -> 50,45 €
+      expect(totaux[6]).toMatch(/^50,45\s€$/);
+      expect(normaliser(html)).toMatch(/Somme à rembourser : <strong>55,45\s€/);
+      expect(normaliser(html)).toContain("mis à jour le 05/11/25");
+      expect(normaliser(html)).toMatch(/<strong>0,354\s€<\/strong>/);
+    });
+
+    it("n'affiche ni taux ni montant km sans ligne kilométrique", () => {
+      const html = construireHtmlNoteDeFrais(
+        note([piece(1, [{ categorie: "Formation", montant: 5 }])]),
+      );
+      expect(html).not.toContain("Taux du kilomètre utilisé");
+      expect(html).not.toContain("remboursement-km");
+    });
+
+    it("partage la limite de 12 lignes avec les pièces", () => {
+      const pieces = Array.from({ length: 11 }, (_, i) =>
+        piece(i + 1, [{ categorie: "Formation", montant: 1 }]),
+      );
+      expect(() =>
+        construireHtmlNoteDeFrais({ ...note(pieces), kilometrage }),
+      ).toThrow("TROP_DE_PIECES_POUR_LE_TEMPLATE_SGDF");
+      expect(() =>
+        construireHtmlNoteDeFrais({
+          ...note(pieces),
+          kilometrage: { ...kilometrage, lignes: [kilometrage.lignes[0]] },
+        }),
+      ).not.toThrow();
+    });
   });
 
   it("complète toujours le tableau à 12 lignes", () => {

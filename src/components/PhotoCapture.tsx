@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { IconeVoiture } from "@/components/IconeVoiture";
 import { CameraIcon, ArrowUpOnSquareIcon } from "@heroicons/react/24/outline";
 import type { CornerPoints } from "scanic";
 import { estTypeMimePieceJointeAutorise } from "@/lib/attachments";
@@ -127,6 +128,10 @@ interface CapturePhotoProps {
   readonly maxFichiers?: number;
   /** Titre affiché au-dessus des boutons (ex. « Justificatif (optionnel) » pour une recette). */
   readonly titre?: string;
+  /** Note de frais kilométrique : affiche un bouton « Ajouter des kilomètres ». */
+  readonly onAjouterKilometres?: () => void;
+  /** Limite de lignes atteinte : le bouton kilomètres est désactivé. */
+  readonly kilometresDesactive?: boolean;
 }
 
 interface RevueScan {
@@ -142,6 +147,8 @@ export function CapturePhoto({
   scanActive = false,
   maxFichiers = MAX_ATTACHMENT_COUNT,
   titre = "Justificatif de dépense",
+  onAjouterKilometres,
+  kilometresDesactive = false,
 }: Readonly<CapturePhotoProps>) {
   const [errorMessages, setErrorMessages] = useState<string[]>([]);
   const [compressedInfo, setCompressedInfo] = useState<string | null>(null);
@@ -365,24 +372,43 @@ export function CapturePhoto({
         {titre}
       </h2>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div
+        className={`grid gap-3 ${onAjouterKilometres ? "grid-cols-3" : "grid-cols-2"}`}
+      >
         <button
           onClick={handleCameraCapture}
-          className="flex flex-col items-center p-4 bg-zinc-900 text-white rounded-lg hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-400 transition-colors"
+          className="flex flex-col items-center justify-center p-4 bg-zinc-900 text-white rounded-lg hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-400 transition-colors"
         >
           <CameraIcon className="w-6 h-6 mb-2" aria-hidden="true" />
-          <span className="text-sm font-medium">Prendre photo</span>
+          <span className="flex min-h-10 items-center text-center text-sm font-medium">
+            Prendre photo
+          </span>
         </button>
         <button
           onClick={handleFileBrowse}
-          className="flex flex-col items-center p-4 bg-white text-zinc-900 rounded-lg border border-zinc-200 hover:bg-zinc-100 transition-colors"
+          className="flex flex-col items-center justify-center p-4 bg-white text-zinc-900 rounded-lg border border-zinc-200 hover:bg-zinc-100 transition-colors"
         >
           <ArrowUpOnSquareIcon
             className="w-6 h-6 mb-2 text-zinc-700"
             aria-hidden="true"
           />
-          <span className="text-sm font-medium">Importer fichier</span>
+          <span className="flex min-h-10 items-center text-center text-sm font-medium">
+            Importer fichier
+          </span>
         </button>
+        {onAjouterKilometres && (
+          <button
+            type="button"
+            onClick={onAjouterKilometres}
+            disabled={kilometresDesactive}
+            className="flex flex-col items-center justify-center p-4 bg-white text-zinc-900 rounded-lg border border-zinc-200 hover:bg-zinc-100 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <IconeVoiture className="w-6 h-6 mb-2 text-zinc-700" />
+            <span className="flex min-h-10 items-center text-center text-sm font-medium">
+              Ajouter des kilomètres
+            </span>
+          </button>
+        )}
       </div>
 
       <input

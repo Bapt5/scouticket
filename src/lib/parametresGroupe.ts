@@ -7,6 +7,12 @@ export interface ParametresGroupe {
   convertirJustificatifsEnPdf: boolean;
   moyensPaiement: string[];
   ndfSigneeActif: boolean;
+  /** Saisie de kilomètres dans les notes de frais (nécessite `ndfSigneeActif`). */
+  kmActif: boolean;
+  /** Taux du kilomètre en euros. */
+  kmTaux: number;
+  /** Date (AAAA-MM-JJ) de dernière mise à jour du taux, fixée par le serveur. */
+  kmTauxMajLe: string;
   /** Lecture seule : un logo personnalisé est enregistré (géré par /api/group/parametres/logo). */
   logoPersonnalise: boolean;
 }
@@ -16,6 +22,9 @@ export const PARAMETRES_GROUPE_PAR_DEFAUT: ParametresGroupe = {
   convertirJustificatifsEnPdf: false,
   moyensPaiement: [...MOYENS_PAIEMENT_PAR_DEFAUT],
   ndfSigneeActif: false,
+  kmActif: false,
+  kmTaux: 0.354,
+  kmTauxMajLe: "2025-11-05",
   logoPersonnalise: false,
 };
 
@@ -42,6 +51,15 @@ export const schemaMiseAJourParametresGroupe = z
     convertirJustificatifsEnPdf: z.boolean().optional(),
     moyensPaiement: schemaMoyensPaiement.optional(),
     ndfSigneeActif: z.boolean().optional(),
+    kmActif: z.boolean().optional(),
+    kmTaux: z
+      .number()
+      .gt(0)
+      .max(5)
+      .refine((taux) => Math.round(taux * 10000) / 10000 === taux, {
+        message: "4 décimales maximum",
+      })
+      .optional(),
   })
   .strict()
   .refine((corps) => Object.keys(corps).length > 0);

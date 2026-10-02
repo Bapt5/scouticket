@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { MAX_LIGNES_NOTE_DE_FRAIS } from "@/constants/piecesJointes";
 import { echapperHtml } from "@/lib/email";
+import { montantKilometrique, totalKilometres } from "@/lib/depenses";
 import { colonneSgdf } from "@/lib/sgdf/mappingCategories";
 
 const LOGO_DATA_URI = `data:image/png;base64,${readFileSync(
@@ -8,7 +10,7 @@ const LOGO_DATA_URI = `data:image/png;base64,${readFileSync(
 ).toString("base64")}`;
 
 /** Nombre de lignes du tableau dans le template SGDF (lignes 10 à 21). */
-const NOMBRE_LIGNES_TEMPLATE = 12;
+const NOMBRE_LIGNES_TEMPLATE = MAX_LIGNES_NOTE_DE_FRAIS;
 
 export interface LignePourPdf {
   categorie: string;
@@ -25,11 +27,30 @@ export interface PieceJustificativePourPdf {
   lignes: LignePourPdf[];
 }
 
+export interface LigneKilometriquePourPdf {
+  /** Date d'affichage, déjà formatée (jj/mm/aaaa). */
+  date: string;
+  activite: string;
+  /** Objet du déplacement (motifs et destinations). */
+  objet: string;
+  distanceKm: number;
+}
+
+export interface KilometragePourPdf {
+  /** Numérotées à la suite des pièces justificatives. */
+  lignes: LigneKilometriquePourPdf[];
+  /** Taux du kilomètre en euros, figé au dépôt. */
+  taux: number;
+  /** Date (AAAA-MM-JJ) de mise à jour du taux. */
+  tauxMajLe: string;
+}
+
 export interface NoteDeFraisPourPdf {
   groupe: string;
   demandeur: string;
   unite: string;
   pieces: PieceJustificativePourPdf[];
+  kilometrage?: KilometragePourPdf;
   /** Noms des signataires déjà résolus (règle de conflit d'intérêt appliquée au dépôt). */
   responsableNom: string;
   tresorierNom: string;
@@ -40,6 +61,11 @@ export interface NoteDeFraisPourPdf {
 const formateurMontant = new Intl.NumberFormat("fr-FR", {
   style: "currency",
   currency: "EUR",
+});
+
+const formateurTaux = new Intl.NumberFormat("fr-FR", {
+  minimumFractionDigits: 3,
+  maximumFractionDigits: 4,
 });
 
 function formaterMontant(valeur: number): string {
@@ -53,6 +79,19 @@ function totauxPiece(piece: PieceJustificativePourPdf) {
     totaux[colonne] += ligne.montant;
   }
   return totaux;
+}
+
+const formateurKilometres = new Intl.NumberFormat("fr-FR", {
+  maximumFractionDigits: 2,
+});
+
+function formaterKilometres(valeur: number): string {
+  return `${formateurKilometres.format(valeur)} km`;
+}
+
+function formaterDateIsoCourte(dateIso: string): string {
+  const [annee, mois, jour] = dateIso.split("-");
+  return `${jour}/${mois}/${annee.slice(2)}`;
 }
 
 function celluleMontant(valeur: number): string {
@@ -76,6 +115,22 @@ function construireLigne(piece: PieceJustificativePourPdf | null): string {
   </tr>`;
 }
 
+function construireLigneKilometrique(
+  numero: number,
+  ligne: LigneKilometriquePourPdf,
+): string {
+  return `<tr>
+    <td>${numero}</td>
+    <td>${echapperHtml(ligne.date)}</td>
+    <td class="activite">${echapperHtml(ligne.activite)}</td>
+    <td class="description">${echapperHtml(ligne.objet)}</td>
+    <td></td>
+    <td>${formaterKilometres(ligne.distanceKm)}</td>
+    <td></td>
+    <td></td>
+  </tr>`;
+}
+
 /**
  * Construit le HTML de la page note de frais (fidèle au template SGDF
  * `templates/ndf_sgdf.xlsx`, voir `src/lib/sgdf/modele.html` pour la
@@ -88,7 +143,9 @@ function construireLigne(piece: PieceJustificativePourPdf | null): string {
  * final, voir `src/lib/ndfSignature/document.ts`.
  */
 export function construireHtmlNoteDeFrais(donnees: NoteDeFraisPourPdf): string {
-  if (donnees.pieces.length > NOMBRE_LIGNES_TEMPLATE) {
+  const kilometrage = donnees.kilometrage;
+  const lignesKm = kilometrage?.lignes ?? [];
+  if (donnees.pieces.length + lignesKm.length > NOMBRE_LIGNES_TEMPLATE) {
     throw new Error("TROP_DE_PIECES_POUR_LE_TEMPLATE_SGDF");
   }
 
@@ -103,14 +160,29 @@ export function construireHtmlNoteDeFrais(donnees: NoteDeFraisPourPdf): string {
     totalGeneral.hebergementIntendance += totaux.hebergementIntendance;
     totalGeneral.autreFrais += totaux.autreFrais;
   }
+  const totalKm = totalKilometres(lignesKm);
+  // Montant des kilomètres : catégorie comptable « Remboursement via Ndf
+  // frais de transport », affiché sous le total km et compté dans le total.
+  const montantKm = kilometrage
+    ? montantKilometrique(totalKm, kilometrage.taux)
+    : 0;
   const totalARembourser =
-    totalGeneral.transport +
-    totalGeneral.hebergementIntendance +
-    totalGeneral.autreFrais;
+    Math.round(
+      (totalGeneral.transport +
+        totalGeneral.hebergementIntendance +
+        totalGeneral.autreFrais +
+        montantKm) *
+        100,
+    ) / 100;
 
-  const lignesRemplies = donnees.pieces.map(construireLigne);
+  const lignesRemplies = [
+    ...donnees.pieces.map(construireLigne),
+    ...lignesKm.map((ligne, index) =>
+      construireLigneKilometrique(donnees.pieces.length + index + 1, ligne),
+    ),
+  ];
   const lignesVides = Array.from(
-    { length: NOMBRE_LIGNES_TEMPLATE - donnees.pieces.length },
+    { length: NOMBRE_LIGNES_TEMPLATE - lignesRemplies.length },
     () => construireLigne(null),
   );
   const lignesHtml = [...lignesRemplies, ...lignesVides].join("\n");
@@ -194,17 +266,30 @@ export function construireHtmlNoteDeFrais(donnees: NoteDeFraisPourPdf): string {
           <tr>
             <td colspan="4" class="libelle-total">TOTAL COLONNES :</td>
             <td>${formaterMontant(totalGeneral.transport)}</td>
-            <td>${formaterMontant(0)}</td>
+            <td>${lignesKm.length > 0 ? formaterKilometres(totalKm) : ""}</td>
             <td>${formaterMontant(totalGeneral.hebergementIntendance)}</td>
             <td>${formaterMontant(totalGeneral.autreFrais)}</td>
-          </tr>
+          </tr>${
+            kilometrage && lignesKm.length > 0
+              ? `
+          <tr class="remboursement-km">
+            <td colspan="5" class="vide"></td>
+            <td>${formaterMontant(montantKm)}</td>
+            <td colspan="2" class="vide"></td>
+          </tr>`
+              : ""
+          }
         </tfoot>
       </table>
 
       <div class="apres-tableau">
-        <div class="taux">
-          Taux du kilomètre utilisé : (mis à jour le 05/11/25)
-          <strong>0,354 €</strong>
+        <div class="taux">${
+          kilometrage && lignesKm.length > 0
+            ? `
+          Taux du kilomètre utilisé : (mis à jour le ${formaterDateIsoCourte(kilometrage.tauxMajLe)})
+          <strong>${formateurTaux.format(kilometrage.taux)} €</strong>`
+            : ""
+        }
         </div>
         <div class="total-general">
           Total : <span class="montant">${formaterMontant(totalARembourser)}</span>
@@ -289,6 +374,7 @@ const CSS_MODELE = `
   table.lignes tbody td { font-size: 13px; height: 18px; }
   table.lignes td.description, table.lignes td.activite { text-align: left; }
   table.lignes tfoot td { font-weight: bold; font-size: 12px; }
+  table.lignes tfoot td.vide { border: none; }
   table.lignes tfoot td.libelle-total { text-align: right; font-size: 9px; }
   .apres-tableau { display: flex; justify-content: space-between; align-items: center; font-size: 11px; margin-bottom: 8px; }
   .apres-tableau .taux { text-align: right; }

@@ -40,13 +40,21 @@ import {
   dateDuJour,
   detailSaisiComplet,
   detailSaisieVide,
+  ligneKilometriqueComplete,
+  ligneKilometriqueVide,
+  montantKilometrique,
   montantSaisiValide,
+  totalKilometres,
   totalLignes,
+  versLigneKilometrique,
   versDepenseNomenclature,
   versDetailDepense,
   type DetailSaisie,
+  type LigneKilometriqueSaisie,
 } from "@/lib/depenses";
 import { AccordeonJustificatif } from "@/components/AccordeonJustificatif";
+import { IconeVoiture } from "@/components/IconeVoiture";
+import { ChampsKilometrage } from "@/components/ChampsKilometrage";
 import { LignesCategories } from "@/components/LignesCategories";
 import type { UniteGroupe } from "@/lib/group";
 
@@ -69,6 +77,11 @@ interface FormulaireDepenseProps {
   readonly moyensPaiement?: string[];
   /** Note de frais signée active pour ce groupe : notice avant envoi (uniquement typeEnvoi note-de-frais). */
   readonly ndfSigneeActif?: boolean;
+  /** Lignes kilométriques saisies (état porté par le parent, qui porte aussi le bouton d'ajout). */
+  readonly kilometrages?: LigneKilometriqueSaisie[];
+  readonly onKilometragesChange?: (lignes: LigneKilometriqueSaisie[]) => void;
+  /** Taux du kilomètre du groupe (€), pour l'estimation affichée. */
+  readonly kmTaux?: number;
   readonly nomenclature?: {
     format: string | null;
     anneeComptable: ParametresAnneeComptable;
@@ -91,6 +104,9 @@ export function FormulaireDepense({
   units,
   moyensPaiement = MOYENS_PAIEMENT_PAR_DEFAUT as string[],
   ndfSigneeActif = false,
+  kilometrages = [],
+  onKilometragesChange,
+  kmTaux = 0,
   nomenclature,
   uniteInitiale = "",
   aTresorier,
@@ -116,6 +132,8 @@ export function FormulaireDepense({
   const [erreurRib, setErreurRib] = useState("");
   const [detailsDepenses, setDetailsDepenses] = useState<DetailSaisie[]>([]);
   const [indexOuvert, setIndexOuvert] = useState(0);
+  // Ligne kilométrique dépliée (null : aucune) ; une seule section ouverte à la fois.
+  const [indexKmOuvert, setIndexKmOuvert] = useState<number | null>(null);
   const [erreurUnite, setErreurUnite] = useState("");
   // Attestation du responsable qu'aucun justificatif n'est nécessaire pour
   // cette dépense (ex. virement interne à l'association) : seuls les
@@ -198,6 +216,36 @@ export function FormulaireDepense({
   const detailPourIndex = (index: number) =>
     detailsDepenses[index] ?? detailSaisieVide();
 
+  // ─── Kilomètres (note de frais) ───
+  const nombreKm = estNoteDeFrais ? kilometrages.length : 0;
+  const kilometragesValides = kilometrages.every(ligneKilometriqueComplete);
+  const nombreKmPrecedent = useRef(nombreKm);
+  // Une ligne km vient d'être ajoutée (bouton du parent) : on l'ouvre.
+  useEffect(() => {
+    if (nombreKm > nombreKmPrecedent.current) {
+      setIndexKmOuvert(nombreKm - 1);
+      setIndexOuvert(-1);
+    }
+    nombreKmPrecedent.current = nombreKm;
+  }, [nombreKm]);
+
+  const modifierKilometrage = (
+    index: number,
+    modification: Partial<LigneKilometriqueSaisie>,
+  ) => {
+    onKilometragesChange?.(
+      kilometrages.map((ligne, ligneIndex) =>
+        ligneIndex === index ? { ...ligne, ...modification } : ligne,
+      ),
+    );
+    if (statutEnvoi.type) setStatutEnvoi({ type: null, message: "" });
+  };
+  const montantEstimeKm = (ligne: LigneKilometriqueSaisie) =>
+    montantKilometrique(
+      totalKilometres([versLigneKilometrique(ligne)]),
+      kmTaux,
+    );
+
   const modifierDetailDepense = (
     index: number,
     modification: Partial<DetailSaisie>,
@@ -217,16 +265,22 @@ export function FormulaireDepense({
         montant: analyserMontantSaisi(ligne.montant),
       })),
     );
+  const montantTotalKm = montantKilometrique(
+    totalKilometres(kilometrages.map(versLigneKilometrique)),
+    kmTaux,
+  );
   const totalDepenses =
     Math.round(
-      Array.from({ length: nombreEmplacements }).reduce(
+      (Array.from({ length: nombreEmplacements }).reduce(
         (total: number, _, index) =>
           total + totalLignesDetail(detailPourIndex(index)),
         0,
-      ) * 100,
+      ) +
+        (nombreKm > 0 ? montantTotalKm : 0)) *
+        100,
     ) / 100;
   const detailsDepensesValides =
-    nombreEmplacements > 0 &&
+    (nombreEmplacements > 0 || nombreKm > 0) &&
     Array.from({ length: nombreEmplacements }).every((_, index) =>
       detailSaisiComplet(detailPourIndex(index), typeEnvoi),
     );
@@ -239,13 +293,21 @@ export function FormulaireDepense({
   const erreurJustificatif =
     afficherErreursValidation &&
     piecesJointes.length === 0 &&
+    nombreKm === 0 &&
     !declarationSansJustificatifActive;
   const erreurUniteObligatoire =
     afficherErreursValidation && !formulaire.branche;
   const champsManquants = [
-    ...(piecesJointes.length === 0 && !declarationSansJustificatifActive
-      ? ["un justificatif"]
+    ...(piecesJointes.length === 0 &&
+    nombreKm === 0 &&
+    !declarationSansJustificatifActive
+      ? ["un justificatif ou des kilomètres"]
       : []),
+    ...kilometrages.flatMap((ligne, index) =>
+      ligneKilometriqueComplete(ligne)
+        ? []
+        : [`les informations du déplacement ${index + 1}`],
+    ),
     ...(!formulaire.branche ? ["l’unité"] : []),
     ...Array.from({ length: nombreEmplacements }).flatMap((_, index) => {
       const detail = detailPourIndex(index);
@@ -334,7 +396,18 @@ export function FormulaireDepense({
       }).findIndex(
         (_, index) => !detailSaisiComplet(detailPourIndex(index), typeEnvoi),
       );
-      if (premierIncomplet >= 0) setIndexOuvert(premierIncomplet);
+      if (premierIncomplet >= 0) {
+        setIndexOuvert(premierIncomplet);
+        setIndexKmOuvert(null);
+      } else {
+        const premierKmIncomplet = kilometrages.findIndex(
+          (ligne) => !ligneKilometriqueComplete(ligne),
+        );
+        if (premierKmIncomplet >= 0) {
+          setIndexKmOuvert(premierKmIncomplet);
+          setIndexOuvert(-1);
+        }
+      }
       requestAnimationFrame(() => {
         const premierChampInvalide =
           formulaireRef.current?.querySelector<HTMLElement>(
@@ -378,6 +451,9 @@ export function FormulaireDepense({
                   originalFileName: rib.nomFichierOriginal,
                 },
               }
+            : {}),
+          ...(nombreKm > 0
+            ? { kilometrages: kilometrages.map(versLigneKilometrique) }
             : {}),
           expenses: detailsDepenses.map((detail) => ({
             date: detail.date,
@@ -437,6 +513,8 @@ export function FormulaireDepense({
         setAfficherErreursValidation(false);
         setDetailsDepenses([]);
         setIndexOuvert(0);
+        setIndexKmOuvert(null);
+        onKilometragesChange?.([]);
         setSansJustificatifDeclare(false);
         onCreerNouvelleNote?.();
       } else {
@@ -485,9 +563,12 @@ export function FormulaireDepense({
   };
 
   const formulaireEstValide = Boolean(
-    (piecesJointes.length > 0 || declarationSansJustificatifActive) &&
+    (piecesJointes.length > 0 ||
+      nombreKm > 0 ||
+      declarationSansJustificatifActive) &&
     formulaire.branche &&
-    detailsDepensesValides,
+    detailsDepensesValides &&
+    kilometragesValides,
   );
   const choisirRib = async (evenement: ChangeEvent<HTMLInputElement>) => {
     const fichier = evenement.target.files?.[0];
@@ -663,6 +744,8 @@ export function FormulaireDepense({
     setAfficherErreursValidation(false);
     setDetailsDepenses([]);
     setIndexOuvert(0);
+    setIndexKmOuvert(null);
+    onKilometragesChange?.([]);
     setSansJustificatifDeclare(false);
     if (onCreerNouvelleNote) onCreerNouvelleNote();
   };
@@ -758,7 +841,10 @@ export function FormulaireDepense({
                   total={totalLignesDetail(detail)}
                   complet={detailSaisiComplet(detail, typeEnvoi)}
                   ouvert={index === indexOuvertEffectif}
-                  onBasculer={() => setIndexOuvert(index)}
+                  onBasculer={() => {
+                    setIndexOuvert(index);
+                    setIndexKmOuvert(null);
+                  }}
                   onSupprimer={
                     onSupprimerPieceJointe
                       ? () => {
@@ -780,6 +866,68 @@ export function FormulaireDepense({
               );
             })}
           </div>
+        </div>
+      )}
+
+      {nombreKm > 0 && (
+        <div className="space-y-2">
+          <p className="block text-sm font-medium text-zinc-700">
+            Kilomètres ({nombreKm})
+          </p>
+          <div className="space-y-2">
+            {kilometrages.map((ligne, index) => {
+              const idAccordeon = `kilometrage-${index}`;
+              return (
+                <AccordeonJustificatif
+                  key={idAccordeon}
+                  id={idAccordeon}
+                  titre={
+                    ligne.distanceKm.trim()
+                      ? `${ligne.distanceKm.trim()} km`
+                      : "Déplacement"
+                  }
+                  sousTitre={`Déplacement ${index + 1} · ${ligne.objet.trim() || "objet à préciser"}`}
+                  vignette={
+                    <span className="w-14 h-14 rounded-md border border-zinc-200 bg-white flex items-center justify-center">
+                      <IconeVoiture className="w-8 h-8 text-zinc-500" />
+                    </span>
+                  }
+                  total={montantEstimeKm(ligne)}
+                  complet={ligneKilometriqueComplete(ligne)}
+                  ouvert={index === indexKmOuvert}
+                  onBasculer={() => {
+                    setIndexKmOuvert(index);
+                    setIndexOuvert(-1);
+                  }}
+                  onSupprimer={() => {
+                    onKilometragesChange?.(
+                      kilometrages.filter((_, i) => i !== index),
+                    );
+                    setIndexKmOuvert((ouvert) =>
+                      ouvert === null || ouvert === index
+                        ? null
+                        : index < ouvert
+                          ? ouvert - 1
+                          : ouvert,
+                    );
+                  }}
+                >
+                  <ChampsKilometrage
+                    idPrefixe={idAccordeon}
+                    ligne={ligne}
+                    onChange={(modification) =>
+                      modifierKilometrage(index, modification)
+                    }
+                    afficherErreurs={afficherErreursValidation}
+                  />
+                </AccordeonJustificatif>
+              );
+            })}
+          </div>
+          <p className="text-sm text-zinc-600">
+            Total : {totalKilometres(kilometrages.map(versLigneKilometrique))}{" "}
+            km, soit {montantTotalKm.toFixed(2)} € au taux de {kmTaux} € / km.
+          </p>
         </div>
       )}
 
@@ -850,7 +998,7 @@ export function FormulaireDepense({
         )}
       </div>
 
-      {nombreEmplacements > 0 && (
+      {(nombreEmplacements > 0 || nombreKm > 0) && (
         <div className="p-3 bg-zinc-50 border border-zinc-200 rounded-lg flex items-center justify-between">
           <span className="text-sm font-medium text-zinc-700">
             Total des dépenses

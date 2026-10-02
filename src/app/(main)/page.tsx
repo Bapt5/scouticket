@@ -12,11 +12,16 @@ import { useStatutEnLigne } from "@/lib/useOnlineStatus";
 import {
   LIBELLES_TYPES_ENVOI,
   TYPES_ENVOI,
+  MAX_LIGNES_NOTE_DE_FRAIS,
   nombreMaxJustificatifs,
   type TypeEnvoi,
   type PieceJointeDepense,
 } from "@/constants/piecesJointes";
 import type { UniteGroupe } from "@/lib/group";
+import {
+  ligneKilometriqueVide,
+  type LigneKilometriqueSaisie,
+} from "@/lib/depenses";
 import type { ParametresAnneeComptable } from "@/lib/nomenclature";
 import type { ParametresGroupe } from "@/lib/parametresGroupe";
 
@@ -85,6 +90,9 @@ export default function Home() {
   const { data: organisation } = clientAuth.useActiveOrganization();
   const { data: organisations } = clientAuth.useListOrganizations();
   const [piecesJointes, setPiecesJointes] = useState<PieceJointeDepense[]>([]);
+  const [kilometrages, setKilometrages] = useState<LigneKilometriqueSaisie[]>(
+    [],
+  );
   const [typeEnvoi, setTypeEnvoi] = useState<TypeEnvoi>("note-de-frais");
   const [ongletActif, setOngletActif] = useState<OngletAccueil>("depenses");
   const [groupe, setGroupe] = useState<Groupe | null>(null);
@@ -100,6 +108,10 @@ export default function Home() {
   const [erreurDepart, setErreurDepart] = useState("");
   const [groupesQuittes, setGroupesQuittes] = useState<Set<string>>(new Set());
   const estEnLigne = useStatutEnLigne();
+  // Les kilomètres n'existent que pour une note de frais, si le groupe les active.
+  const kmDisponible =
+    typeEnvoi === "note-de-frais" && Boolean(groupe?.parametres?.kmActif);
+  const kilometragesActifs = kmDisponible ? kilometrages : [];
 
   useEffect(() => {
     setInvitations([]);
@@ -585,9 +597,25 @@ export default function Home() {
                         ),
                       )
                     }
-                    maxFichiers={nombreMaxJustificatifs(typeEnvoi)}
+                    maxFichiers={Math.min(
+                      nombreMaxJustificatifs(typeEnvoi),
+                      MAX_LIGNES_NOTE_DE_FRAIS - kilometragesActifs.length,
+                    )}
                     currentCount={piecesJointes.length}
                     scanActive={groupe.parametres?.scanJustificatifsActif}
+                    onAjouterKilometres={
+                      kmDisponible
+                        ? () =>
+                            setKilometrages((precedentes) => [
+                              ...precedentes,
+                              ligneKilometriqueVide(),
+                            ])
+                        : undefined
+                    }
+                    kilometresDesactive={
+                      piecesJointes.length + kilometragesActifs.length >=
+                      MAX_LIGNES_NOTE_DE_FRAIS
+                    }
                   />
                   <FormulaireDepense
                     key={organisation.id}
@@ -603,6 +631,9 @@ export default function Home() {
                     }
                     moyensPaiement={groupe.parametres?.moyensPaiement}
                     ndfSigneeActif={groupe.parametres?.ndfSigneeActif}
+                    kilometrages={kilometragesActifs}
+                    onKilometragesChange={setKilometrages}
+                    kmTaux={groupe.parametres?.kmTaux}
                     uniteInitiale={groupe.unitPreference}
                     aTresorier={groupe.aTresorier}
                     estAdmin={groupe.isAdmin}

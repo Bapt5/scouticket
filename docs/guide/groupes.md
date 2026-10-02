@@ -76,6 +76,12 @@ Depuis **Paramètres du groupe**, les responsables peuvent activer la conversion
 
 Quand les **notes de frais signées** sont activées, les responsables peuvent remplacer le logo SGDF affiché en haut du document depuis **Paramètres du groupe** (bloc « Logo de la note de frais »). Formats acceptés : PNG, JPEG ou WebP, 1 Mo maximum, de 100x30 à 2000x2000 px. N’y placez aucune donnée personnelle. Le bouton **Rétablir le logo SGDF** supprime le logo personnalisé. Le changement ne s’applique qu’aux notes de frais déposées ensuite.
 
+## Notes de frais kilométriques
+
+Quand les **notes de frais signées** sont activées, les responsables peuvent activer les **notes de frais kilométriques** depuis **Paramètres du groupe** et régler le **taux du kilomètre** (0,354 € / km par défaut, mis à jour le 05/11/25). La date de mise à jour du taux s’affiche et change dès que vous modifiez le taux. Désactiver les notes de frais signées désactive aussi les kilomètres (le taux est conservé).
+
+Une fois activées, un bouton **Ajouter des kilomètres** apparaît à côté de « Prendre photo » et « Importer fichier » dans une note de frais. Chaque déplacement demande la date, la distance en km, l’activité liée et l’objet du déplacement (soyez précis sur les motifs et les destinations). Chaque déplacement occupe une ligne de la note de frais, comme un justificatif (12 lignes au maximum, justificatifs et déplacements confondus). Le montant remboursé (total des km x taux) apparaît sous le total des kilomètres. Le taux appliqué est celui en vigueur au moment de l’envoi.
+
 ## Moyens de paiement du groupe
 
 Depuis **Paramètres du groupe**, les responsables gèrent la liste des moyens de paiement proposés lors d’une dépense avec un moyen de paiement du groupe (par exemple « Carte de procurement » ou « Espèces du groupe ») :

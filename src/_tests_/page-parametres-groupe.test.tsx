@@ -60,7 +60,7 @@ describe("Page Paramètres du groupe", () => {
       name: "Scan automatique des justificatifs",
     });
     expect(scan).toHaveAttribute("aria-checked", "false");
-    expect(screen.getAllByRole("switch")).toHaveLength(3);
+    expect(screen.getAllByRole("switch")).toHaveLength(4);
     expect(screen.queryByText(/ML/)).not.toBeInTheDocument();
   });
 
@@ -160,6 +160,40 @@ describe("Page Paramètres du groupe", () => {
     });
   });
 
+  it("active les km uniquement avec les notes signées et permet de régler le taux", async () => {
+    fetchMock.mockImplementation(
+      (_url: string, options?: { method?: string }) =>
+        options?.method === "PATCH"
+          ? reponse({
+              success: true,
+              parametres: {
+                scanJustificatifsActif: false,
+                convertirJustificatifsEnPdf: false,
+                moyensPaiement: ["Espèces du groupe"],
+                ndfSigneeActif: true,
+                kmActif: true,
+                kmTaux: 0.4,
+                kmTauxMajLe: "2026-10-02",
+              },
+            })
+          : groupeAdmin(false),
+    );
+
+    render(<PageParametresGroupe />);
+    const km = await screen.findByRole("switch", {
+      name: "Notes de frais kilométriques",
+    });
+    expect(km).toBeDisabled();
+    await userEvent.click(
+      screen.getByRole("switch", { name: "Notes de frais signées" }),
+    );
+    await screen.findByText("Paramètres enregistrés.");
+    expect(
+      await screen.findByLabelText("Taux du kilomètre (€ / km)"),
+    ).toHaveValue("0,4");
+    expect(screen.getByText("Mis à jour le 02/10/26.")).toBeVisible();
+  });
+
   it("rétablit l'interrupteur si l'enregistrement échoue", async () => {
     fetchMock.mockImplementation(
       (_url: string, options?: { method?: string }) =>
@@ -247,12 +281,16 @@ describe("Page Paramètres du groupe", () => {
     fetchMock.mockReturnValue(groupeAdmin(false));
     const { unmount } = render(<PageParametresGroupe />);
     await screen.findByRole("switch", { name: "Notes de frais signées" });
-    expect(screen.queryByText("Logo de la note de frais")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Logo de la note de frais"),
+    ).not.toBeInTheDocument();
     unmount();
 
     fetchMock.mockReturnValue(groupeAdmin(false, false, ["Espèces"], true));
     render(<PageParametresGroupe />);
-    expect(await screen.findByText("Logo de la note de frais")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Logo de la note de frais"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Logo SGDF par défaut")).toBeInTheDocument();
   });
 
