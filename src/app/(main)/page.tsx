@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { redirect, useRouter } from "next/navigation";
 import { clientAuth } from "@/lib/auth-client";
 import { FormulaireDepense } from "@/components/FormulaireDepense";
 import { FormulaireRecette } from "@/components/FormulaireRecette";
@@ -86,6 +87,7 @@ function BandeauInvitationEnAttente({
 
 /** Affiche l’accueil du groupe et les invitations de l’utilisateur connecté. */
 export default function Home() {
+  const router = useRouter();
   const { data: session, isPending } = clientAuth.useSession();
   const { data: organisation } = clientAuth.useActiveOrganization();
   const { data: organisations } = clientAuth.useListOrganizations();
@@ -226,10 +228,7 @@ export default function Home() {
         Chargement…
       </main>
     );
-  if (!session) {
-    if (typeof window !== "undefined") window.location.assign("/sign-in");
-    return null;
-  }
+  if (!session) redirect("/sign-in");
   const creerGroupe = async () => {
     const nom = nomGroupe.trim();
     if (!nom) return;
@@ -394,7 +393,7 @@ export default function Home() {
               onClick={() =>
                 void clientAuth.signOut({
                   fetchOptions: {
-                    onSuccess: () => window.location.assign("/sign-in"),
+                    onSuccess: () => router.push("/sign-in"),
                   },
                 })
               }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { clientAuth } from "@/lib/auth-client";
 
@@ -281,6 +281,7 @@ export function FormulaireMotDePasseOublie() {
 }
 
 export function FormulaireNouveauMotDePasse() {
+  const router = useRouter();
   const recherche = useSearchParams();
   const token = recherche.get("token");
   const [motDePasse, setMotDePasse] = useState("");
@@ -302,7 +303,7 @@ export function FormulaireNouveauMotDePasse() {
     });
     setEnCours(false);
     if (resultat.error) return setErreur("Ce lien est invalide ou expiré.");
-    window.location.assign("/sign-in");
+    router.push("/sign-in");
   };
   return (
     <form onSubmit={modifier} className="space-y-4">
