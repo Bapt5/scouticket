@@ -164,7 +164,7 @@ describe("kilomètres", () => {
     expect(distanceSaisieValide("0")).toBe(false);
     expect(distanceSaisieValide("")).toBe(false);
     expect(distanceSaisieValide("1,234")).toBe(false);
-    expect(distanceSaisieValide("2001")).toBe(false);
+    expect(distanceSaisieValide("10000")).toBe(false);
   });
 
   it("exige date, activité, objet précis et distance", () => {

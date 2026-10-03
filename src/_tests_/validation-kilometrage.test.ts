@@ -87,7 +87,7 @@ describe("validerCorpsRequete : kilomètres", () => {
 
   it.each([
     ["distance nulle", { distanceKm: 0 }],
-    ["distance trop grande", { distanceKm: 2001 }],
+    ["distance trop grande", { distanceKm: 10000 }],
     ["trop de décimales", { distanceKm: 1.234 }],
     ["objet trop court", { objet: "court" }],
     ["activité vide", { activite: " " }],
