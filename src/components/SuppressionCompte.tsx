@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { DialogConfirmationSaisie } from "@/components/DialogConfirmationSaisie";
 import { clientAuth } from "@/lib/auth-client";
 
 const MOT_CONFIRMATION = "SUPPRIMER";
@@ -14,7 +15,6 @@ export default function SuppressionCompte() {
     null,
   );
   const [dialogOuvert, setDialogOuvert] = useState(false);
-  const [saisie, setSaisie] = useState("");
   const [suppressionEnCours, setSuppressionEnCours] = useState(false);
   const [erreur, setErreur] = useState("");
   const [sessionExpiree, setSessionExpiree] = useState(false);
@@ -37,7 +37,6 @@ export default function SuppressionCompte() {
   const fermerDialog = () => {
     if (suppressionEnCours) return;
     setDialogOuvert(false);
-    setSaisie("");
     setErreur("");
   };
 
@@ -98,37 +97,16 @@ export default function SuppressionCompte() {
       </button>
 
       {dialogOuvert && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="titre-suppression-compte"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/40 p-4"
-          onClick={fermerDialog}
-        >
-          <div
-            onClick={(evenement) => evenement.stopPropagation()}
-            className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-6 shadow-xl"
-          >
-            <h2
-              id="titre-suppression-compte"
-              className="text-lg font-semibold text-zinc-900"
-            >
-              Confirmer la suppression
-            </h2>
-            <p className="mt-2 text-sm text-zinc-600">
-              Votre compte sera supprimé définitivement, sans possibilité de le
-              récupérer. Pour confirmer, saisissez{" "}
-              <strong>{MOT_CONFIRMATION}</strong> ci-dessous.
-            </p>
-            <input
-              value={saisie}
-              onChange={(evenement) => setSaisie(evenement.target.value)}
-              aria-label={`Saisissez ${MOT_CONFIRMATION} pour confirmer`}
-              autoComplete="off"
-              className="mt-4 w-full rounded-lg border border-zinc-300 bg-white p-3 text-zinc-900 outline-none focus:border-[#1E3A8A] focus:ring-2 focus:ring-[#1E3A8A]/20"
-            />
-            {erreur && <p className="mt-2 text-sm text-red-700">{erreur}</p>}
-            {sessionExpiree && (
+        <DialogConfirmationSaisie
+          id="titre-suppression-compte"
+          titre="Confirmer la suppression"
+          motConfirmation={MOT_CONFIRMATION}
+          libelleConfirmation="Supprimer définitivement"
+          libelleEnCours="Suppression…"
+          enCours={suppressionEnCours}
+          erreur={erreur}
+          pied={
+            sessionExpiree && (
               <button
                 type="button"
                 onClick={() => void seReconnecter()}
@@ -136,29 +114,16 @@ export default function SuppressionCompte() {
               >
                 Se reconnecter
               </button>
-            )}
-            <div className="mt-4 flex gap-2">
-              <button
-                type="button"
-                disabled={saisie !== MOT_CONFIRMATION || suppressionEnCours}
-                onClick={() => void supprimerCompte()}
-                className="flex-1 rounded-lg bg-red-700 p-2 text-sm font-semibold text-white transition-colors hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {suppressionEnCours
-                  ? "Suppression…"
-                  : "Supprimer définitivement"}
-              </button>
-              <button
-                type="button"
-                disabled={suppressionEnCours}
-                onClick={fermerDialog}
-                className="flex-1 rounded-lg border border-zinc-300 p-2 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                Annuler
-              </button>
-            </div>
-          </div>
-        </div>
+            )
+          }
+          onConfirmer={() => void supprimerCompte()}
+          onFermer={fermerDialog}
+        >
+          <p>
+            Votre compte sera supprimé définitivement, sans possibilité de le
+            récupérer.
+          </p>
+        </DialogConfirmationSaisie>
       )}
     </section>
   );

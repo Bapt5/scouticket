@@ -67,7 +67,7 @@ Une fois les 3 signatures obtenues et le virement fait, le remboursement est tra
 - si une nomenclature dépense est configurée, `envoyerAvecNomenclature` (`src/lib/envoiNomenclature.ts`, partagée avec `POST /api/send-expense`) réserve un numéro et nomme le fichier normalement ;
 - sinon, `envoyerEmailDepense` est appelé directement.
 
-L'e-mail reçu par les trésoriers a donc le même format et les mêmes informations qu'une dépense de groupe (branche, demandeur, total, un seul justificatif nommé selon la nomenclature), sans RIB (déjà transmis au trésorier à sa propre étape, voir plus haut) et sans ventilation par catégorie détaillée par pièce d'origine (les lignes sont fusionnées en un seul justificatif). Puis `cloturerCircuit` supprime la note, son PDF et ses codes de vérification.
+L'e-mail reçu par les trésoriers a donc le même format et les mêmes informations qu'une dépense de groupe (branche, demandeur, total, un seul justificatif nommé selon la nomenclature), sans RIB (déjà transmis au trésorier à sa propre étape, voir plus haut) et sans ventilation par catégorie détaillée par pièce d'origine (les lignes sont fusionnées en un seul justificatif). Quand l'historique du groupe est activé, une seule entrée `note-de-frais` est écrite à ce moment-là, dans la même transaction que l'envoi (voir [Historique](/technical/historique)) : elle ne contient que le montant par catégorie comptable, sans kilomètres, sans RIB ni e-mail du demandeur. Puis `cloturerCircuit` supprime la note, son PDF et ses codes de vérification.
 
 ## Schéma de données
 

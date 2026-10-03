@@ -28,6 +28,7 @@ export async function recupererGroupeActif(identifiantOrganisation: string) {
     ndf_km_taux: number | null;
     ndf_km_taux_maj: string | null;
     ndf_logo_present: boolean | null;
+    historique_actif: boolean | null;
   }>(
     `SELECT organization.name, donnees.nomenclature_format,
             donnees.nomenclature_format_recette,
@@ -41,7 +42,8 @@ export async function recupererGroupeActif(identifiantOrganisation: string) {
             donnees.ndf_km_actif,
             donnees.ndf_km_taux::float8 AS ndf_km_taux,
             TO_CHAR(donnees.ndf_km_taux_maj, 'YYYY-MM-DD') AS ndf_km_taux_maj,
-            (donnees.ndf_logo IS NOT NULL) AS ndf_logo_present
+            (donnees.ndf_logo IS NOT NULL) AS ndf_logo_present,
+            donnees.historique_actif
        FROM organization
        LEFT JOIN scouticket_group_data donnees
          ON donnees.organization_id = organization.id
@@ -101,6 +103,7 @@ export async function recupererGroupeActif(identifiantOrganisation: string) {
       logoPersonnalise:
         (groupe.ndf_signee_actif ?? false) &&
         (groupe.ndf_logo_present ?? false),
+      historiqueActif: groupe.historique_actif ?? false,
     } satisfies ParametresGroupe,
   };
 }

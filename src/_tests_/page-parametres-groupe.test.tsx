@@ -20,6 +20,7 @@ const groupeAdmin = (
   moyensPaiement = ["Espèces du groupe"],
   ndfSigneeActif = false,
   logoPersonnalise = false,
+  historiqueActif = false,
 ) =>
   reponse({
     isAdmin: true,
@@ -29,6 +30,7 @@ const groupeAdmin = (
       moyensPaiement,
       ndfSigneeActif,
       logoPersonnalise,
+      historiqueActif,
     },
   });
 
@@ -60,7 +62,7 @@ describe("Page Paramètres du groupe", () => {
       name: "Scan automatique des justificatifs",
     });
     expect(scan).toHaveAttribute("aria-checked", "false");
-    expect(screen.getAllByRole("switch")).toHaveLength(4);
+    expect(screen.getAllByRole("switch")).toHaveLength(5);
     expect(screen.queryByText(/ML/)).not.toBeInTheDocument();
   });
 
@@ -325,5 +327,203 @@ describe("Page Paramètres du groupe", () => {
     expect(
       await screen.findByAltText("Logo SGDF par défaut"),
     ).toBeInTheDocument();
+  });
+
+  describe("historique", () => {
+    const interrupteur = () =>
+      screen.findByRole("switch", {
+        name: "Historique des dépenses, recettes et notes de frais",
+      });
+
+    it("active l'historique sans confirmation", async () => {
+      fetchMock.mockImplementation(
+        (_url: string, options?: { method?: string }) =>
+          options?.method === "PATCH"
+            ? reponse({
+                success: true,
+                parametres: {
+                  scanJustificatifsActif: false,
+                  convertirJustificatifsEnPdf: false,
+                  moyensPaiement: ["Espèces du groupe"],
+                  historiqueActif: true,
+                },
+              })
+            : groupeAdmin(false),
+      );
+
+      render(<PageParametresGroupe />);
+      await userEvent.click(await interrupteur());
+
+      expect(await screen.findByText("Paramètres enregistrés.")).toBeVisible();
+      const appel = fetchMock.mock.calls.find(
+        ([, options]) => options?.method === "PATCH",
+      );
+      expect(JSON.parse(appel?.[1].body)).toEqual({ historiqueActif: true });
+      expect(
+        screen.getByRole("link", { name: /Consulter l’historique/ }),
+      ).toBeVisible();
+    });
+
+    it("exige la saisie de SUPPRIMER et affiche le nombre d'entrées avant de désactiver", async () => {
+      fetchMock.mockImplementation(
+        (url: string, options?: { method?: string }) => {
+          if (options?.method === "PATCH")
+            return reponse({
+              success: true,
+              parametres: {
+                scanJustificatifsActif: false,
+                convertirJustificatifsEnPdf: false,
+                moyensPaiement: ["Espèces du groupe"],
+                historiqueActif: false,
+              },
+            });
+          if (url.startsWith("/api/historique")) return reponse({ total: 3 });
+          return groupeAdmin(
+            false,
+            false,
+            ["Espèces du groupe"],
+            false,
+            false,
+            true,
+          );
+        },
+      );
+
+      render(<PageParametresGroupe />);
+      await userEvent.click(await interrupteur());
+
+      expect(await screen.findByText(/3 entrées/)).toBeVisible();
+      // Aucune désactivation tant que le mot n'est pas saisi.
+      expect(
+        fetchMock.mock.calls.some(([, options]) => options?.method === "PATCH"),
+      ).toBe(false);
+      const confirmer = screen.getByRole("button", {
+        name: "Supprimer définitivement",
+      });
+      expect(confirmer).toBeDisabled();
+      await userEvent.type(
+        screen.getByLabelText(/Saisissez SUPPRIMER/),
+        "SUPPRIMER",
+      );
+      await userEvent.click(confirmer);
+
+      expect(
+        await screen.findByText("Historique désactivé et supprimé."),
+      ).toBeVisible();
+      const appel = fetchMock.mock.calls.find(
+        ([, options]) => options?.method === "PATCH",
+      );
+      expect(JSON.parse(appel?.[1].body)).toEqual({
+        historiqueActif: false,
+        confirmationSuppressionHistorique: true,
+      });
+    });
+
+    describe("export avant désactivation", () => {
+      const avecHistorique = (total: number, exportOk = true) =>
+        fetchMock.mockImplementation((url: string) => {
+          if (url === "/api/historique/export")
+            return exportOk
+              ? Promise.resolve({
+                  ok: true,
+                  blob: () => Promise.resolve(new Blob(["Date;Montant"])),
+                })
+              : reponse({ error: "Trop de lignes" }, false);
+          if (url.startsWith("/api/historique")) return reponse({ total });
+          return groupeAdmin(
+            false,
+            false,
+            ["Espèces du groupe"],
+            false,
+            false,
+            true,
+          );
+        });
+
+      beforeEach(() => {
+        URL.createObjectURL = vi.fn(() => "blob:historique");
+        URL.revokeObjectURL = vi.fn();
+        vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(
+          () => {},
+        );
+      });
+
+      it("propose l'export et télécharge le fichier sans rien supprimer", async () => {
+        avecHistorique(3);
+        render(<PageParametresGroupe />);
+        await userEvent.click(await interrupteur());
+
+        await userEvent.click(
+          await screen.findByRole("button", { name: "Exporter en CSV" }),
+        );
+
+        expect(await screen.findByText("Export téléchargé.")).toBeVisible();
+        expect(fetchMock).toHaveBeenCalledWith("/api/historique/export");
+        expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
+        expect(
+          fetchMock.mock.calls.some(
+            ([, options]) => options?.method === "PATCH",
+          ),
+        ).toBe(false);
+        // La suppression reste soumise à la saisie de SUPPRIMER.
+        expect(
+          screen.getByRole("button", { name: "Supprimer définitivement" }),
+        ).toBeDisabled();
+      });
+
+      it("affiche une erreur si l'export échoue", async () => {
+        avecHistorique(3, false);
+        render(<PageParametresGroupe />);
+        await userEvent.click(await interrupteur());
+
+        await userEvent.click(
+          await screen.findByRole("button", { name: "Exporter en CSV" }),
+        );
+
+        expect(
+          await screen.findByText(
+            "Impossible d’exporter l’historique. Réessayez.",
+          ),
+        ).toBeVisible();
+        expect(screen.queryByText("Export téléchargé.")).toBeNull();
+      });
+
+      it("ne propose pas l'export quand l'historique est vide", async () => {
+        avecHistorique(0);
+        render(<PageParametresGroupe />);
+        await userEvent.click(await interrupteur());
+
+        await screen.findByRole("dialog");
+        expect(
+          screen.queryByRole("button", { name: "Exporter en CSV" }),
+        ).toBeNull();
+      });
+    });
+
+    it("annuler le dialog n'envoie rien", async () => {
+      fetchMock.mockImplementation((url: string) =>
+        url.startsWith("/api/historique")
+          ? reponse({ total: 1 })
+          : groupeAdmin(
+              false,
+              false,
+              ["Espèces du groupe"],
+              false,
+              false,
+              true,
+            ),
+      );
+
+      render(<PageParametresGroupe />);
+      await userEvent.click(await interrupteur());
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Annuler" }),
+      );
+
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(
+        fetchMock.mock.calls.some(([, options]) => options?.method === "PATCH"),
+      ).toBe(false);
+    });
   });
 });

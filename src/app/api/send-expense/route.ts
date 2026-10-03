@@ -5,6 +5,8 @@ import { analyserDateIso, dedoublonnerNomsFichiers } from "@/lib/nomenclature";
 import { envoyerAvecNomenclature } from "@/lib/envoiNomenclature";
 import { convertirPiecesJointesEnPdf } from "@/lib/conversionJustificatifs";
 import { deposerNoteDeFraisSignee } from "@/lib/ndfSignature/depot";
+import { typeHistoriqueDepense, versEntreesDepense } from "@/lib/historique";
+import { envoyerAvecHistorique } from "@/lib/historiqueServer";
 import { jsonError, verifierErreurSmtp } from "@/lib/api/utils";
 import { validerCorpsRequete } from "@/lib/api/validateBody";
 import {
@@ -170,6 +172,12 @@ export async function POST(req: NextRequest) {
         });
       }
 
+      const contexteHistorique = {
+        auteurUserId: identifiantUtilisateur,
+        uniteId: unit.id,
+        uniteLabel: unit.label,
+        uniteCouleur: unit.color,
+      };
       const { anneeComptable, depense } = group.nomenclature;
       const { format } = depense;
       let resultat;
@@ -181,6 +189,7 @@ export async function POST(req: NextRequest) {
           identifiantOrganisation,
           format,
           anneeComptable,
+          { contexte: contexteHistorique },
         );
       } else {
         const noms = dedoublonnerNomsFichiers(
@@ -191,7 +200,17 @@ export async function POST(req: NextRequest) {
         donneesEmail.piecesJointes = donneesEmail.piecesJointes.map(
           (piece, index) => ({ ...piece, nomFichierNormalise: noms[index] }),
         );
-        resultat = await envoyerEmailDepense(donneesEmail);
+        resultat = await envoyerAvecHistorique(
+          identifiantOrganisation,
+          {
+            contexte: contexteHistorique,
+            entrees: versEntreesDepense(
+              donneesEmail.detailsDepenses,
+              typeHistoriqueDepense(donneesEmail.typeEnvoi),
+            ),
+          },
+          () => envoyerEmailDepense(donneesEmail),
+        );
       }
       return NextResponse.json({
         success: true,

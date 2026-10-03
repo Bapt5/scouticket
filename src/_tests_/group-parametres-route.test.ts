@@ -6,6 +6,8 @@ const mocks = vi.hoisted(() => ({
   recupererRoleMembre: vi.fn(),
   recupererGroupeActif: vi.fn(),
   query: vi.fn(),
+  clientQuery: vi.fn(),
+  release: vi.fn(),
   verifierOrigineRequete: vi.fn(),
 }));
 
@@ -24,7 +26,15 @@ vi.mock("@/lib/groupServer", async () => {
     recupererGroupeActif: mocks.recupererGroupeActif,
   };
 });
-vi.mock("@/lib/baseDeDonnees", () => ({ pool: { query: mocks.query } }));
+vi.mock("@/lib/baseDeDonnees", () => ({
+  pool: {
+    query: mocks.query,
+    connect: async () => ({
+      query: mocks.clientQuery,
+      release: mocks.release,
+    }),
+  },
+}));
 vi.mock("@/lib/api/securiteRequetes", () => ({
   verifierOrigineRequete: mocks.verifierOrigineRequete,
 }));
@@ -58,6 +68,7 @@ describe("/api/group/parametres", () => {
         kmActif: false,
         kmTaux: 0.354,
         kmTauxMajLe: "2025-11-05",
+        historiqueActif: false,
       },
     });
     mocks.query.mockResolvedValue({ rowCount: 1, rows: [] });
@@ -80,6 +91,7 @@ describe("/api/group/parametres", () => {
         kmActif: false,
         kmTaux: 0.354,
         kmTauxMajLe: "2025-11-05",
+        historiqueActif: false,
       },
     });
   });
@@ -133,6 +145,7 @@ describe("/api/group/parametres", () => {
         kmActif: false,
         kmTaux: 0.354,
         kmTauxMajLe: "2025-11-05",
+        historiqueActif: false,
       },
     });
     expect(mocks.query.mock.calls[0][0]).toMatch(/ON CONFLICT/);
@@ -145,6 +158,7 @@ describe("/api/group/parametres", () => {
       false,
       0.354,
       "2025-11-05",
+      false,
     ]);
   });
 
@@ -158,6 +172,7 @@ describe("/api/group/parametres", () => {
         kmActif: false,
         kmTaux: 0.354,
         kmTauxMajLe: "2025-11-05",
+        historiqueActif: false,
       },
     });
 
@@ -178,6 +193,7 @@ describe("/api/group/parametres", () => {
       false,
       0.354,
       "2025-11-05",
+      false,
     ]);
   });
 
@@ -199,6 +215,7 @@ describe("/api/group/parametres", () => {
       false,
       0.354,
       "2025-11-05",
+      false,
     ]);
   });
 
@@ -222,6 +239,7 @@ describe("/api/group/parametres", () => {
       false,
       0.354,
       "2025-11-05",
+      false,
     ]);
   });
 
@@ -244,6 +262,7 @@ describe("/api/group/parametres", () => {
       false,
       0.354,
       "2025-11-05",
+      false,
     ]);
   });
 
@@ -264,6 +283,7 @@ describe("/api/group/parametres", () => {
         kmActif: false,
         kmTaux: 0.354,
         kmTauxMajLe: "2025-11-05",
+        historiqueActif: false,
       },
     });
 
@@ -279,6 +299,7 @@ describe("/api/group/parametres", () => {
       true,
       0.354,
       "2025-11-05",
+      false,
     ]);
   });
 
@@ -292,6 +313,7 @@ describe("/api/group/parametres", () => {
         kmActif: true,
         kmTaux: 0.4,
         kmTauxMajLe: "2026-01-01",
+        historiqueActif: false,
       },
     });
 
@@ -305,6 +327,7 @@ describe("/api/group/parametres", () => {
       false,
       0.4,
       "2026-01-01",
+      false,
     ]);
   });
 
@@ -318,6 +341,7 @@ describe("/api/group/parametres", () => {
         kmActif: true,
         kmTaux: 0.354,
         kmTauxMajLe: "2025-11-05",
+        historiqueActif: false,
       },
     });
 
@@ -340,5 +364,86 @@ describe("/api/group/parametres", () => {
 
     expect(reponse.status).toBe(403);
     expect(mocks.query).not.toHaveBeenCalled();
+  });
+
+  describe("historique", () => {
+    const groupeAvecHistorique = (historiqueActif: boolean) =>
+      mocks.recupererGroupeActif.mockResolvedValue({
+        parametres: {
+          scanJustificatifsActif: false,
+          convertirJustificatifsEnPdf: false,
+          moyensPaiement: ["Espèces du groupe"],
+          ndfSigneeActif: false,
+          kmActif: false,
+          kmTaux: 0.354,
+          kmTauxMajLe: "2025-11-05",
+          historiqueActif,
+        },
+      });
+
+    beforeEach(() => {
+      mocks.clientQuery.mockResolvedValue({ rowCount: 3, rows: [] });
+    });
+
+    it("active l'historique par l'upsert habituel", async () => {
+      groupeAvecHistorique(false);
+
+      const reponse = await patch({ historiqueActif: true });
+
+      expect(reponse.status).toBe(200);
+      expect(mocks.query.mock.calls[0][1].at(-1)).toBe(true);
+      expect(mocks.clientQuery).not.toHaveBeenCalled();
+    });
+
+    it("refuse la désactivation sans confirmation explicite", async () => {
+      groupeAvecHistorique(true);
+
+      const reponse = await patch({ historiqueActif: false });
+
+      expect(reponse.status).toBe(400);
+      expect(mocks.query).not.toHaveBeenCalled();
+      expect(mocks.clientQuery).not.toHaveBeenCalled();
+    });
+
+    it("désactive et supprime l'historique du groupe dans une transaction", async () => {
+      groupeAvecHistorique(true);
+
+      const reponse = await patch({
+        historiqueActif: false,
+        confirmationSuppressionHistorique: true,
+      });
+
+      expect(reponse.status).toBe(200);
+      await expect(reponse.json()).resolves.toMatchObject({
+        parametres: { historiqueActif: false },
+      });
+      const instructions = mocks.clientQuery.mock.calls.map(
+        ([texte]) => String(texte).trim().split(/\s+/)[0],
+      );
+      expect(instructions).toEqual(["BEGIN", "INSERT", "DELETE", "COMMIT"]);
+      expect(mocks.clientQuery.mock.calls[2][1]).toEqual(["org_1"]);
+      expect(mocks.query).not.toHaveBeenCalled();
+      expect(mocks.release).toHaveBeenCalled();
+    });
+
+    it("annule tout si la suppression échoue", async () => {
+      groupeAvecHistorique(true);
+      mocks.clientQuery.mockImplementation(async (texte: string) => {
+        if (texte.startsWith("DELETE")) throw new Error("ECHEC");
+        return { rowCount: 0, rows: [] };
+      });
+
+      const reponse = await patch({
+        historiqueActif: false,
+        confirmationSuppressionHistorique: true,
+      });
+
+      expect(reponse.status).toBe(500);
+      const instructions = mocks.clientQuery.mock.calls.map(
+        ([texte]) => String(texte).trim().split(/\s+/)[0],
+      );
+      expect(instructions).toContain("ROLLBACK");
+      expect(instructions).not.toContain("COMMIT");
+    });
   });
 });

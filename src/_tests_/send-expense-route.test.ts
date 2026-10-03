@@ -84,6 +84,9 @@ describe("POST /api/send-expense", () => {
         name: "Jean Dupont",
       },
     });
+    mocks.requeteClient.mockResolvedValue({
+      rows: [{ historique_actif: false }],
+    });
     mocks.verifierOrigineRequete.mockReturnValue(null);
     mocks.verifierRateLimit.mockReturnValue({ autorise: true });
     mocks.validerCorpsRequete.mockReturnValue({
@@ -233,7 +236,85 @@ describe("POST /api/send-expense", () => {
       ),
     ).toEqual(["image - 01.jpg", "image - 02.jpg"]);
     expect(mocks.reserverNumeros).not.toHaveBeenCalled();
-    expect(mocks.requeteClient).not.toHaveBeenCalled();
+    // Transaction de l'historique (sans détail ici) : aucune réservation de numéro.
+    expect(mocks.requeteClient.mock.calls.map(([texte]) => texte)).toEqual([
+      "BEGIN",
+      "COMMIT",
+    ]);
+  });
+
+  it("sans format, enregistre l'historique de l'envoi (unité, auteur, lignes) avant l'e-mail", async () => {
+    mocks.recupererRoleMembre.mockResolvedValue("owner");
+    mocks.requeteClient.mockImplementation(async (texte: string) =>
+      texte.includes("historique_actif")
+        ? { rows: [{ historique_actif: true }] }
+        : { rows: [] },
+    );
+    const corps = mocks.validerCorpsRequete();
+    corps.donneesEmail.detailsDepenses = [
+      {
+        date: "2026-01-01",
+        modePaiement: "Carte de procurement",
+        activite: "",
+        description: "Courses",
+        lignes: [{ categorie: "Formation", montant: 12 }],
+      },
+    ];
+    mocks.validerCorpsRequete.mockReturnValue(corps);
+
+    const reponse = await POST(REQUETE_BASE() as never);
+
+    expect(reponse.status).toBe(200);
+    const insertion = mocks.requeteClient.mock.calls.find(([texte]) =>
+      String(texte).includes("INSERT INTO scouticket_historique"),
+    );
+    expect(insertion?.[1]).toEqual(
+      expect.arrayContaining([
+        "org_1",
+        "depense",
+        "farfadets",
+        "Farfadets",
+        "#6CC24A",
+        null,
+        12,
+        "user_1",
+      ]),
+    );
+    expect(
+      mocks.requeteClient.mock.invocationCallOrder[
+        mocks.requeteClient.mock.calls.findIndex(([texte]) =>
+          String(texte).includes("INSERT INTO"),
+        )
+      ],
+    ).toBeLessThan(mocks.envoyerEmailDepense.mock.invocationCallOrder[0]);
+  });
+
+  it("n'envoie pas l'e-mail et répond en erreur si l'historique ne peut pas être écrit", async () => {
+    mocks.recupererRoleMembre.mockResolvedValue("owner");
+    mocks.requeteClient.mockImplementation(async (texte: string) => {
+      if (texte.includes("historique_actif"))
+        return { rows: [{ historique_actif: true }] };
+      if (texte.includes("INSERT INTO")) throw new Error("INSERTION_ECHOUEE");
+      return { rows: [] };
+    });
+    const corps = mocks.validerCorpsRequete();
+    corps.donneesEmail.detailsDepenses = [
+      {
+        date: "2026-01-01",
+        modePaiement: "Carte de procurement",
+        activite: "",
+        description: "",
+        lignes: [{ categorie: "Formation", montant: 12 }],
+      },
+    ];
+    mocks.validerCorpsRequete.mockReturnValue(corps);
+
+    const reponse = await POST(REQUETE_BASE() as never);
+
+    expect(reponse.status).toBe(500);
+    expect(mocks.envoyerEmailDepense).not.toHaveBeenCalled();
+    expect(mocks.requeteClient).toHaveBeenCalledWith("ROLLBACK");
+    expect(mocks.requeteClient).not.toHaveBeenCalledWith("COMMIT");
   });
 
   it("sans format, conserve le nom d'un fichier unique", async () => {

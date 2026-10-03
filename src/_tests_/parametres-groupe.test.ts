@@ -16,6 +16,7 @@ describe("parametresGroupe", () => {
       kmTaux: 0.354,
       kmTauxMajLe: "2025-11-05",
       logoPersonnalise: false,
+      historiqueActif: false,
     });
   });
 

@@ -8,6 +8,11 @@ import {
   type ParametresAnneeComptable,
 } from "@/lib/nomenclature";
 import { versRecetteNomenclature } from "@/lib/recettes";
+import { versEntreeRecette, type ContexteHistorique } from "@/lib/historique";
+import {
+  enregistrerHistorique,
+  envoyerAvecHistorique,
+} from "@/lib/historiqueServer";
 import { convertirPiecesJointesEnPdf } from "@/lib/conversionJustificatifs";
 import { pool } from "@/lib/baseDeDonnees";
 import { jsonError, verifierErreurSmtp } from "@/lib/api/utils";
@@ -47,13 +52,15 @@ function validateEnv() {
  * Un numéro est réservé dès qu'un format est configuré, même sans pièce
  * jointe : la référence doit apparaître dans le corps de l'e-mail dans tous
  * les cas. Comme pour les dépenses, la réservation n'est validée qu'après
- * l'envoi réussi de l'e-mail.
+ * l'envoi réussi de l'e-mail. L'historique est écrit dans la même transaction,
+ * avant l'envoi : un échec d'insertion annule la réservation et l'envoi.
  */
 async function envoyerAvecNomenclature(
   donneesEmail: DonneesEmailRecette,
   identifiantOrganisation: string,
   format: string,
   anneeComptable: ParametresAnneeComptable,
+  contexteHistorique: ContexteHistorique,
 ) {
   const recette = versRecetteNomenclature(donneesEmail.detailRecette);
   const client = await pool.connect();
@@ -107,6 +114,12 @@ async function envoyerAvecNomenclature(
         { ...donneesEmail.piecesJointes[0], nomFichierNormalise: nomFichier },
       ];
     }
+    await enregistrerHistorique(
+      client,
+      identifiantOrganisation,
+      contexteHistorique,
+      [versEntreeRecette(donneesEmail.detailRecette)],
+    );
     const resultat = await envoyerEmailRecette(donneesEmail);
     await client.query("COMMIT");
     return resultat;
@@ -188,6 +201,12 @@ export async function POST(req: NextRequest) {
           donneesEmail.piecesJointes,
         );
 
+      const contexteHistorique: ContexteHistorique = {
+        auteurUserId: identifiantUtilisateur,
+        uniteId: unit.id,
+        uniteLabel: unit.label,
+        uniteCouleur: unit.color,
+      };
       const { format } = group.nomenclature.recette;
       let resultat;
       if (format) {
@@ -198,6 +217,7 @@ export async function POST(req: NextRequest) {
           identifiantOrganisation,
           format,
           group.nomenclature.anneeComptable,
+          contexteHistorique,
         );
       } else {
         if (donneesEmail.piecesJointes.length > 0) {
@@ -210,7 +230,14 @@ export async function POST(req: NextRequest) {
             },
           ];
         }
-        resultat = await envoyerEmailRecette(donneesEmail);
+        resultat = await envoyerAvecHistorique(
+          identifiantOrganisation,
+          {
+            contexte: contexteHistorique,
+            entrees: [versEntreeRecette(donneesEmail.detailRecette)],
+          },
+          () => envoyerEmailRecette(donneesEmail),
+        );
       }
       return NextResponse.json({
         success: true,

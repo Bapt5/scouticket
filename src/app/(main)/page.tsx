@@ -433,6 +433,14 @@ export default function Home() {
           ) : (
             <>
               <div className="space-y-2">
+                {groupe.parametres?.historiqueActif && (
+                  <Link
+                    href="/historique"
+                    className="block w-full rounded-xl border border-zinc-300 px-4 py-3 text-center font-medium text-[#1E3A8A] transition-colors hover:bg-zinc-50"
+                  >
+                    Historique
+                  </Link>
+                )}
                 {groupe.isAdmin && (
                   <>
                     <button

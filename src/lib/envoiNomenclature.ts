@@ -8,6 +8,22 @@ import {
 import { versDepenseNomenclature } from "@/lib/depenses";
 import { pool } from "@/lib/baseDeDonnees";
 import { reserverNumeros } from "@/lib/groupServer";
+import {
+  typeHistoriqueDepense,
+  versEntreesDepense,
+  type ContexteHistorique,
+  type EntreeHistorique,
+  type TypeHistorique,
+} from "@/lib/historique";
+import { enregistrerHistorique } from "@/lib/historiqueServer";
+
+/** Historique de l'envoi : `type` remplace le type déduit de `typeEnvoi`. */
+export interface OptionsHistoriqueDepense {
+  contexte: ContexteHistorique;
+  type?: Exclude<TypeHistorique, "recette">;
+  /** Champs imposés à chaque entrée (ex. ne pas copier un e-mail du texte envoyé). */
+  surcharge?: Partial<EntreeHistorique>;
+}
 
 /**
  * Envoie une dépense (note de frais ou dépense de groupe) en réservant et en
@@ -18,12 +34,17 @@ import { reserverNumeros } from "@/lib/groupServer";
  * (`src/lib/ndfSignature/signer.ts`), qui envoie le PDF final signé comme
  * une dépense de groupe (le remboursement est fait, l'argent du groupe est
  * sorti).
+ *
+ * Quand `historique` est fourni, les entrées d'historique sont écrites dans la
+ * même transaction, avant l'envoi : un échec d'insertion annule la réservation
+ * des numéros et l'e-mail n'est pas envoyé.
  */
 export async function envoyerAvecNomenclature(
   donneesEmail: DonneesEmailDepense,
   identifiantOrganisation: string,
   format: string,
   anneeComptable: ParametresAnneeComptable,
+  historique?: OptionsHistoriqueDepense,
 ) {
   const depenses = donneesEmail.detailsDepenses.map(versDepenseNomenclature);
   const client = await pool.connect();
@@ -71,6 +92,16 @@ export async function envoyerAvecNomenclature(
     donneesEmail.detailsDepenses = donneesEmail.detailsDepenses.map(
       (detail, index) => ({ ...detail, reference: references[index] }),
     );
+    if (historique)
+      await enregistrerHistorique(
+        client,
+        identifiantOrganisation,
+        historique.contexte,
+        versEntreesDepense(
+          donneesEmail.detailsDepenses,
+          historique.type ?? typeHistoriqueDepense(donneesEmail.typeEnvoi),
+        ).map((entree) => ({ ...entree, ...historique.surcharge })),
+      );
     const resultat = await envoyerEmailDepense(donneesEmail);
     await client.query("COMMIT");
     return resultat;

@@ -12,6 +12,7 @@ const bd = vi.hoisted(() => ({
   emails: [] as { type: string; [cle: string]: unknown }[],
   envoiDepense: vi.fn(),
   envoiNomenclature: vi.fn(),
+  envoiAvecHistorique: vi.fn(),
   formatNomenclature: null as string | null,
   utilisateurs: new Map<string, { nom: string; email: string }>(),
   prochainIdCode: 1,
@@ -110,8 +111,20 @@ vi.mock("@/lib/envoiNomenclature", () => ({
     bd.envoiNomenclature(...args),
 }));
 
+vi.mock("@/lib/historiqueServer", () => ({
+  envoyerAvecHistorique: async (
+    organisation: string,
+    historique: unknown,
+    envoyer: () => Promise<unknown>,
+  ) => {
+    bd.envoiAvecHistorique(organisation, historique);
+    return envoyer();
+  },
+}));
+
 vi.mock("@/lib/groupServer", () => ({
   recupererGroupeActif: async () => ({
+    unites: [{ id: "unite-1", label: "Louveteaux", color: "#112233" }],
     nomenclature: {
       depense: { format: bd.formatNomenclature },
       anneeComptable: { mois: 1, jour: 1, format: "AAAA" },
@@ -268,6 +281,22 @@ describe("circuit de signature complet", () => {
 
     expect(bd.envoiNomenclature).not.toHaveBeenCalled();
     expect(bd.envoiDepense).toHaveBeenCalledTimes(1);
+    // Une seule entrée d'historique pour toute la note signée, sans e-mail copié.
+    expect(bd.envoiAvecHistorique).toHaveBeenCalledTimes(1);
+    const [organisationHistorique, historique] =
+      bd.envoiAvecHistorique.mock.calls[0];
+    expect(organisationHistorique).toBe("org-1");
+    expect(historique.contexte).toMatchObject({
+      auteurUserId: BENEFICIAIRE,
+      uniteId: "unite-1",
+      uniteLabel: "Louveteaux",
+    });
+    expect(historique.entrees).toHaveLength(1);
+    expect(historique.entrees[0]).toMatchObject({
+      type: "note-de-frais",
+      description: "Note de frais signée",
+    });
+    expect(JSON.stringify(historique)).not.toContain("@");
     const envoi = bd.envoiDepense.mock.calls[0][0];
     expect(envoi).toMatchObject({
       typeEnvoi: "depense-groupe",
@@ -304,7 +333,12 @@ describe("circuit de signature complet", () => {
 
     expect(bd.envoiDepense).not.toHaveBeenCalled();
     expect(bd.envoiNomenclature).toHaveBeenCalledTimes(1);
-    const [donnees, organisation, format] = bd.envoiNomenclature.mock.calls[0];
+    const [donnees, organisation, format, , historique] =
+      bd.envoiNomenclature.mock.calls[0];
+    expect(historique).toMatchObject({
+      type: "note-de-frais",
+      contexte: { auteurUserId: BENEFICIAIRE, uniteId: "unite-1" },
+    });
     expect(donnees.typeEnvoi).toBe("depense-groupe");
     expect(donnees.libelleTypeAffiche).toBe("Note de frais");
     expect(organisation).toBe("org-1");
