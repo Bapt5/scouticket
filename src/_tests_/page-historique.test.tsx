@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import PageHistorique from "../app/(main)/historique/page";
 
 vi.mock("@/lib/auth-client", () => ({
@@ -128,5 +128,83 @@ describe("Page Historique : année comptable mémorisée", () => {
     expect(dernierAppel()).toContain("anneeComptable=2025");
     expect((selecteur as HTMLSelectElement).value).toBe("2025");
     expect(localStorage.getItem(CLE)).toBe("2025");
+  });
+
+  describe("ouverture depuis un lien d'e-mail", () => {
+    const entree = {
+      id: "h-1",
+      envoiId: "e-1",
+      type: "depense",
+      date: "2026-03-10",
+      uniteId: "u1",
+      uniteLabel: "Louveteaux",
+      uniteCouleur: "#111111",
+      reference: "2026-001",
+      modePaiement: "Carte du groupe",
+      activite: "",
+      description: "Courses du camp",
+      montantTotal: 20,
+      lignes: [{ categorie: "Formation", montant: 20 }],
+      auteurNom: "Camille",
+      creeLe: "2026-03-10T10:00:00.000Z",
+      modifieLe: null,
+      modifieParNom: null,
+    };
+
+    const ouvrirAvec = (recherche: string) =>
+      window.history.replaceState(null, "", `/historique${recherche}`);
+
+    afterEach(() => ouvrirAvec(""));
+
+    it("ouvre le dialog de l'entrée, avec les droits renvoyés, et nettoie l'URL", async () => {
+      fetchMock.mockImplementation((url: string) => {
+        if (url === "/api/group/config") return reponse(config);
+        if (url === "/api/historique/h-1")
+          return reponse({ entree, responsable: true });
+        return reponse(historique);
+      });
+      ouvrirAvec("?entree=h-1");
+
+      render(<PageHistorique />);
+
+      const dialog = await screen.findByRole("dialog");
+      expect(dialog).toHaveTextContent("Courses du camp");
+      // Droits connus avant la fin du chargement de la liste.
+      expect(
+        await screen.findByRole("button", { name: "Modifier" }),
+      ).toBeVisible();
+      expect(window.location.search).toBe("");
+    });
+
+    it("avertit si l'entrée est introuvable ou hors des droits", async () => {
+      fetchMock.mockImplementation((url: string) => {
+        if (url === "/api/group/config") return reponse(config);
+        if (url.startsWith("/api/historique/"))
+          return Promise.resolve({
+            ok: false,
+            json: () => Promise.resolve({}),
+          });
+        return reponse(historique);
+      });
+      ouvrirAvec("?entree=inconnue");
+
+      render(<PageHistorique />);
+
+      expect(
+        await screen.findByText(/n’existe plus ou n’est pas accessible/),
+      ).toBeVisible();
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+
+    it("n'appelle pas l'entrée sans paramètre", async () => {
+      render(<PageHistorique />);
+
+      await waitFor(() => expect(appelsHistorique().length).toBeGreaterThan(0));
+      expect(
+        fetchMock.mock.calls.some(([url]) =>
+          String(url).startsWith("/api/historique/"),
+        ),
+      ).toBe(false);
+    });
   });
 });

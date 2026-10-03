@@ -15,6 +15,7 @@ import {
   type EntreeHistorique,
   type TypeHistorique,
 } from "@/lib/historique";
+import { lienHistorique } from "@/lib/historiqueLien";
 import { enregistrerHistorique } from "@/lib/historiqueServer";
 
 /** Historique de l'envoi : `type` remplace le type déduit de `typeEnvoi`. */
@@ -92,8 +93,8 @@ export async function envoyerAvecNomenclature(
     donneesEmail.detailsDepenses = donneesEmail.detailsDepenses.map(
       (detail, index) => ({ ...detail, reference: references[index] }),
     );
-    if (historique)
-      await enregistrerHistorique(
+    if (historique) {
+      const identifiants = await enregistrerHistorique(
         client,
         identifiantOrganisation,
         historique.contexte,
@@ -102,6 +103,8 @@ export async function envoyerAvecNomenclature(
           historique.type ?? typeHistoriqueDepense(donneesEmail.typeEnvoi),
         ).map((entree) => ({ ...entree, ...historique.surcharge })),
       );
+      donneesEmail.lienHistorique = lienHistorique(identifiants);
+    }
     const resultat = await envoyerEmailDepense(donneesEmail);
     await client.query("COMMIT");
     return resultat;

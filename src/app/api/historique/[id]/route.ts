@@ -89,7 +89,7 @@ export async function GET(requete: Request, { params }: Contexte) {
     const { id } = await params;
     const entree = await chargerEntree(acces, id);
     if (!entree) return jsonError("Entrée introuvable", 404);
-    return NextResponse.json({ entree });
+    return NextResponse.json({ entree, responsable: acces.responsable });
   });
 }
 

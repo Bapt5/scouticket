@@ -209,7 +209,11 @@ export async function POST(req: NextRequest) {
               typeHistoriqueDepense(donneesEmail.typeEnvoi),
             ),
           },
-          () => envoyerEmailDepense(donneesEmail),
+          (lienDansEmail) =>
+            envoyerEmailDepense({
+              ...donneesEmail,
+              lienHistorique: lienDansEmail,
+            }),
         );
       }
       return NextResponse.json({

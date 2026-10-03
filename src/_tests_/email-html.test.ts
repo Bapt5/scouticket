@@ -14,7 +14,11 @@ vi.mock("nodemailer", () => ({
   },
 }));
 
-import { envoyerEmailDepense, envoyerMail } from "@/lib/email";
+import {
+  envoyerEmailDepense,
+  envoyerEmailRecette,
+  envoyerMail,
+} from "@/lib/email";
 
 const pieceJointe = (nom: string) => ({
   nomAffiche: nom,
@@ -308,5 +312,77 @@ describe("templates HTML des e-mails", () => {
     expect(dernierMail().to).toBe(
       "tresorier1@example.test, tresorier2@example.test",
     );
+  });
+
+  describe("lien vers l'historique", () => {
+    const envoiDepense = (lienHistorique?: string) =>
+      envoyerEmailDepense({
+        typeEnvoi: "depense-groupe",
+        emailUtilisateur: "membre@example.test",
+        date: "2026-01-01",
+        branche: "Groupe",
+        emailsTresoriers: ["tresorerie@example.test"],
+        montant: 12,
+        piecesJointes: [pieceJointe("ticket.png")],
+        detailsDepenses: [
+          {
+            date: "2026-01-01",
+            description: "",
+            activite: "",
+            modePaiement: "Carte",
+            lignes: [{ categorie: "Carburant", montant: 12 }],
+          },
+        ],
+        lienHistorique,
+      });
+
+    it("ajoute un bouton et une ligne de texte à l'e-mail de dépense", async () => {
+      await envoiDepense("https://app.test/historique?entree=abc");
+
+      const { html, text } = dernierMail();
+      expect(html).toContain('href="https://app.test/historique?entree=abc"');
+      expect(html).toContain("Consulter dans l'historique</a>");
+      expect(text).toContain(
+        "Consulter dans l'historique : https://app.test/historique?entree=abc",
+      );
+    });
+
+    it("n'ajoute rien quand l'historique est désactivé", async () => {
+      await envoiDepense(undefined);
+
+      const { html, text } = dernierMail();
+      expect(html).not.toContain("historique");
+      expect(text).not.toContain("historique");
+    });
+
+    it("échappe le lien dans le HTML", async () => {
+      await envoiDepense('https://app.test/h?a="><script>x</script>');
+
+      expect(dernierMail().html).not.toContain("<script>x</script>");
+    });
+
+    it("ajoute le lien à l'e-mail de recette", async () => {
+      await envoyerEmailRecette({
+        emailUtilisateur: "membre@example.test",
+        date: "2026-01-01",
+        branche: "Groupe",
+        emailsTresoriers: ["tresorerie@example.test"],
+        montant: 45,
+        piecesJointes: [],
+        detailRecette: {
+          date: "2026-01-01",
+          modePaiement: "Virement",
+          description: "",
+          lignes: [{ categorie: "Cotisations SGDF", montant: 45 }],
+        },
+        lienHistorique: "https://app.test/historique",
+      });
+
+      const { html, text } = dernierMail();
+      expect(html).toContain('href="https://app.test/historique"');
+      expect(text).toContain(
+        "Consulter dans l'historique : https://app.test/historique",
+      );
+    });
   });
 });

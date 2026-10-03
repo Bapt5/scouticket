@@ -51,6 +51,15 @@ L'écriture se fait dans la **même transaction** que la réservation des numér
 
 Points d'appel : `POST /api/send-expense`, `POST /api/send-recette` et la validation finale d'une note signée (`src/lib/ndfSignature/signer.ts`, type `note-de-frais` forcé).
 
+## Lien dans l'e-mail
+
+Quand l'historique est activé, les e-mails de dépense, de recette et de note de frais contiennent un bouton « Consulter dans l'historique » (et une ligne équivalente dans la version texte), construit à partir de `APP_URL` (`src/lib/historiqueLien.ts`) :
+
+- une seule entrée créée par l'envoi (dépense, recette, note signée, note non signée avec un seul justificatif) : le lien ouvre `/historique?entree=<id>`, la page affiche directement le dialog de cette entrée ;
+- plusieurs entrées (note de frais non signée avec plusieurs justificatifs) : le lien ouvre simplement `/historique`.
+
+Sans historique activé ou sans `APP_URL`, aucun lien n'est ajouté et l'envoi n'échoue pas. Le lien ne contient qu'un identifiant opaque : l'accès exige d'être connecté, et l'entrée reste soumise aux droits habituels (un membre ne voit que ses unités). Si l'entrée n'existe plus (supprimée) ou n'est pas accessible, la page l'indique. Le paramètre est retiré de l'URL après ouverture, pour qu'un rechargement ne rouvre pas le dialog.
+
 ## Droits d'accès
 
 - **Responsables** (rôles `admin` et `owner`) : lecture, modification et suppression de toutes les entrées.

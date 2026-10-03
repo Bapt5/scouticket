@@ -127,6 +127,9 @@ export default function PageHistorique() {
   // La première requête attend la lecture de l'année mémorisée (évite une requête « Toutes » inutile).
   const [anneeRestauree, setAnneeRestauree] = useState(false);
   const identifiantOrganisation = organisation?.id;
+  // Entrée ouverte depuis un lien d'e-mail (`?entree=`) : droits connus avant la liste.
+  const [responsableLien, setResponsableLien] = useState<boolean | null>(null);
+  const [avisLien, setAvisLien] = useState("");
 
   useEffect(() => {
     fetch("/api/group/config")
@@ -144,6 +147,33 @@ export default function PageHistorique() {
     setAnneeRestauree(true);
   }, [identifiantOrganisation]);
 
+  const actif = config?.parametres?.historiqueActif ?? false;
+
+  // Lien d'un e-mail : ouvre directement le détail de l'entrée, une seule fois.
+  useEffect(() => {
+    if (!actif) return;
+    const identifiant = new URLSearchParams(window.location.search).get(
+      "entree",
+    );
+    if (!identifiant) return;
+    window.history.replaceState(null, "", window.location.pathname);
+    fetch(`/api/historique/${encodeURIComponent(identifiant)}`)
+      .then(async (retour) => {
+        if (!retour.ok) throw new Error("ENTREE_INTROUVABLE");
+        const corps = (await retour.json()) as {
+          entree: LigneHistoriqueApi;
+          responsable: boolean;
+        };
+        setResponsableLien(corps.responsable);
+        setSelection(corps.entree);
+      })
+      .catch(() =>
+        setAvisLien(
+          "Cette entrée n’existe plus ou n’est pas accessible avec vos droits.",
+        ),
+      );
+  }, [actif]);
+
   // La recherche texte est appliquée après une courte pause de saisie.
   useEffect(() => {
     const minuteur = setTimeout(
@@ -158,7 +188,6 @@ export default function PageHistorique() {
     return () => clearTimeout(minuteur);
   }, [recherche]);
 
-  const actif = config?.parametres?.historiqueActif ?? false;
   useEffect(() => {
     if (!actif || !anneeRestauree) return;
     const annulation = new AbortController();
@@ -361,6 +390,11 @@ export default function PageHistorique() {
               </a>
             </div>
 
+            {avisLien && (
+              <p role="status" className="mt-4 text-sm text-zinc-700">
+                {avisLien}
+              </p>
+            )}
             {erreur && (
               <p role="alert" className="mt-4 text-sm text-red-700">
                 {erreur}
@@ -543,7 +577,7 @@ export default function PageHistorique() {
         <DialogHistorique
           key={selection.id}
           entree={selection}
-          responsable={reponse?.responsable ?? false}
+          responsable={reponse?.responsable ?? responsableLien ?? false}
           unites={config?.units ?? []}
           moyensPaiement={config?.parametres?.moyensPaiement ?? []}
           onFermer={() => setSelection(null)}

@@ -238,6 +238,24 @@ describe("/api/historique/[id]", () => {
     expect(mocks.query.mock.calls[0][0]).toContain("h.unite_id = ANY");
   });
 
+  it("GET renvoie l'entrée et les droits de l'appelant (ouverture depuis un e-mail)", async () => {
+    mocks.query.mockResolvedValue({ rows: [ligneSql()] });
+
+    const responsable = await (
+      await GET_ENTREE(requete("/api/historique/h-1"), contexteId)
+    ).json();
+    mocks.acces.mockResolvedValue({ ...accesMembre, unitesAutorisees: null });
+    const membre = await (
+      await GET_ENTREE(requete("/api/historique/h-1"), contexteId)
+    ).json();
+
+    expect(responsable).toMatchObject({
+      entree: { id: "h-1" },
+      responsable: true,
+    });
+    expect(membre.responsable).toBe(false);
+  });
+
   it("PATCH et DELETE sont réservés aux responsables", async () => {
     mocks.acces.mockResolvedValue(accesMembre);
 

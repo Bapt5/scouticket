@@ -64,6 +64,7 @@ const anneeComptable = { mois: 1, jour: 1, format: "debut" as const };
 
 beforeEach(() => {
   vi.clearAllMocks();
+  process.env.APP_URL = "https://app.test/";
   mocks.requetes = [];
   mocks.historiqueActif = true;
   mocks.echecInsertion = false;
@@ -188,6 +189,107 @@ describe("envoyerAvecNomenclature avec historique", () => {
       "ENVOI_EMAIL",
       "COMMIT",
     ]);
+  });
+});
+
+describe("lien vers l'historique dans l'e-mail", () => {
+  const insertions = () =>
+    mocks.query.mock.calls.filter(([texte]) =>
+      String(texte).includes("INSERT INTO scouticket_historique"),
+    );
+
+  it("pointe vers l'entrée quand l'envoi n'en produit qu'une", async () => {
+    const unSeulJustificatif = donnees();
+    unSeulJustificatif.detailsDepenses = [
+      unSeulJustificatif.detailsDepenses[0],
+    ];
+
+    await envoyerAvecNomenclature(
+      unSeulJustificatif,
+      "org-1",
+      "{GlobalNumero}",
+      anneeComptable,
+      { contexte },
+    );
+
+    const identifiant = insertions()[0][1][0];
+    expect(mocks.envoyerEmailDepense.mock.calls[0][0].lienHistorique).toBe(
+      `https://app.test/historique?entree=${identifiant}`,
+    );
+  });
+
+  it("pointe vers la page quand l'envoi produit plusieurs entrées", async () => {
+    await envoyerAvecNomenclature(
+      donnees(),
+      "org-1",
+      "{GlobalNumero}",
+      anneeComptable,
+      { contexte },
+    );
+
+    expect(insertions()).toHaveLength(2);
+    expect(mocks.envoyerEmailDepense.mock.calls[0][0].lienHistorique).toBe(
+      "https://app.test/historique",
+    );
+  });
+
+  it("n'ajoute aucun lien quand l'historique est désactivé", async () => {
+    mocks.historiqueActif = false;
+
+    await envoyerAvecNomenclature(
+      donnees(),
+      "org-1",
+      "{GlobalNumero}",
+      anneeComptable,
+      { contexte },
+    );
+
+    expect(
+      mocks.envoyerEmailDepense.mock.calls[0][0].lienHistorique,
+    ).toBeUndefined();
+  });
+
+  it("sans APP_URL, n'échoue pas et n'ajoute aucun lien", async () => {
+    delete process.env.APP_URL;
+
+    await envoyerAvecNomenclature(
+      donnees(),
+      "org-1",
+      "{GlobalNumero}",
+      anneeComptable,
+      { contexte },
+    );
+
+    expect(
+      mocks.envoyerEmailDepense.mock.calls[0][0].lienHistorique,
+    ).toBeUndefined();
+  });
+
+  it("transmet le lien à l'envoi sans nomenclature", async () => {
+    const envoyer = vi.fn().mockResolvedValue("ok");
+
+    await envoyerAvecHistorique(
+      "org-1",
+      {
+        contexte,
+        entrees: [
+          {
+            type: "recette",
+            date: "2026-03-10",
+            reference: null,
+            modePaiement: "Virement",
+            activite: "",
+            description: "",
+            lignes: [{ categorie: "Cotisations SGDF", montant: 5 }],
+          },
+        ],
+      },
+      envoyer,
+    );
+
+    expect(envoyer).toHaveBeenCalledWith(
+      `https://app.test/historique?entree=${insertions()[0][1][0]}`,
+    );
   });
 });
 

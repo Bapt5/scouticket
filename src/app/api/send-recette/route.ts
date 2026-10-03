@@ -9,6 +9,7 @@ import {
 } from "@/lib/nomenclature";
 import { versRecetteNomenclature } from "@/lib/recettes";
 import { versEntreeRecette, type ContexteHistorique } from "@/lib/historique";
+import { lienHistorique } from "@/lib/historiqueLien";
 import {
   enregistrerHistorique,
   envoyerAvecHistorique,
@@ -114,12 +115,13 @@ async function envoyerAvecNomenclature(
         { ...donneesEmail.piecesJointes[0], nomFichierNormalise: nomFichier },
       ];
     }
-    await enregistrerHistorique(
+    const identifiants = await enregistrerHistorique(
       client,
       identifiantOrganisation,
       contexteHistorique,
       [versEntreeRecette(donneesEmail.detailRecette)],
     );
+    donneesEmail.lienHistorique = lienHistorique(identifiants);
     const resultat = await envoyerEmailRecette(donneesEmail);
     await client.query("COMMIT");
     return resultat;
@@ -236,7 +238,11 @@ export async function POST(req: NextRequest) {
             contexte: contexteHistorique,
             entrees: [versEntreeRecette(donneesEmail.detailRecette)],
           },
-          () => envoyerEmailRecette(donneesEmail),
+          (lienDansEmail) =>
+            envoyerEmailRecette({
+              ...donneesEmail,
+              lienHistorique: lienDansEmail,
+            }),
         );
       }
       return NextResponse.json({

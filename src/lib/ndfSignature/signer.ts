@@ -356,7 +356,11 @@ export async function traiterSignature(params: {
           "note-de-frais",
         ).map((entree) => ({ ...entree, ...surchargeHistorique })),
       },
-      () => envoyerEmailDepense(donneesEmailFinal),
+      (lienDansEmail) =>
+        envoyerEmailDepense({
+          ...donneesEmailFinal,
+          lienHistorique: lienDansEmail,
+        }),
     );
   }
 

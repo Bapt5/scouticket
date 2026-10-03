@@ -39,6 +39,8 @@ export interface DonneesEmailDepense {
   groupe?: string;
   couleur?: string;
   emailsTresoriers?: string[];
+  /** Lien vers l'historique (entrée ou page), quand l'historique est activé. */
+  lienHistorique?: string;
 }
 
 const schemaTexteHtml = z
@@ -55,6 +57,17 @@ const schemaTexteHtml = z
 const schemaCouleurHtml = z.string().regex(/^#[0-9a-f]{6}$/i);
 
 export const echapperHtml = (valeur: string) => schemaTexteHtml.parse(valeur);
+
+/** Bouton vers l'historique du groupe (seulement quand l'historique est activé). */
+const blocLienHistoriqueHtml = (lien: string | undefined, couleur: string) =>
+  lien
+    ? `<div style="text-align: center; margin: 24px 0;">
+          <a href="${echapperHtml(lien)}" style="display: inline-block; background-color: ${couleur}; color: #ffffff; padding: 12px 20px; border-radius: 6px; font-weight: bold; text-decoration: none;">Consulter dans l'historique</a>
+        </div>`
+    : "";
+
+const ligneLienHistoriqueTexte = (lien: string | undefined) =>
+  lien ? `Consulter dans l'historique : ${lien}\n\n` : "";
 
 // Configuration du transporteur SMTP générique
 export const creerTransporteurEmail = () => {
@@ -204,6 +217,7 @@ export const envoyerEmailDepense = async (donnees: DonneesEmailDepense) => {
     groupe = "Groupe scout",
     couleur = "#1E3A8A",
     emailsTresoriers,
+    lienHistorique,
   } = donnees;
 
   const piecesJointesAnalysees = piecesJointes.map(analyserPieceJointe);
@@ -375,6 +389,8 @@ export const envoyerEmailDepense = async (donnees: DonneesEmailDepense) => {
           </ul>
         </div>
 
+        ${blocLienHistoriqueHtml(lienHistorique, couleurPrincipale)}
+
         <p style="color: #6B7280; font-size: 14px; margin-top: 30px;">
           Email envoyé automatiquement par Scouticket.
         </p>
@@ -421,7 +437,7 @@ ${sansJustificatifAttesteParResponsable ? "\n⚠️ Dépense envoyée sans justi
 Pièce(s) jointe(s) (${toutesPiecesJointes.length}) :
 ${toutesPiecesJointes.map((pieceJointe) => `- ${pieceJointe.filename}`).join("\n")}
 
-Email envoyé automatiquement par Scouticket.
+${ligneLienHistoriqueTexte(lienHistorique)}Email envoyé automatiquement par Scouticket.
   `;
 
   const optionsEmail = {
@@ -456,6 +472,8 @@ export interface DonneesEmailRecette {
   groupe?: string;
   couleur?: string;
   emailsTresoriers?: string[];
+  /** Lien vers l'historique (entrée ou page), quand l'historique est activé. */
+  lienHistorique?: string;
 }
 
 // Compose et envoie l'e-mail de recette, avec une pièce jointe facultative.
@@ -470,6 +488,7 @@ export const envoyerEmailRecette = async (donnees: DonneesEmailRecette) => {
     groupe = "Groupe scout",
     couleur = "#1E3A8A",
     emailsTresoriers,
+    lienHistorique,
   } = donnees;
 
   if (!emailsTresoriers || emailsTresoriers.length === 0)
@@ -560,6 +579,8 @@ export const envoyerEmailRecette = async (donnees: DonneesEmailRecette) => {
           }
         </div>
 
+        ${blocLienHistoriqueHtml(lienHistorique, couleurPrincipale)}
+
         <p style="color: #6B7280; font-size: 14px; margin-top: 30px;">
           Email envoyé automatiquement par Scouticket.
         </p>
@@ -585,7 +606,7 @@ Déclarant : ${emailUtilisateur}
 Pièce(s) jointe(s) (${piecesJointesAnalysees.length}) :
 ${piecesJointesAnalysees.length === 0 ? "Aucune pièce jointe" : piecesJointesAnalysees.map((pieceJointe) => `- ${pieceJointe.filename}`).join("\n")}
 
-Email envoyé automatiquement par Scouticket.
+${ligneLienHistoriqueTexte(lienHistorique)}Email envoyé automatiquement par Scouticket.
   `;
 
   const optionsEmail = {
