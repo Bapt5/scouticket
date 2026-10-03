@@ -112,6 +112,9 @@ describe("POST /api/send-recette", () => {
       },
     });
     mocks.recupererRoleMembre.mockResolvedValue("owner");
+    mocks.requeteClient.mockResolvedValue({
+      rows: [{ historique_actif: false }],
+    });
     mocks.envoyerEmailRecette.mockResolvedValue({ messageId: "abc" });
   });
 
@@ -121,6 +124,46 @@ describe("POST /api/send-recette", () => {
     expect(reponse.status).toBe(200);
     expect(mocks.reserverNumeros).not.toHaveBeenCalled();
     expect(mocks.envoyerEmailRecette).toHaveBeenCalledTimes(1);
+  });
+
+  it("enregistre la recette dans l'historique avant l'e-mail", async () => {
+    mocks.requeteClient.mockImplementation(async (texte: string) =>
+      texte.includes("historique_actif")
+        ? { rows: [{ historique_actif: true }] }
+        : { rows: [] },
+    );
+
+    const reponse = await POST(REQUETE_BASE() as never);
+
+    expect(reponse.status).toBe(200);
+    const insertion = mocks.requeteClient.mock.calls.find(([texte]) =>
+      String(texte).includes("INSERT INTO scouticket_historique"),
+    );
+    expect(insertion?.[1]).toEqual(
+      expect.arrayContaining([
+        "org_1",
+        "recette",
+        "farfadets",
+        "Farfadets",
+        "Virement",
+        45,
+        "user_1",
+      ]),
+    );
+  });
+
+  it("échoue sans envoyer l'e-mail si l'historique ne peut pas être écrit", async () => {
+    mocks.requeteClient.mockImplementation(async (texte: string) => {
+      if (texte.includes("historique_actif"))
+        return { rows: [{ historique_actif: true }] };
+      if (texte.includes("INSERT INTO")) throw new Error("INSERTION_ECHOUEE");
+      return { rows: [] };
+    });
+    const echec = await POST(REQUETE_BASE() as never);
+
+    expect(echec.status).toBe(500);
+    expect(mocks.envoyerEmailRecette).not.toHaveBeenCalled();
+    expect(mocks.requeteClient).not.toHaveBeenCalledWith("COMMIT");
   });
 
   it("refuse tant que le groupe n'a aucun trésorier", async () => {
@@ -177,7 +220,9 @@ describe("POST /api/send-recette", () => {
         },
       });
       mocks.reserverNumeros.mockResolvedValue({ premierGlobal: 7 });
-      mocks.requeteClient.mockResolvedValue({});
+      mocks.requeteClient.mockResolvedValue({
+        rows: [{ historique_actif: false }],
+      });
     });
 
     it("réserve quand même un numéro et transmet une référence textuelle sans extension", async () => {
@@ -229,7 +274,9 @@ describe("POST /api/send-recette", () => {
         },
       });
       mocks.reserverNumeros.mockResolvedValue({ premierGlobal: 3 });
-      mocks.requeteClient.mockResolvedValue({});
+      mocks.requeteClient.mockResolvedValue({
+        rows: [{ historique_actif: false }],
+      });
     });
 
     it("réserve un numéro dans le domaine « recette » et valide la transaction", async () => {

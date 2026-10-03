@@ -28,6 +28,8 @@ import { envoyerAvecNomenclature } from "@/lib/envoiNomenclature";
 import { dedoublonnerNomsFichiers } from "@/lib/nomenclature";
 import { assainirSegmentNomFichier } from "@/lib/attachments";
 import { recupererGroupeActif } from "@/lib/groupServer";
+import { versEntreesDepense } from "@/lib/historique";
+import { envoyerAvecHistorique } from "@/lib/historiqueServer";
 import {
   LIBELLES_TYPES_ENVOI,
   type DetailDepense,
@@ -304,12 +306,39 @@ export async function traiterSignature(params: {
 
   const groupe = await recupererGroupeActif(note.organizationId);
   const { format } = groupe.nomenclature.depense;
+  // Une seule entrée d'historique pour toute la note signée (un seul
+  // justificatif final), enregistrée comme une note de frais. La description
+  // du mail contient l'e-mail du demandeur : on ne la recopie pas en base.
+  const uniteHistorique = groupe.unites.find(
+    (unite) => unite.label === note.donneesNdf.branche,
+  );
+  const contexteHistorique = {
+    auteurUserId: note.beneficiaireUserId,
+    uniteId: uniteHistorique?.id ?? null,
+    uniteLabel: note.donneesNdf.branche,
+    uniteCouleur: note.donneesNdf.couleur ?? "#1E3A8A",
+  };
+  const surchargeHistorique = {
+    description: "Note de frais signée",
+    activite: [
+      ...new Set(
+        note.donneesNdf.detailsDepenses
+          .map((detail) => detail.activite)
+          .filter(Boolean),
+      ),
+    ].join(", "),
+  };
   if (format) {
     await envoyerAvecNomenclature(
       donneesEmailFinal,
       note.organizationId,
       format,
       groupe.nomenclature.anneeComptable,
+      {
+        contexte: contexteHistorique,
+        type: "note-de-frais",
+        surcharge: surchargeHistorique,
+      },
     );
   } else {
     const [nomNormalise] = dedoublonnerNomsFichiers([
@@ -318,7 +347,21 @@ export async function traiterSignature(params: {
     donneesEmailFinal.piecesJointes = [
       { ...pieceFinale, nomFichierNormalise: nomNormalise },
     ];
-    await envoyerEmailDepense(donneesEmailFinal);
+    await envoyerAvecHistorique(
+      note.organizationId,
+      {
+        contexte: contexteHistorique,
+        entrees: versEntreesDepense(
+          donneesEmailFinal.detailsDepenses,
+          "note-de-frais",
+        ).map((entree) => ({ ...entree, ...surchargeHistorique })),
+      },
+      (lienDansEmail) =>
+        envoyerEmailDepense({
+          ...donneesEmailFinal,
+          lienHistorique: lienDansEmail,
+        }),
+    );
   }
 
   await cloturerCircuit(params.noteDeFraisId);

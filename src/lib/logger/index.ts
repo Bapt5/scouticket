@@ -12,7 +12,8 @@ export type CategorieJournal =
   | "preference_unite"
   | "framework"
   | "auth"
-  | "note-de-frais-signee";
+  | "note-de-frais-signee"
+  | "historique";
 
 export type ValeurDetailJournal = string | number | boolean | null;
 

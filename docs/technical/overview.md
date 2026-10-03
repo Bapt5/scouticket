@@ -7,6 +7,7 @@
 - Dépenses : deux types d’envoi : **note de frais** (plusieurs justificatifs avec date, activité liée et description, RIB facultatif joint au mail) et **dépense avec moyen de paiement du groupe** (un seul justificatif, moyen de paiement du groupe) ; chaque justificatif est une section repliable avec une ou plusieurs lignes (montant + catégorie comptable). Le RIB, comme les justificatifs, n’est jamais stocké
 - Recettes : signalement d’un encaissement à venir (virement, chèque, liquide ou carte bancaire) avec une ou plusieurs lignes (montant + catégorie comptable) ; **aucun justificatif obligatoire**, une pièce jointe reste possible mais facultative
 - Envoi automatique par email (Trésoriers du groupe + utilisateur)
+- Historique optionnel des dépenses, recettes et notes de frais (activable par groupe, sans justificatifs), consultable depuis un ordinateur et modifiable par les responsables : voir [Historique](/technical/historique)
 - Groupes indépendants : unités et couleurs propres à chaque groupe
 - Trois rôles : Membre, Responsable de groupe (admin) et Trésorier (owner) ; parmi les Trésoriers, un responsable choisit dans la gestion des membres lesquels reçoivent les envois (au moins un obligatoirement)
 - Support PWA (installation écran d’accueil)
@@ -176,6 +177,8 @@ Quand le paramètre `ndf_signee_actif` (`scouticket_group_data`, migration `sql/
 **Notes de frais kilométriques** : `ndf_km_actif`, `ndf_km_taux` et `ndf_km_taux_maj` (migration `sql/019_ndf_kilometrique.sql`) permettent de saisir des kilomètres dans une note de frais signée, remboursés au taux du groupe (voir [Note de frais signée](/technical/ndf-signee#notes-de-frais-kilometriques)).
 
 **Logo personnalisé** : quand `ndf_signee_actif` est activé, les responsables peuvent importer le logo de leur groupe pour l’en-tête du PDF (`scouticket_group_data.ndf_logo`, migration `sql/018_ndf_logo_groupe.sql`). Donnée institutionnelle, non personnelle, PNG normalisé et borné (500 Ko), supprimable et supprimée avec le groupe. Voir [Note de frais signée](/technical/ndf-signee#logo-personnalise-du-document).
+
+**Historique (option de groupe)** : quand `historique_actif` est activé, les données comptables de chaque envoi (type, date, référence de nomenclature, unité, mode de paiement, description, lignes catégorie/montant, auteur) sont conservées dans `scouticket_historique` tant que l’option reste active. Les justificatifs et le RIB ne sont toujours jamais stockés. Désactiver l’option, ou supprimer le groupe, supprime toutes les entrées ; la suppression du compte d’un auteur anonymise l’entrée. Voir [Historique](/technical/historique) pour le détail (rétention, droits, atomicité avec l’envoi).
 
 **Exception temporaire au principe de non-conservation des justificatifs** (voir « Informations personnelles » plus haut) : le temps du circuit de signature d’une note de frais signée, la note et son PDF (page note de frais + justificatifs + pages de signature) sont persistés dans `scouticket_notes_de_frais_signees`. Dès que le circuit se termine, validé ou refusé, la ligne est **supprimée** avec ses codes de vérification : rien ne reste en base, la preuve des signatures (identité, adresse IP, user-agent, dates du code de vérification) étant portée par le PDF signé lui-même, envoyé par e-mail. Voir [Note de frais signée](/technical/ndf-signee) pour le détail.
 

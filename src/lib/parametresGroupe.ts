@@ -15,6 +15,8 @@ export interface ParametresGroupe {
   kmTauxMajLe: string;
   /** Lecture seule : un logo personnalisé est enregistré (géré par /api/group/parametres/logo). */
   logoPersonnalise: boolean;
+  /** Historique des dépenses, recettes et notes de frais conservé en base (sans justificatifs). */
+  historiqueActif: boolean;
 }
 
 export const PARAMETRES_GROUPE_PAR_DEFAUT: ParametresGroupe = {
@@ -26,6 +28,7 @@ export const PARAMETRES_GROUPE_PAR_DEFAUT: ParametresGroupe = {
   kmTaux: 0.354,
   kmTauxMajLe: "2025-11-05",
   logoPersonnalise: false,
+  historiqueActif: false,
 };
 
 const NOMBRE_MAX_MOYENS_PAIEMENT = 20;
@@ -51,6 +54,9 @@ export const schemaMiseAJourParametresGroupe = z
     convertirJustificatifsEnPdf: z.boolean().optional(),
     moyensPaiement: schemaMoyensPaiement.optional(),
     ndfSigneeActif: z.boolean().optional(),
+    historiqueActif: z.boolean().optional(),
+    /** Exigé pour désactiver l'historique : toutes ses entrées sont alors supprimées. */
+    confirmationSuppressionHistorique: z.boolean().optional(),
     kmActif: z.boolean().optional(),
     kmTaux: z
       .number()

@@ -45,6 +45,11 @@ const metadonneesPages: Record<string, { titre: string; description: string }> =
       description:
         "Comprenez le circuit de signature électronique à 3 niveaux des notes de frais Scouticket : dépôt, code de vérification, chaînage cryptographique et certificat.",
     },
+    "technical/historique.md": {
+      titre: "Historique des dépenses et recettes",
+      description:
+        "Comprenez l'historique optionnel des dépenses, recettes et notes de frais de Scouticket : données conservées, droits, rétention et écriture atomique.",
+    },
     "technical/local-installation.md": {
       titre: "Installation locale",
       description:
@@ -177,6 +182,10 @@ export default defineConfig({
           {
             text: "Note de frais signée",
             link: "/technical/ndf-signee",
+          },
+          {
+            text: "Historique",
+            link: "/technical/historique",
           },
           {
             text: "Variables d'environnement",
