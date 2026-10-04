@@ -19,6 +19,10 @@ vi.mock("@/components/GraphiquesBudget", () => ({
   ),
 }));
 
+vi.mock("@/components/GraphiquesPilotage", () => ({
+  GraphiqueComparaison: () => <div data-testid="comparaison" />,
+}));
+
 const reponse = (corps: unknown, ok = true) =>
   Promise.resolve({ ok, json: () => Promise.resolve(corps) });
 
@@ -353,5 +357,330 @@ describe("Page Suivi budgétaire", () => {
         screen.getByText(/passent en « Non affecté »/),
       ).toBeInTheDocument();
     });
+  });
+});
+
+describe("Page Suivi budgétaire : pilotage", () => {
+  const fetchMock = vi.fn();
+
+  const configPilotage = () => ({
+    ...configAdmin(),
+    units: [{ id: "u1", label: "Louveteaux", color: "#111111" }],
+    postesBudgetaires: {
+      depense: [
+        { id: "p1", domaine: "depense", label: "Camp" },
+        { id: "p2", domaine: "depense", label: "Matériel" },
+      ],
+      recette: [{ id: "p3", domaine: "recette", label: "Calendrier" }],
+    },
+    parametres: {
+      historiqueActif: true,
+      budgetActif: true,
+      anneeComptableDebut: { mois: 9, jour: 1 },
+      moyensPaiement: ["Carte du groupe"],
+    },
+  });
+
+  const precedent = suivi({
+    anneeDebut: 2024,
+    du: "2024-09-01",
+    au: "2025-08-31",
+    depense: [
+      { id: "p1", label: "Camp", budget: 900, realise: 500 },
+      { id: "p2", label: "Matériel", budget: 0, realise: 0 },
+    ],
+    recette: [{ id: "p3", label: "Calendrier", budget: 300, realise: 100 }],
+  });
+
+  const ecriture = {
+    id: "h-1",
+    envoiId: "e-1",
+    type: "depense",
+    date: "2026-03-10",
+    uniteId: "u1",
+    uniteLabel: "Louveteaux",
+    uniteCouleur: "#111111",
+    posteId: "p2",
+    posteLabel: "Matériel",
+    reference: null,
+    modePaiement: "Carte du groupe",
+    activite: "",
+    description: "Tentes",
+    montantTotal: 250,
+    lignes: [{ categorie: "Formation", montant: 250 }],
+    auteurNom: null,
+    creeLe: "2026-03-10T10:00:00.000Z",
+    modifieLe: null,
+    modifieParNom: null,
+  };
+
+  const brancher = ({ precedentOk = true } = {}) =>
+    fetchMock.mockImplementation((url: string) => {
+      if (url === "/api/group/config") return reponse(configPilotage());
+      if (url === "/api/budget?anneeComptable=2024")
+        return precedentOk ? reponse(precedent) : reponse({}, false);
+      if (url.startsWith("/api/budget?anneeComptable="))
+        return reponse(suivi());
+      if (url.startsWith("/api/historique?"))
+        return reponse({ lignes: [ecriture], total: 1 });
+      return reponse({});
+    });
+  const appelsBudget = () =>
+    fetchMock.mock.calls
+      .map(([url]) => String(url))
+      .filter((url) => url.startsWith("/api/budget?"));
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 2, 15, 12));
+    fetchMock.mockReset();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it("indique que la page n'est pas disponible sur mobile (même gabarit que l'historique)", async () => {
+    brancher();
+
+    render(<PageSuiviBudgetaire />);
+
+    expect(
+      await screen.findByText(/n’est pas disponible sur mobile/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("heading", { name: "Suivi budgétaire" }),
+    ).toHaveLength(2);
+  });
+
+  it("affiche le tableau par défaut, sans charger l'année précédente", async () => {
+    brancher();
+
+    render(<PageSuiviBudgetaire />);
+
+    expect(
+      await screen.findByRole("tab", { name: "Tableau", selected: true }),
+    ).toBeInTheDocument();
+    await screen.findByLabelText("Budget prévu pour Camp");
+    expect(appelsBudget()).toEqual(["/api/budget?anneeComptable=2025"]);
+    expect(
+      screen.queryByRole("region", { name: "Résultat" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("passe au pilotage et charge l'année précédente pour la comparaison", async () => {
+    brancher();
+    const utilisateur = userEvent.setup();
+
+    render(<PageSuiviBudgetaire />);
+    await utilisateur.click(
+      await screen.findByRole("tab", { name: "Pilotage" }),
+    );
+
+    expect(
+      await screen.findByRole("region", { name: "Résultat" }),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(appelsBudget()).toContain("/api/budget?anneeComptable=2024"),
+    );
+    expect(
+      await screen.findByRole("table", {
+        name: "Réalisé de 2025-2026 comparé à 2024-2025",
+      }),
+    ).toBeInTheDocument();
+    // Le tableau et ses budgets éditables ne sont plus affichés.
+    expect(
+      screen.queryByLabelText("Budget prévu pour Camp"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Gérer les postes" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("garde l'export CSV et le choix de l'année dans les deux vues", async () => {
+    brancher();
+    const utilisateur = userEvent.setup();
+
+    render(<PageSuiviBudgetaire />);
+    await utilisateur.click(
+      await screen.findByRole("tab", { name: "Pilotage" }),
+    );
+
+    await screen.findByRole("region", { name: "Résultat" });
+    expect(
+      screen.getByRole("link", { name: "Exporter en CSV" }),
+    ).toHaveAttribute("href", "/api/budget/export?anneeComptable=2025");
+    expect(
+      screen.getByLabelText(/Année comptable/, { selector: "select" }),
+    ).toHaveValue("2025");
+  });
+
+  it("recharge la comparaison quand on change d'année depuis le pilotage", async () => {
+    brancher();
+    const utilisateur = userEvent.setup();
+
+    render(<PageSuiviBudgetaire />);
+    await utilisateur.click(
+      await screen.findByRole("tab", { name: "Pilotage" }),
+    );
+    await screen.findByRole("region", { name: "Résultat" });
+    await utilisateur.selectOptions(
+      screen.getByLabelText(/Année comptable/, { selector: "select" }),
+      "2024",
+    );
+
+    await waitFor(() =>
+      expect(appelsBudget()).toContain("/api/budget?anneeComptable=2023"),
+    );
+  });
+
+  it("n'affiche pas d'erreur globale quand seule l'année précédente est indisponible", async () => {
+    brancher({ precedentOk: false });
+    const utilisateur = userEvent.setup();
+
+    render(<PageSuiviBudgetaire />);
+    await utilisateur.click(
+      await screen.findByRole("tab", { name: "Pilotage" }),
+    );
+
+    expect(
+      await screen.findByText(/Comparaison indisponible/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("region", { name: "Résultat" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Impossible de charger le suivi budgétaire."),
+    ).not.toBeInTheDocument();
+  });
+
+  it("revient au tableau en conservant l'édition des budgets", async () => {
+    brancher();
+    const utilisateur = userEvent.setup();
+
+    render(<PageSuiviBudgetaire />);
+    await utilisateur.click(
+      await screen.findByRole("tab", { name: "Pilotage" }),
+    );
+    await screen.findByRole("region", { name: "Résultat" });
+    await utilisateur.click(screen.getByRole("tab", { name: "Tableau" }));
+
+    expect(await screen.findByLabelText("Budget prévu pour Camp")).toHaveValue(
+      "1000",
+    );
+  });
+
+  it("ouvre le détail d'un poste depuis le tableau et recharge le suivi après un reclassement", async () => {
+    brancher();
+    const utilisateur = userEvent.setup();
+
+    render(<PageSuiviBudgetaire />);
+    await utilisateur.click(
+      await screen.findByRole("row", { name: /Matériel/ }),
+    );
+
+    const dialog = await screen.findByRole("dialog", { name: "Matériel" });
+    expect(dialog).toHaveTextContent("Dépenses, année comptable 2025-2026");
+    await utilisateur.click(await screen.findByRole("row", { name: /Tentes/ }));
+    await utilisateur.click(
+      await screen.findByRole("button", { name: "Modifier" }),
+    );
+    await utilisateur.selectOptions(
+      screen.getByLabelText("Poste budgétaire"),
+      "p1",
+    );
+    await utilisateur.click(
+      screen.getByRole("button", { name: "Enregistrer" }),
+    );
+
+    await waitFor(() =>
+      expect(
+        appelsBudget().filter(
+          (url) => url === "/api/budget?anneeComptable=2025",
+        ),
+      ).toHaveLength(2),
+    );
+    const patch = fetchMock.mock.calls.find(
+      ([, options]) => options?.method === "PATCH",
+    )!;
+    expect(JSON.parse(patch[1].body).posteBudgetaireId).toBe("p1");
+  });
+
+  it("rend les lignes du tableau cliquables sans lien, et la saisie d'un budget n'ouvre pas le détail", async () => {
+    brancher();
+    const utilisateur = userEvent.setup();
+
+    render(<PageSuiviBudgetaire />);
+    const ligne = await screen.findByRole("row", { name: /Matériel/ });
+    expect(ligne).toHaveAttribute("tabindex", "0");
+    expect(
+      screen.queryByRole("button", { name: /Voir les écritures/ }),
+    ).not.toBeInTheDocument();
+
+    const champ = screen.getByLabelText("Budget prévu pour Matériel");
+    await utilisateur.click(champ);
+    await utilisateur.type(champ, "5{Enter}");
+    expect(
+      screen.queryByRole("dialog", { name: "Matériel" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("ouvre le détail d'un poste au clavier depuis une ligne du tableau", async () => {
+    brancher();
+    const utilisateur = userEvent.setup();
+
+    render(<PageSuiviBudgetaire />);
+    const ligne = await screen.findByRole("row", { name: /Camp/ });
+    ligne.focus();
+    await utilisateur.keyboard("{Enter}");
+
+    expect(
+      await screen.findByRole("dialog", { name: "Camp" }),
+    ).toBeInTheDocument();
+  });
+
+  it("ouvre le détail d'un poste à surveiller depuis le pilotage", async () => {
+    brancher();
+    const utilisateur = userEvent.setup();
+
+    render(<PageSuiviBudgetaire />);
+    await utilisateur.click(
+      await screen.findByRole("tab", { name: "Pilotage" }),
+    );
+    const surveiller = await screen.findByRole("region", {
+      name: "Postes à surveiller",
+    });
+    await utilisateur.click(
+      within(surveiller).getByRole("button", { name: /Matériel/ }),
+    );
+
+    expect(
+      await screen.findByRole("dialog", { name: "Matériel" }),
+    ).toBeInTheDocument();
+    const requete = fetchMock.mock.calls
+      .map(([url]) => String(url))
+      .find((url) => url.startsWith("/api/historique?"))!;
+    expect(new URL(`https://x.test${requete}`).searchParams.get("poste")).toBe(
+      "p2",
+    );
+  });
+
+  it("ouvre le détail de « Non affecté » sans identifiant de poste", async () => {
+    brancher();
+    const utilisateur = userEvent.setup();
+
+    render(<PageSuiviBudgetaire />);
+    await utilisateur.click(
+      await screen.findByRole("row", { name: /Non affecté/ }),
+    );
+
+    await screen.findByRole("dialog", { name: "Non affecté" });
+    const requete = fetchMock.mock.calls
+      .map(([url]) => String(url))
+      .find((url) => url.startsWith("/api/historique?"))!;
+    expect(new URL(`https://x.test${requete}`).searchParams.get("poste")).toBe(
+      "non-affecte",
+    );
   });
 });

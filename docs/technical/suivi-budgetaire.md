@@ -89,13 +89,36 @@ Supprimer le groupe supprime aussi postes et budgets (`ON DELETE CASCADE`).
 
 ## Interface
 
-- `/suivi-budgetaire` : sélecteur d'année comptable, onglets Dépenses et Recettes, tableau (budget éditable, réalisé, solde ou écart, taux de réalisation, ligne « Non affecté », totaux), gestion des postes (ajout, renommage, ordre, suppression), export CSV, graphiques. Le dépassement d'un budget de dépenses est signalé par une barre rouge **et** un texte (« budget dépassé »), pas par la couleur seule. Pour une recette, le dépassement se lit « objectif dépassé ».
-- Les graphiques (`src/components/GraphiquesBudget.tsx`) sont deux camemberts (répartition du prévu et du réalisé) et des barres prévu / réalisé par poste. Les animations sont désactivées. Le tableau reste la source accessible des mêmes chiffres.
+`/suivi-budgetaire` est **réservée aux ordinateurs**, comme `/historique` : sous le breakpoint `lg`, une page invite à l'ouvrir depuis un ordinateur, et le contenu utilise toute la largeur (`max-w-7xl`). Le sélecteur d'année comptable et l'export CSV sont communs aux deux vues, présentées en onglets **Tableau** et **Pilotage**.
+
+### Onglet Tableau
+
+- Onglets Dépenses et Recettes, tableau (budget éditable, réalisé, solde ou écart, taux de réalisation, ligne « Non affecté », totaux), gestion des postes (ajout, renommage, ordre, suppression), camemberts et barres.
+- Le dépassement d'un budget de dépenses est signalé par une barre rouge **et** un texte (« budget dépassé »), pas par la couleur seule. Pour une recette, le dépassement se lit « objectif dépassé ».
+- Une ligne du tableau est cliquable (souris, ou Entrée et Espace au clavier) et ouvre le détail de ses écritures (voir plus bas). Saisir un budget dans la ligne n'ouvre pas le détail.
+
+### Onglet Pilotage
+
+Vue de lecture, calculée à partir des mêmes données (`GET /api/budget`) ; l'année précédente est chargée en plus, uniquement à l'ouverture de l'onglet. Les règles de calcul sont des fonctions pures dans `src/lib/budgetPilotage.ts`, l'affichage est dans `src/components/PilotageBudget.tsx`.
+
+- **Cartes de synthèse** : recettes, dépenses et résultat (recettes moins dépenses), chacun en prévu, réalisé et écart. Un écart est **favorable** quand il améliore le résultat : plus de recettes ou moins de dépenses que prévu. Les postes sans budget comptent pour 0 dans le prévu (leur nombre est rappelé), « Non affecté » compte dans le réalisé. Sans aucun budget saisi, le prévu et l'écart sont remplacés par un tiret et un message invite à saisir les budgets. Un résultat réalisé négatif est signalé par le texte « déficit » en plus de la couleur.
+- **Avancement** : trois barres (`role="progressbar"`) : année comptable écoulée (jours écoulés sur la durée de l'année, bornes incluses), budget de dépenses consommé, objectif de recettes atteint. Un trait marque l'avancement de l'année sur les deux dernières.
+- **Postes à surveiller** : dépenses « Budget dépassé » (réalisé supérieur au budget) ou « À surveiller » (80 % du budget et plus) ; recettes « En retard sur l'objectif » (taux inférieur de plus de 20 points à l'avancement de l'année). Les postes sans budget et « Non affecté » ne sont pas jugés. Tri par gravité puis par montant concerné. Seuils : `SEUIL_SURVEILLANCE_DEPENSES` et `MARGE_RETARD_RECETTES`.
+- **Comparaison avec l'année précédente** : prévu et réalisé de l'année face au réalisé de l'année précédente, par poste (même identifiant de poste d'une année à l'autre ; « Non affecté » par son libellé), pour les dépenses ou les recettes. Une valeur inconnue (poste absent de l'année précédente) est un tiret, un réalisé N-1 nul donne une évolution en montant sans pourcentage. Si l'année précédente ne peut pas être chargée, seule cette section affiche « Comparaison indisponible ».
+- Chaque graphique est accompagné d'un tableau des mêmes chiffres (`role="img"` et `aria-label` sur le graphique), les animations sont désactivées.
+
+### Détail d'un poste
+
+Une ligne du tableau ou un poste à surveiller (« Non affecté » compris) ouvre `DetailPosteBudget` : les écritures du poste pour l'année comptable, les plus importantes d'abord (100 au plus, avec le total réel indiqué au-delà). Il réutilise `GET /api/historique` (`poste`, `anneeComptable`, `type`, `tri=montant`) : aucun nouvel endpoint. Pour « Non affecté », le filtre `non-affecte` est combiné au type (`recette`, ou `depense,note-de-frais`) car il existe dans les deux domaines. Chaque ligne d'écriture est cliquable (souris ou clavier, sans lien) et ouvre `DialogHistorique` : un responsable peut la corriger ou la **reclasser** dans un autre poste, puis le suivi est rechargé.
+
+### Autres éléments
+
+- Les graphiques du tableau (`src/components/GraphiquesBudget.tsx`) sont deux camemberts (répartition du prévu et du réalisé) et des barres prévu / réalisé par poste ; ceux du pilotage sont dans `src/components/GraphiquesPilotage.tsx`.
 - Le lien « Suivi budgétaire » de l'accueil n'apparaît que pour un responsable quand l'option est active.
 
 ## Dépendance : Recharts
 
-Les graphiques utilisent [Recharts](https://recharts.org) (bibliothèque largement documentée, imports nommés dans `GraphiquesBudget.tsx` pour limiter le poids du bundle). Elle s'exécute uniquement dans le navigateur et n'appelle aucun service externe : aucune variable d'environnement n'est nécessaire.
+Les graphiques utilisent [Recharts](https://recharts.org) (bibliothèque largement documentée, imports nommés dans `GraphiquesBudget.tsx` et `GraphiquesPilotage.tsx` pour limiter le poids du bundle). Elle s'exécute uniquement dans le navigateur et n'appelle aucun service externe : aucune variable d'environnement n'est nécessaire.
 
 ## Service externe
 

@@ -95,6 +95,8 @@ Cette liste est propre à chaque groupe ; elle n’a aucun impact sur les notes 
 
 Dans **Paramètres du groupe**, les responsables peuvent activer le **suivi budgétaire** (il nécessite l’historique). Chaque dépense, recette ou note de frais est alors rattachée à un **poste budgétaire** (« Camp », « Matériel », « Calendrier »…), choisi par le membre dans le formulaire. Des postes par défaut sont créés à l’activation et se modifient depuis la page **Suivi budgétaire**.
 
-Cette page, réservée aux responsables, compare pour l’année comptable choisie le budget prévu et le réalisé de chaque poste, avec camemberts et barres, une alerte en cas de dépassement et un export CSV. Un responsable peut corriger le poste d’une écriture depuis l’historique.
+Cette page, réservée aux responsables et disponible sur ordinateur uniquement, compare pour l’année comptable choisie le budget prévu et le réalisé de chaque poste, avec camemberts et barres, une alerte en cas de dépassement et un export CSV. Un responsable peut corriger le poste d’une écriture depuis l’historique.
+
+L’onglet **Tableau** sert à saisir les budgets et à gérer les postes. L’onglet **Pilotage** donne la vue d’ensemble : le résultat prévu et réalisé (recettes moins dépenses), l’avancement de l’année face à la consommation des budgets, les postes à surveiller (budget dépassé ou consommé à 80 % et plus, recettes en retard), et la comparaison avec l’année précédente. Un clic sur une ligne de poste affiche ses écritures ; un clic sur une écriture l’ouvre, pour la corriger ou la reclasser dans un autre poste.
 
 Désactiver le suivi supprime les postes, les budgets et les affectations (les montants de l’historique sont conservés), après confirmation.
