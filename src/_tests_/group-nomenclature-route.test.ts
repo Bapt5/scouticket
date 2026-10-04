@@ -111,8 +111,6 @@ describe("/api/group/nomenclature", () => {
     expect(valeurs).toEqual([
       "org_1",
       "{YYYY} - {GlobalNumero}",
-      9,
-      1,
       "debut-fin",
       119,
       "2025",
@@ -132,12 +130,10 @@ describe("/api/group/nomenclature", () => {
     const [sql, valeurs] = mocks.query.mock.calls[0];
     expect(sql).toContain("nomenclature_format_recette =");
     expect(sql).toContain("compteur_global_recette =");
-    // L'année comptable reste partagée : toujours écrite quel que soit le domaine.
+    // Le format d'affichage de l'année comptable est partagé : toujours écrit quel que soit le domaine.
     expect(valeurs).toEqual([
       "org_1",
       "{YYYY} - R{GlobalNumero}",
-      9,
-      1,
       "debut-fin",
       9,
       null,

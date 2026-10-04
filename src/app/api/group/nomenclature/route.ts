@@ -136,26 +136,23 @@ export async function PATCH(requete: Request) {
       format === null ? null : normaliserFormatNomenclature(format);
     const { prochainNumeroGlobal, prochainNumeroComptable } = corps.data;
     const colonnes = colonnesDomaine(domaine);
-    // L'année comptable est partagée : elle est toujours mise à jour, quel
-    // que soit le domaine édité. Le format et les compteurs ne touchent que
-    // les colonnes du domaine ciblé.
+    // Le format d'affichage de l'année comptable est partagé : il est toujours
+    // mis à jour, quel que soit le domaine édité (le début de l'année se règle
+    // dans les paramètres du groupe). Le format de nom et les compteurs ne
+    // touchent que les colonnes du domaine ciblé.
     const resultat = await pool.query(
       `UPDATE scouticket_group_data
           SET ${colonnes.format} = $2,
-              annee_comptable_debut_mois = $3,
-              annee_comptable_debut_jour = $4,
-              annee_comptable_format = $5,
-              ${colonnes.compteurGlobal} = COALESCE($6::int, ${colonnes.compteurGlobal}),
+              annee_comptable_format = $3,
+              ${colonnes.compteurGlobal} = COALESCE($4::int, ${colonnes.compteurGlobal}),
               ${colonnes.compteursComptables} = CASE
-                WHEN $7::text IS NULL THEN ${colonnes.compteursComptables}
-                ELSE ${colonnes.compteursComptables} || jsonb_build_object($7::text, $8::int)
+                WHEN $5::text IS NULL THEN ${colonnes.compteursComptables}
+                ELSE ${colonnes.compteursComptables} || jsonb_build_object($5::text, $6::int)
               END
         WHERE organization_id = $1`,
       [
         identifiantOrganisation,
         formatEnregistre,
-        anneeComptable.mois,
-        anneeComptable.jour,
         anneeComptable.format,
         prochainNumeroGlobal === undefined ? null : prochainNumeroGlobal - 1,
         prochainNumeroComptable ? String(prochainNumeroComptable.annee) : null,

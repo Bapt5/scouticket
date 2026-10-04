@@ -157,6 +157,56 @@ describe("Page principale", () => {
     expect(screen.queryByText("Administration")).not.toBeInTheDocument();
   });
 
+  describe("suivi budgétaire", () => {
+    const groupe = (isAdmin: boolean, budgetActif: boolean) =>
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              units: [{ id: "groupe", label: "Groupe", color: "#1E3A8A" }],
+              configured: true,
+              aTresorier: true,
+              isAdmin,
+              parametres: { budgetActif },
+            }),
+        }),
+      );
+
+    it("propose le lien vers le suivi à un responsable quand il est activé", async () => {
+      groupe(true, true);
+
+      render(<Home />);
+
+      expect(
+        await screen.findByRole("link", { name: "Suivi budgétaire" }),
+      ).toHaveAttribute("href", "/suivi-budgetaire");
+    });
+
+    it("masque le lien quand le suivi est désactivé", async () => {
+      groupe(true, false);
+
+      render(<Home />);
+
+      await screen.findByLabelText("Formulaire depense");
+      expect(
+        screen.queryByRole("link", { name: "Suivi budgétaire" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("masque le lien à un membre simple", async () => {
+      groupe(false, true);
+
+      render(<Home />);
+
+      await screen.findByLabelText("Formulaire depense");
+      expect(
+        screen.queryByRole("link", { name: "Suivi budgétaire" }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   it("montre les invitations sur l’écran Bienvenue sans les confondre avec les groupes rejoints", async () => {
     mocks.organisation.mockReturnValue(null);
     mocks.listerInvitations.mockResolvedValue({

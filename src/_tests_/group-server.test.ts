@@ -70,6 +70,9 @@ describe("recupererGroupeActif", () => {
             ndf_km_taux_maj: "2026-01-15",
             ndf_logo_present: true,
             historique_actif: true,
+            budget_actif: true,
+            annee_comptable_debut_mois: 1,
+            annee_comptable_debut_jour: 1,
           },
         ],
       })
@@ -94,6 +97,8 @@ describe("recupererGroupeActif", () => {
       kmTauxMajLe: "2025-11-05",
       logoPersonnalise: false,
       historiqueActif: false,
+      budgetActif: false,
+      anneeComptableDebut: { mois: 9, jour: 1 },
     });
     expect(avec.parametres).toEqual({
       scanJustificatifsActif: true,
@@ -105,6 +110,8 @@ describe("recupererGroupeActif", () => {
       kmTauxMajLe: "2026-01-15",
       logoPersonnalise: true,
       historiqueActif: true,
+      budgetActif: true,
+      anneeComptableDebut: { mois: 1, jour: 1 },
     });
   });
 

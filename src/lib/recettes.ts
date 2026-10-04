@@ -18,6 +18,8 @@ export interface DetailSaisieRecette {
   modePaiement: string;
   description: string;
   lignes: LigneSaisie[];
+  /** Poste budgétaire choisi (vide tant qu'aucun poste n'est sélectionné). */
+  posteBudgetaireId: string;
 }
 
 export const detailSaisieRecetteVide = (): DetailSaisieRecette => ({
@@ -25,6 +27,7 @@ export const detailSaisieRecetteVide = (): DetailSaisieRecette => ({
   modePaiement: "",
   description: "",
   lignes: [{ categorie: "", montant: "" }],
+  posteBudgetaireId: "",
 });
 
 export const detailSaisieRecetteComplet = (detail: DetailSaisieRecette) =>

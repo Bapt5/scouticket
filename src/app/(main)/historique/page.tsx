@@ -5,6 +5,11 @@ import Link from "next/link";
 import { DialogHistorique } from "@/components/DialogHistorique";
 import { FiltreMultiple } from "@/components/FiltreMultiple";
 import { clientAuth } from "@/lib/auth-client";
+import {
+  LIBELLE_NON_AFFECTE,
+  VALEUR_NON_AFFECTE,
+  type PosteBudgetaire,
+} from "@/lib/budget";
 import type { UniteGroupe } from "@/lib/group";
 import {
   LIBELLES_TYPES_HISTORIQUE,
@@ -25,7 +30,15 @@ import {
 type Config = {
   units: UniteGroupe[];
   nomenclature?: { anneeComptable: ParametresAnneeComptable };
-  parametres?: { historiqueActif: boolean; moyensPaiement: string[] };
+  parametres?: {
+    historiqueActif: boolean;
+    budgetActif?: boolean;
+    moyensPaiement: string[];
+  };
+  postesBudgetaires?: {
+    depense: PosteBudgetaire[];
+    recette: PosteBudgetaire[];
+  };
 };
 
 type Reponse = {
@@ -43,6 +56,7 @@ interface Filtres {
   /** `null` = tous ; liste vide = aucun. */
   type: TypeHistorique[] | null;
   unite: string[] | null;
+  poste: string[] | null;
   du: string;
   au: string;
   anneeComptable: string;
@@ -56,6 +70,7 @@ const FILTRES_INITIAUX: Filtres = {
   sens: "desc",
   type: null,
   unite: null,
+  poste: null,
   du: "",
   au: "",
   anneeComptable: "",
@@ -108,6 +123,7 @@ function versParametres(filtres: Filtres, avecPagination: boolean) {
   // Un paramètre vide signifie « aucune valeur retenue » (aucun résultat).
   if (filtres.type) parametres.set("type", filtres.type.join(","));
   if (filtres.unite) parametres.set("unite", filtres.unite.join(","));
+  if (filtres.poste) parametres.set("poste", filtres.poste.join(","));
   for (const cle of ["du", "au", "anneeComptable", "q"] as const)
     if (filtres[cle]) parametres.set(cle, filtres[cle]);
   return parametres;
@@ -148,6 +164,21 @@ export default function PageHistorique() {
   }, [identifiantOrganisation]);
 
   const actif = config?.parametres?.historiqueActif ?? false;
+  const budgetActif = config?.parametres?.budgetActif ?? false;
+  const optionsPostes = useMemo(
+    () => [
+      ...(config?.postesBudgetaires?.depense ?? []).map((poste) => ({
+        id: poste.id,
+        libelle: `${poste.label} (dépense)`,
+      })),
+      ...(config?.postesBudgetaires?.recette ?? []).map((poste) => ({
+        id: poste.id,
+        libelle: `${poste.label} (recette)`,
+      })),
+      { id: VALEUR_NON_AFFECTE, libelle: LIBELLE_NON_AFFECTE },
+    ],
+    [config?.postesBudgetaires],
+  );
 
   // Lien d'un e-mail : ouvre directement le détail de l'entrée, une seule fois.
   useEffect(() => {
@@ -350,6 +381,17 @@ export default function PageHistorique() {
                 libelleAucun="Aucune unité"
                 libelleNombre={(nombre) => `${nombre} unités`}
               />
+              {budgetActif && (
+                <FiltreMultiple
+                  libelle="Filtrer par poste budgétaire"
+                  options={optionsPostes}
+                  valeur={filtres.poste}
+                  onChange={(poste) => modifierFiltre({ poste })}
+                  libelleTous="Tous les postes"
+                  libelleAucun="Aucun poste"
+                  libelleNombre={(nombre) => `${nombre} postes`}
+                />
+              )}
               <label className="text-sm text-zinc-700">
                 Du{" "}
                 <input
@@ -434,6 +476,14 @@ export default function PageHistorique() {
                         </button>
                       </th>
                     ))}
+                    {budgetActif && (
+                      <th
+                        scope="col"
+                        className="px-3 py-2 font-semibold text-zinc-700"
+                      >
+                        Poste
+                      </th>
+                    )}
                     <th
                       scope="col"
                       className="px-3 py-2 font-semibold text-zinc-700"
@@ -483,6 +533,13 @@ export default function PageHistorique() {
                         {estRecetteHistorique(ligne.type) ? "+" : "-"}{" "}
                         {formaterMontantHistorique(ligne.montantTotal)}
                       </td>
+                      {budgetActif && (
+                        <td className="px-3 py-2 text-zinc-700">
+                          {ligne.posteId
+                            ? ligne.posteLabel
+                            : LIBELLE_NON_AFFECTE}
+                        </td>
+                      )}
                       <td className="max-w-sm px-3 py-2 text-zinc-600">
                         <div className="flex items-center justify-between gap-2">
                           <span className="min-w-0 truncate">
@@ -500,7 +557,7 @@ export default function PageHistorique() {
                   {reponse && reponse.lignes.length === 0 && (
                     <tr>
                       <td
-                        colSpan={COLONNES.length + 1}
+                        colSpan={COLONNES.length + (budgetActif ? 2 : 1)}
                         className="px-3 py-6 text-center text-zinc-500"
                       >
                         Aucune entrée.
@@ -579,6 +636,7 @@ export default function PageHistorique() {
           entree={selection}
           responsable={reponse?.responsable ?? responsableLien ?? false}
           unites={config?.units ?? []}
+          postes={budgetActif ? config?.postesBudgetaires : undefined}
           moyensPaiement={config?.parametres?.moyensPaiement ?? []}
           onFermer={() => setSelection(null)}
           onChange={() => {

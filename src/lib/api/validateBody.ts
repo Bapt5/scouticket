@@ -105,6 +105,8 @@ export function validerCorpsRequete(
           paymentMethod: z.string().optional(),
           activity: z.string().optional(),
           description: z.string().optional(),
+          // Poste budgétaire de la pièce (suivi budgétaire activé).
+          budgetPostId: z.string().min(1).max(100).optional(),
           lines: z
             .array(
               z.object({
@@ -126,6 +128,8 @@ export function validerCorpsRequete(
           }),
         )
         .optional(),
+      // Poste budgétaire global (note de frais signée), repris par chaque pièce.
+      budgetPostId: z.string().min(1).max(100).optional(),
       attachments: z.array(z.any()).optional(),
       rib: z.any().optional(),
       // Dépense avec moyen de paiement du groupe uniquement : attestation du
@@ -319,6 +323,7 @@ export function validerCorpsRequete(
       activite: estNoteDeFrais ? activite : "",
       description: (depense.description ?? "").trim(),
       lignes,
+      posteBudgetaireId: depense.budgetPostId ?? b.budgetPostId ?? null,
     });
   }
 

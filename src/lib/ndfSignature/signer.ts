@@ -282,6 +282,11 @@ export async function traiterSignature(params: {
           ]
         : []),
     ],
+    // Poste global de la note, choisi au dépôt (ignoré si le suivi est désactivé
+    // ou le poste supprimé entre-temps : enregistrerHistorique le vérifie).
+    posteBudgetaireId:
+      note.donneesNdf.detailsDepenses.find((detail) => detail.posteBudgetaireId)
+        ?.posteBudgetaireId ?? null,
   };
   const pieceFinale: PieceJointeDepense = {
     nomAffiche: nomFichierBase,

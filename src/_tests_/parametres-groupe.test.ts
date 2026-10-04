@@ -17,6 +17,8 @@ describe("parametresGroupe", () => {
       kmTauxMajLe: "2025-11-05",
       logoPersonnalise: false,
       historiqueActif: false,
+      budgetActif: false,
+      anneeComptableDebut: { mois: 9, jour: 1 },
     });
   });
 
@@ -58,5 +60,35 @@ describe("parametresGroupe", () => {
     expect(valide({ kmTaux: "0,354" })).toBe(false);
     // La date de mise à jour est fixée par le serveur.
     expect(valide({ kmTauxMajLe: "2026-01-01" })).toBe(false);
+  });
+
+  it("valide l'activation du suivi budgétaire et sa confirmation de suppression", () => {
+    const valide = (corps: unknown) =>
+      schemaMiseAJourParametresGroupe.safeParse(corps).success;
+    expect(valide({ budgetActif: true })).toBe(true);
+    expect(
+      valide({ budgetActif: false, confirmationSuppressionBudget: true }),
+    ).toBe(true);
+    expect(valide({ budgetActif: "oui" })).toBe(false);
+    expect(valide({ confirmationSuppressionBudget: "oui" })).toBe(false);
+  });
+
+  it("valide le début de l'année comptable (jour et mois, pas de 29 février)", () => {
+    const valide = (anneeComptableDebut: unknown) =>
+      schemaMiseAJourParametresGroupe.safeParse({ anneeComptableDebut })
+        .success;
+    expect(valide({ mois: 9, jour: 1 })).toBe(true);
+    expect(valide({ mois: 2, jour: 28 })).toBe(true);
+    expect(valide({ mois: 12, jour: 31 })).toBe(true);
+    expect(valide({ mois: 2, jour: 29 })).toBe(false);
+    expect(valide({ mois: 4, jour: 31 })).toBe(false);
+    expect(valide({ mois: 13, jour: 1 })).toBe(false);
+    expect(valide({ mois: 0, jour: 1 })).toBe(false);
+    expect(valide({ mois: 9, jour: 0 })).toBe(false);
+    expect(valide({ mois: 9.5, jour: 1 })).toBe(false);
+    expect(valide({ mois: "9", jour: 1 })).toBe(false);
+    expect(valide({ mois: 9 })).toBe(false);
+    // Le format d'affichage reste dans la nomenclature.
+    expect(valide({ mois: 9, jour: 1, format: "debut" })).toBe(false);
   });
 });

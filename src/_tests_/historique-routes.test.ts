@@ -370,3 +370,184 @@ describe("/api/historique/[id]", () => {
     ).toBe(404);
   });
 });
+
+describe("suivi budgétaire dans l'historique", () => {
+  const accesBudget = {
+    ...accesResponsable,
+    groupe: {
+      ...groupe,
+      parametres: { ...groupe.parametres, budgetActif: true },
+    },
+  };
+  const postesSql = [
+    { id: "poste-camp", domaine: "depense", label: "Camp" },
+    { id: "poste-calendrier", domaine: "recette", label: "Calendrier" },
+  ];
+  const requetesAvecPostes = () =>
+    mocks.query.mockImplementation(async (texte: string) =>
+      texte.includes("scouticket_postes_budgetaires")
+        ? { rows: postesSql }
+        : { rows: [ligneSql()], rowCount: 1 },
+    );
+  const miseAJour = () =>
+    mocks.query.mock.calls.find(([texte]) =>
+      String(texte).trim().startsWith("UPDATE"),
+    );
+
+  it("filtre par poste, « non-affecte » retenant aussi les lignes sans poste", async () => {
+    mocks.query
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [{ total: "0", depenses: 0, recettes: 0 }],
+      })
+      .mockResolvedValueOnce({ rows: [{ min: null, max: null }] });
+
+    const reponse = await GET(
+      requete("/api/historique?poste=poste-camp,non-affecte"),
+    );
+
+    expect(reponse.status).toBe(200);
+    const [texte, valeurs] = mocks.query.mock.calls[0];
+    expect(texte).toContain("h.poste_id = ANY(");
+    expect(texte).toContain("OR h.poste_id IS NULL");
+    expect(valeurs).toEqual(expect.arrayContaining([["poste-camp"]]));
+  });
+
+  it("un filtre poste sans valeur n'accepte aucune ligne", async () => {
+    mocks.query
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [{ total: "0", depenses: 0, recettes: 0 }],
+      })
+      .mockResolvedValueOnce({ rows: [{ min: null, max: null }] });
+
+    await GET(requete("/api/historique?poste="));
+
+    const [texte, valeurs] = mocks.query.mock.calls[0];
+    expect(texte).not.toContain("IS NULL");
+    expect(valeurs).toEqual(expect.arrayContaining([[]]));
+  });
+
+  it("expose le poste de chaque ligne", async () => {
+    mocks.query
+      .mockResolvedValueOnce({
+        rows: [
+          ligneSql({ poste_id: "poste-camp", poste_label: "Camp" }),
+          ligneSql({ id: "h-2", poste_id: null, poste_label: null }),
+        ],
+      })
+      .mockResolvedValueOnce({
+        rows: [{ total: "2", depenses: 40, recettes: 0 }],
+      })
+      .mockResolvedValueOnce({ rows: [{ min: null, max: null }] });
+
+    const corps = await (await GET(requete("/api/historique"))).json();
+
+    expect(corps.lignes[0]).toMatchObject({
+      posteId: "poste-camp",
+      posteLabel: "Camp",
+    });
+    expect(corps.lignes[1]).toMatchObject({ posteId: null, posteLabel: null });
+  });
+
+  it("ajoute la colonne Poste budgétaire à l'export quand le suivi est actif", async () => {
+    mocks.acces.mockResolvedValue(accesBudget);
+    mocks.query
+      .mockResolvedValueOnce({
+        rows: [ligneSql({ poste_id: "poste-camp", poste_label: "Camp" })],
+      })
+      .mockResolvedValueOnce({
+        rows: [{ total: "1", depenses: 20, recettes: 0 }],
+      });
+
+    const csv = await (await EXPORT(requete("/api/historique/export"))).text();
+
+    expect(csv).toContain("Unité;Poste budgétaire;Mode de paiement");
+    expect(csv).toContain("Louveteaux;Camp;Carte du groupe");
+  });
+
+  it("n'ajoute pas la colonne à l'export quand le suivi est désactivé", async () => {
+    mocks.query
+      .mockResolvedValueOnce({ rows: [ligneSql()] })
+      .mockResolvedValueOnce({
+        rows: [{ total: "1", depenses: 20, recettes: 0 }],
+      });
+
+    const csv = await (await EXPORT(requete("/api/historique/export"))).text();
+
+    expect(csv).not.toContain("Poste budgétaire");
+  });
+
+  it("PATCH change le poste et recopie son libellé", async () => {
+    mocks.acces.mockResolvedValue(accesBudget);
+    requetesAvecPostes();
+
+    const reponse = await PATCH(
+      requete("/api/historique/h-1", "PATCH", {
+        posteBudgetaireId: "poste-camp",
+      }),
+      contexteId,
+    );
+
+    expect(reponse.status).toBe(200);
+    const [texte, valeurs] = miseAJour()!;
+    expect(texte).toContain("poste_id =");
+    expect(texte).toContain("poste_label =");
+    expect(valeurs).toEqual(expect.arrayContaining(["poste-camp", "Camp"]));
+  });
+
+  it("PATCH refuse un poste inconnu ou du mauvais domaine (recette sur une dépense)", async () => {
+    mocks.acces.mockResolvedValue(accesBudget);
+    requetesAvecPostes();
+
+    const inconnu = await PATCH(
+      requete("/api/historique/h-1", "PATCH", { posteBudgetaireId: "autre" }),
+      contexteId,
+    );
+    const mauvaisDomaine = await PATCH(
+      requete("/api/historique/h-1", "PATCH", {
+        posteBudgetaireId: "poste-calendrier",
+      }),
+      contexteId,
+    );
+
+    expect(inconnu.status).toBe(400);
+    expect(mauvaisDomaine.status).toBe(400);
+    expect(miseAJour()).toBeUndefined();
+  });
+
+  it("PATCH refuse un poste quand le suivi budgétaire est désactivé", async () => {
+    mocks.query.mockResolvedValue({ rows: [ligneSql()] });
+
+    const reponse = await PATCH(
+      requete("/api/historique/h-1", "PATCH", {
+        posteBudgetaireId: "poste-camp",
+      }),
+      contexteId,
+    );
+
+    expect(reponse.status).toBe(400);
+    expect(miseAJour()).toBeUndefined();
+  });
+
+  it("PATCH accepte un poste de recette pour une recette", async () => {
+    mocks.acces.mockResolvedValue(accesBudget);
+    mocks.query.mockImplementation(async (texte: string) =>
+      texte.includes("scouticket_postes_budgetaires")
+        ? { rows: postesSql }
+        : { rows: [ligneSql({ type: "recette" })], rowCount: 1 },
+    );
+
+    const reponse = await PATCH(
+      requete("/api/historique/h-1", "PATCH", {
+        posteBudgetaireId: "poste-calendrier",
+      }),
+      contexteId,
+    );
+
+    expect(reponse.status).toBe(200);
+    expect(miseAJour()![1]).toEqual(
+      expect.arrayContaining(["poste-calendrier", "Calendrier"]),
+    );
+  });
+});

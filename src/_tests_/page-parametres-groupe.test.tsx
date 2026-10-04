@@ -62,7 +62,7 @@ describe("Page Paramètres du groupe", () => {
       name: "Scan automatique des justificatifs",
     });
     expect(scan).toHaveAttribute("aria-checked", "false");
-    expect(screen.getAllByRole("switch")).toHaveLength(5);
+    expect(screen.getAllByRole("switch")).toHaveLength(6);
     expect(screen.queryByText(/ML/)).not.toBeInTheDocument();
   });
 
@@ -327,6 +327,247 @@ describe("Page Paramètres du groupe", () => {
     expect(
       await screen.findByAltText("Logo SGDF par défaut"),
     ).toBeInTheDocument();
+  });
+
+  describe("année comptable", () => {
+    const chargerGroupe = (anneeComptableDebut = { mois: 9, jour: 1 }) =>
+      fetchMock.mockImplementation(
+        (_url: string, options?: { method?: string }) =>
+          options?.method === "PATCH"
+            ? reponse({
+                success: true,
+                parametres: {
+                  scanJustificatifsActif: false,
+                  convertirJustificatifsEnPdf: false,
+                  moyensPaiement: ["Espèces du groupe"],
+                  anneeComptableDebut: { mois: 1, jour: 1 },
+                },
+              })
+            : reponse({
+                isAdmin: true,
+                parametres: {
+                  scanJustificatifsActif: false,
+                  convertirJustificatifsEnPdf: false,
+                  moyensPaiement: ["Espèces du groupe"],
+                  anneeComptableDebut,
+                },
+              }),
+      );
+
+    it("affiche le début de l'année comptable du groupe, sans nomenclature personnalisée", async () => {
+      chargerGroupe({ mois: 10, jour: 15 });
+
+      render(<PageParametresGroupe />);
+
+      expect(
+        await screen.findByLabelText("Jour de début de l'année comptable"),
+      ).toHaveValue(15);
+      expect(
+        screen.getByLabelText("Mois de début de l'année comptable"),
+      ).toHaveValue("10");
+      expect(
+        screen.getByRole("button", {
+          name: "Enregistrer le début de l’année comptable",
+        }),
+      ).toBeDisabled();
+    });
+
+    it("enregistre le nouveau début de l'année comptable", async () => {
+      chargerGroupe();
+
+      render(<PageParametresGroupe />);
+      await userEvent.selectOptions(
+        await screen.findByLabelText("Mois de début de l'année comptable"),
+        "janvier",
+      );
+      await userEvent.click(
+        screen.getByRole("button", {
+          name: "Enregistrer le début de l’année comptable",
+        }),
+      );
+
+      expect(await screen.findByText("Paramètres enregistrés.")).toBeVisible();
+      const appel = fetchMock.mock.calls.find(
+        ([, options]) => options?.method === "PATCH",
+      );
+      expect(JSON.parse(appel?.[1].body)).toEqual({
+        anneeComptableDebut: { mois: 1, jour: 1 },
+      });
+    });
+
+    it("refuse d'enregistrer un début invalide (29 février)", async () => {
+      chargerGroupe();
+
+      render(<PageParametresGroupe />);
+      await userEvent.selectOptions(
+        await screen.findByLabelText("Mois de début de l'année comptable"),
+        "février",
+      );
+      const jour = screen.getByLabelText("Jour de début de l'année comptable");
+      await userEvent.clear(jour);
+      await userEvent.type(jour, "29");
+
+      expect(
+        screen.getByRole("button", {
+          name: "Enregistrer le début de l’année comptable",
+        }),
+      ).toBeDisabled();
+    });
+  });
+
+  describe("suivi budgétaire", () => {
+    const interrupteur = () =>
+      screen.findByRole("switch", { name: "Suivi budgétaire par poste" });
+
+    const groupe = (historiqueActif: boolean, budgetActif: boolean) =>
+      reponse({
+        isAdmin: true,
+        parametres: {
+          scanJustificatifsActif: false,
+          convertirJustificatifsEnPdf: false,
+          moyensPaiement: ["Espèces du groupe"],
+          historiqueActif,
+          budgetActif,
+          anneeComptableDebut: { mois: 9, jour: 1 },
+        },
+      });
+
+    it("est désactivé tant que l'historique n'est pas actif", async () => {
+      fetchMock.mockReturnValue(groupe(false, false));
+
+      render(<PageParametresGroupe />);
+
+      expect(await interrupteur()).toBeDisabled();
+      expect(
+        screen.queryByRole("link", { name: /Consulter le suivi budgétaire/ }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("active le suivi sans confirmation", async () => {
+      fetchMock.mockImplementation(
+        (_url: string, options?: { method?: string }) =>
+          options?.method === "PATCH"
+            ? reponse({
+                success: true,
+                parametres: {
+                  scanJustificatifsActif: false,
+                  convertirJustificatifsEnPdf: false,
+                  moyensPaiement: ["Espèces du groupe"],
+                  historiqueActif: true,
+                  budgetActif: true,
+                },
+              })
+            : groupe(true, false),
+      );
+
+      render(<PageParametresGroupe />);
+      await userEvent.click(await interrupteur());
+
+      expect(await screen.findByText("Paramètres enregistrés.")).toBeVisible();
+      const appel = fetchMock.mock.calls.find(
+        ([, options]) => options?.method === "PATCH",
+      );
+      expect(JSON.parse(appel?.[1].body)).toEqual({ budgetActif: true });
+      expect(
+        screen.getByRole("link", { name: /Consulter le suivi budgétaire/ }),
+      ).toBeVisible();
+    });
+
+    it("empêche de désactiver l'historique tant que le suivi est actif", async () => {
+      fetchMock.mockReturnValue(groupe(true, true));
+
+      render(<PageParametresGroupe />);
+
+      expect(
+        await screen.findByRole("switch", {
+          name: "Historique des dépenses, recettes et notes de frais",
+        }),
+      ).toBeDisabled();
+      expect(
+        screen.getByText(/Désactivez d’abord le suivi budgétaire/),
+      ).toBeVisible();
+    });
+
+    it("exige la saisie de SUPPRIMER et affiche le nombre de postes et d'écritures", async () => {
+      fetchMock.mockImplementation(
+        (url: string, options?: { method?: string }) => {
+          if (options?.method === "PATCH")
+            return reponse({
+              success: true,
+              parametres: {
+                scanJustificatifsActif: false,
+                convertirJustificatifsEnPdf: false,
+                moyensPaiement: ["Espèces du groupe"],
+                historiqueActif: true,
+                budgetActif: false,
+              },
+            });
+          if (url === "/api/budget/donnees")
+            return reponse({ postes: 14, ecritures: 6 });
+          return groupe(true, true);
+        },
+      );
+
+      render(<PageParametresGroupe />);
+      await userEvent.click(await interrupteur());
+
+      expect(await screen.findByText(/14 postes/)).toBeVisible();
+      expect(screen.getByText(/6 écritures/)).toBeVisible();
+      // Aucune désactivation tant que le mot n'est pas saisi.
+      expect(
+        fetchMock.mock.calls.some(([, options]) => options?.method === "PATCH"),
+      ).toBe(false);
+      const confirmer = screen.getByRole("button", {
+        name: "Supprimer définitivement",
+      });
+      expect(confirmer).toBeDisabled();
+      await userEvent.type(
+        screen.getByLabelText(/Saisissez SUPPRIMER/),
+        "SUPPRIMER",
+      );
+      await userEvent.click(confirmer);
+
+      expect(
+        await screen.findByText("Suivi budgétaire désactivé et supprimé."),
+      ).toBeVisible();
+      const appel = fetchMock.mock.calls.find(
+        ([, options]) => options?.method === "PATCH",
+      );
+      expect(JSON.parse(appel?.[1].body)).toEqual({
+        budgetActif: false,
+        confirmationSuppressionBudget: true,
+      });
+    });
+
+    it("propose l'export CSV du suivi avant la suppression", async () => {
+      URL.createObjectURL = vi.fn(() => "blob:budget");
+      URL.revokeObjectURL = vi.fn();
+      vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(
+        () => {},
+      );
+      fetchMock.mockImplementation((url: string) => {
+        if (url === "/api/budget/export")
+          return Promise.resolve({
+            ok: true,
+            blob: () => Promise.resolve(new Blob(["Type;Poste"])),
+          });
+        if (url === "/api/budget/donnees")
+          return reponse({ postes: 14, ecritures: 0 });
+        return groupe(true, true);
+      });
+
+      render(<PageParametresGroupe />);
+      await userEvent.click(await interrupteur());
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Exporter en CSV" }),
+      );
+
+      expect(await screen.findByText("Export téléchargé.")).toBeVisible();
+      expect(fetchMock).toHaveBeenCalledWith("/api/budget/export");
+      expect(
+        fetchMock.mock.calls.some(([, options]) => options?.method === "PATCH"),
+      ).toBe(false);
+    });
   });
 
   describe("historique", () => {

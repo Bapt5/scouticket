@@ -77,6 +77,8 @@ export interface DetailDepense {
   activite: string;
   description: string;
   lignes: LigneDepense[];
+  /** Poste budgétaire de la pièce (suivi budgétaire activé), validé côté serveur. */
+  posteBudgetaireId?: string | null;
   /** Référence générée par la nomenclature (sans extension), ajoutée côté serveur ; absente si aucun format n'est configuré. */
   reference?: string;
 }
@@ -94,6 +96,8 @@ export interface DetailRecette {
   modePaiement: string;
   description: string;
   lignes: LigneRecette[];
+  /** Poste budgétaire de la recette (suivi budgétaire activé), validé côté serveur. */
+  posteBudgetaireId?: string | null;
   /** Référence générée par la nomenclature (sans extension), ajoutée côté serveur ; absente si aucun format n'est configuré. */
   reference?: string;
 }

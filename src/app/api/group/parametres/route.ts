@@ -6,6 +6,7 @@ import {
   recupererRoleMembre,
 } from "@/lib/groupServer";
 import { schemaMiseAJourParametresGroupe } from "@/lib/parametresGroupe";
+import { initialiserPostesParDefaut } from "@/lib/budgetServer";
 import { recupererContexteGroupe } from "@/lib/sessionServeur";
 import { pool } from "@/lib/baseDeDonnees";
 import { verifierOrigineRequete } from "@/lib/api/securiteRequetes";
@@ -56,7 +57,11 @@ export async function PATCH(requete: Request) {
 
     const actuels = (await recupererGroupeActif(identifiantOrganisation))
       .parametres;
-    const { confirmationSuppressionHistorique, ...modifications } = corps.data;
+    const {
+      confirmationSuppressionHistorique,
+      confirmationSuppressionBudget,
+      ...modifications
+    } = corps.data;
     const parametres = { ...actuels, ...modifications };
     // Désactiver l'historique supprime toutes ses entrées : confirmation explicite exigée.
     const desactivationHistorique =
@@ -66,6 +71,31 @@ export async function PATCH(requete: Request) {
         { error: "Confirmez la suppression de l'historique" },
         { status: 400 },
       );
+    // Le suivi budgétaire s'appuie sur l'historique : l'un ne va pas sans l'autre.
+    if (modifications.budgetActif === true && !parametres.historiqueActif)
+      return NextResponse.json(
+        { error: "Activez d'abord l'historique" },
+        { status: 400 },
+      );
+    if (
+      desactivationHistorique &&
+      actuels.budgetActif &&
+      parametres.budgetActif
+    )
+      return NextResponse.json(
+        { error: "Désactivez d'abord le suivi budgétaire" },
+        { status: 400 },
+      );
+    // Désactiver le suivi supprime postes, budgets et affectations : confirmation exigée.
+    const desactivationBudget =
+      actuels.budgetActif && modifications.budgetActif === false;
+    if (desactivationBudget && confirmationSuppressionBudget !== true)
+      return NextResponse.json(
+        { error: "Confirmez la suppression du suivi budgétaire" },
+        { status: 400 },
+      );
+    const activationBudget =
+      !actuels.budgetActif && modifications.budgetActif === true;
     if (corps.data.kmActif && !parametres.ndfSigneeActif)
       return NextResponse.json(
         { error: "Activez d'abord les notes de frais signées" },
@@ -80,8 +110,9 @@ export async function PATCH(requete: Request) {
       executeur.query(
         `INSERT INTO scouticket_group_data
          (organization_id, scan_justificatifs_actif, convertir_justificatifs_pdf, moyens_paiement, ndf_signee_actif,
-          ndf_km_actif, ndf_km_taux, ndf_km_taux_maj, historique_actif)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+          ndf_km_actif, ndf_km_taux, ndf_km_taux_maj, historique_actif, budget_actif,
+          annee_comptable_debut_mois, annee_comptable_debut_jour)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        ON CONFLICT (organization_id) DO UPDATE
          SET scan_justificatifs_actif = EXCLUDED.scan_justificatifs_actif,
              convertir_justificatifs_pdf = EXCLUDED.convertir_justificatifs_pdf,
@@ -90,7 +121,10 @@ export async function PATCH(requete: Request) {
              ndf_km_actif = EXCLUDED.ndf_km_actif,
              ndf_km_taux = EXCLUDED.ndf_km_taux,
              ndf_km_taux_maj = EXCLUDED.ndf_km_taux_maj,
-             historique_actif = EXCLUDED.historique_actif`,
+             historique_actif = EXCLUDED.historique_actif,
+             budget_actif = EXCLUDED.budget_actif,
+             annee_comptable_debut_mois = EXCLUDED.annee_comptable_debut_mois,
+             annee_comptable_debut_jour = EXCLUDED.annee_comptable_debut_jour`,
         [
           identifiantOrganisation,
           parametres.scanJustificatifsActif,
@@ -101,28 +135,61 @@ export async function PATCH(requete: Request) {
           parametres.kmTaux,
           parametres.kmTauxMajLe,
           parametres.historiqueActif,
+          parametres.budgetActif,
+          parametres.anneeComptableDebut.mois,
+          parametres.anneeComptableDebut.jour,
         ],
       );
 
-    if (desactivationHistorique) {
-      // Paramètre et suppression de l'historique sont indissociables.
+    if (desactivationHistorique || desactivationBudget || activationBudget) {
+      // Paramètre et création/suppression des données associées sont indissociables.
       const client = await pool.connect();
       try {
         await client.query("BEGIN");
         await enregistrer(client);
-        const suppression = await client.query(
-          "DELETE FROM scouticket_historique WHERE organization_id = $1",
-          [identifiantOrganisation],
-        );
+        if (desactivationHistorique) {
+          const suppression = await client.query(
+            "DELETE FROM scouticket_historique WHERE organization_id = $1",
+            [identifiantOrganisation],
+          );
+          journal.info("historique.desactive", {
+            categorie: "historique",
+            details: {
+              identifiantOrganisation,
+              identifiantUtilisateur,
+              entreesSupprimees: suppression.rowCount ?? 0,
+            },
+          });
+        }
+        if (desactivationBudget) {
+          await client.query(
+            `UPDATE scouticket_historique
+                SET poste_id = NULL, poste_label = NULL
+              WHERE organization_id = $1`,
+            [identifiantOrganisation],
+          );
+          // Les budgets partent en cascade avec les postes.
+          const suppression = await client.query(
+            "DELETE FROM scouticket_postes_budgetaires WHERE organization_id = $1",
+            [identifiantOrganisation],
+          );
+          journal.info("budget.desactive", {
+            categorie: "budget",
+            details: {
+              identifiantOrganisation,
+              identifiantUtilisateur,
+              postesSupprimes: suppression.rowCount ?? 0,
+            },
+          });
+        }
+        if (activationBudget) {
+          await initialiserPostesParDefaut(client, identifiantOrganisation);
+          journal.info("budget.active", {
+            categorie: "budget",
+            details: { identifiantOrganisation, identifiantUtilisateur },
+          });
+        }
         await client.query("COMMIT");
-        journal.info("historique.desactive", {
-          categorie: "historique",
-          details: {
-            identifiantOrganisation,
-            identifiantUtilisateur,
-            entreesSupprimees: suppression.rowCount ?? 0,
-          },
-        });
       } catch (erreur) {
         await client.query("ROLLBACK");
         throw erreur;

@@ -10,6 +10,7 @@ import {
 } from "@/lib/groupServer";
 import { recupererContexteGroupe } from "@/lib/sessionServeur";
 import { pool } from "@/lib/baseDeDonnees";
+import { recupererPostes } from "@/lib/budgetServer";
 import { verifierOrigineRequete } from "@/lib/api/securiteRequetes";
 import { executerRouteAvecLogs } from "@/lib/api/routeAvecLogs";
 
@@ -49,9 +50,19 @@ export async function GET(requete: Request) {
           );
           return group.unites.filter((unite) => autorisees.has(unite.id));
         })();
+    // Postes budgétaires : proposés dans les formulaires quand le suivi est actif.
+    const postes = group.parametres.budgetActif
+      ? await recupererPostes(identifiantOrganisation)
+      : null;
     return NextResponse.json({
       groupName: group.organisation.name,
       units: unitesVisibles,
+      postesBudgetaires: postes
+        ? {
+            depense: postes.filter((poste) => poste.domaine === "depense"),
+            recette: postes.filter((poste) => poste.domaine === "recette"),
+          }
+        : undefined,
       nomenclature: group.nomenclature,
       parametres: group.parametres,
       configured: Boolean(group.unites.length),

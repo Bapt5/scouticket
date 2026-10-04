@@ -23,11 +23,17 @@ import {
   ligneKilometriqueVide,
   type LigneKilometriqueSaisie,
 } from "@/lib/depenses";
+import type { PosteBudgetaire } from "@/lib/budget";
 import type { ParametresAnneeComptable } from "@/lib/nomenclature";
 import type { ParametresGroupe } from "@/lib/parametresGroupe";
 
 type Groupe = {
   units: UniteGroupe[];
+  /** Postes budgétaires par domaine, présents quand le suivi budgétaire est actif. */
+  postesBudgetaires?: {
+    depense: PosteBudgetaire[];
+    recette: PosteBudgetaire[];
+  };
   nomenclature?: {
     anneeComptable: ParametresAnneeComptable;
     depense: { format: string | null };
@@ -440,6 +446,14 @@ export default function Home() {
                     Historique
                   </Link>
                 )}
+                {groupe.isAdmin && groupe.parametres?.budgetActif && (
+                  <Link
+                    href="/suivi-budgetaire"
+                    className="block w-full rounded-xl border border-zinc-300 px-4 py-3 text-center font-medium text-[#1E3A8A] transition-colors hover:bg-zinc-50"
+                  >
+                    Suivi budgétaire
+                  </Link>
+                )}
                 {groupe.isAdmin && (
                   <>
                     <button
@@ -636,6 +650,7 @@ export default function Home() {
                         anneeComptable: groupe.nomenclature.anneeComptable,
                       }
                     }
+                    postesBudgetaires={groupe.postesBudgetaires?.depense}
                     moyensPaiement={groupe.parametres?.moyensPaiement}
                     ndfSigneeActif={groupe.parametres?.ndfSigneeActif}
                     kilometrages={kilometragesActifs}
@@ -673,6 +688,7 @@ export default function Home() {
                   aria-labelledby="onglet-recettes"
                 >
                   <FormulaireRecette
+                    postesBudgetaires={groupe.postesBudgetaires?.recette}
                     key={organisation.id}
                     emailUtilisateur={session.user.email}
                     units={groupe.units}

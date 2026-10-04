@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   requeteClient: vi.fn(),
   liberer: vi.fn(),
   convertirPiecesJointesEnPdf: vi.fn(),
+  verifierPostesEnvoi: vi.fn(),
 }));
 
 vi.mock("@/lib/sessionServeur", () => ({
@@ -52,6 +53,9 @@ vi.mock("@/lib/api/validateBodyRecette", () => ({
 }));
 vi.mock("@/lib/conversionJustificatifs", () => ({
   convertirPiecesJointesEnPdf: mocks.convertirPiecesJointesEnPdf,
+}));
+vi.mock("@/lib/budgetServer", () => ({
+  verifierPostesEnvoi: mocks.verifierPostesEnvoi,
 }));
 vi.mock("@/lib/email", () => ({
   envoyerEmailRecette: mocks.envoyerEmailRecette,
@@ -116,6 +120,7 @@ describe("POST /api/send-recette", () => {
       rows: [{ historique_actif: false }],
     });
     mocks.envoyerEmailRecette.mockResolvedValue({ messageId: "abc" });
+    mocks.verifierPostesEnvoi.mockResolvedValue(null);
   });
 
   it("envoie une recette sans pièce jointe et sans réserver de numéro", async () => {
@@ -308,6 +313,98 @@ describe("POST /api/send-recette", () => {
       expect(mocks.requeteClient).toHaveBeenCalledWith("ROLLBACK");
       expect(mocks.requeteClient).not.toHaveBeenCalledWith("COMMIT");
       expect(mocks.liberer).toHaveBeenCalled();
+    });
+  });
+
+  describe("suivi budgétaire", () => {
+    const preparer = (
+      budgetActif: boolean,
+      posteBudgetaireId: string | null,
+    ) => {
+      mocks.recupererGroupeActif.mockResolvedValue({
+        organisation: { id: "org_1", name: "Groupe test" },
+        unites: [{ id: "farfadets", label: "Farfadets", color: "#6CC24A" }],
+        emailsTresoriers: ["tresorerie@example.test"],
+        nomenclature: {
+          anneeComptable: { mois: 9, jour: 1, format: "debut-fin" },
+          depense: { format: null },
+          recette: { format: null },
+        },
+        parametres: {
+          scanJustificatifsActif: false,
+          convertirJustificatifsEnPdf: false,
+          moyensPaiement: ["Carte de procurement"],
+          budgetActif,
+        },
+      });
+      mocks.validerCorpsRequeteRecette.mockReturnValue({
+        donneesEmail: {
+          ...detailRecetteSansPieceJointe,
+          detailRecette: {
+            ...detailRecetteSansPieceJointe.detailRecette,
+            posteBudgetaireId,
+          },
+        },
+      });
+      mocks.requeteClient.mockImplementation(async (texte: string) => {
+        if (texte.includes("SELECT historique_actif"))
+          return {
+            rows: [{ historique_actif: true, budget_actif: budgetActif }],
+          };
+        if (texte.includes("scouticket_postes_budgetaires"))
+          return {
+            rows: [
+              {
+                id: "poste-calendrier",
+                label: "Calendrier",
+                domaine: "recette",
+              },
+            ],
+          };
+        return { rows: [] };
+      });
+    };
+    const insertion = () =>
+      mocks.requeteClient.mock.calls.find(([texte]) =>
+        String(texte).includes("INSERT INTO scouticket_historique"),
+      );
+
+    it("vérifie le poste de la recette (domaine recette) et l'enregistre", async () => {
+      preparer(true, "poste-calendrier");
+
+      const reponse = await POST(REQUETE_BASE() as never);
+
+      expect(reponse.status).toBe(200);
+      expect(mocks.verifierPostesEnvoi).toHaveBeenCalledWith(
+        "org_1",
+        true,
+        "recette",
+        ["poste-calendrier"],
+      );
+      expect(insertion()?.[1].slice(-2)).toEqual([
+        "poste-calendrier",
+        "Calendrier",
+      ]);
+    });
+
+    it("refuse l'envoi (400) sans e-mail quand le poste est manquant ou invalide", async () => {
+      preparer(true, null);
+      mocks.verifierPostesEnvoi.mockResolvedValue("Poste budgétaire invalide");
+
+      const reponse = await POST(REQUETE_BASE() as never);
+
+      expect(reponse.status).toBe(400);
+      expect(mocks.envoyerEmailRecette).not.toHaveBeenCalled();
+      expect(insertion()).toBeUndefined();
+    });
+
+    it("ignore le poste envoyé quand le suivi est désactivé", async () => {
+      preparer(false, "poste-calendrier");
+
+      const reponse = await POST(REQUETE_BASE() as never);
+
+      expect(reponse.status).toBe(200);
+      expect(insertion()?.[1].slice(-2)).toEqual([null, null]);
     });
   });
 });

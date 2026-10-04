@@ -29,6 +29,8 @@ const schemaCorps = z.object({
     date: z.string(),
     paymentMethod: z.string(),
     description: z.string().optional(),
+    // Poste budgétaire de la recette (suivi budgétaire activé).
+    budgetPostId: z.string().min(1).max(100).optional(),
     lines: z
       .array(
         z.object({
@@ -110,6 +112,7 @@ export function validerCorpsRequeteRecette(body: unknown): {
     modePaiement: b.recette.paymentMethod,
     description: (b.recette.description ?? "").trim(),
     lignes,
+    posteBudgetaireId: b.recette.budgetPostId ?? null,
   };
 
   const montant = totalLignes(lignes);

@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   requeteClient: vi.fn(),
   liberer: vi.fn(),
   convertirPiecesJointesEnPdf: vi.fn(),
+  verifierPostesEnvoi: vi.fn(),
 }));
 
 vi.mock("@/lib/sessionServeur", () => ({
@@ -52,6 +53,9 @@ vi.mock("@/lib/api/validateBody", () => ({
 }));
 vi.mock("@/lib/conversionJustificatifs", () => ({
   convertirPiecesJointesEnPdf: mocks.convertirPiecesJointesEnPdf,
+}));
+vi.mock("@/lib/budgetServer", () => ({
+  verifierPostesEnvoi: mocks.verifierPostesEnvoi,
 }));
 vi.mock("@/lib/email", () => ({
   envoyerEmailDepense: mocks.envoyerEmailDepense,
@@ -116,6 +120,7 @@ describe("POST /api/send-expense", () => {
       },
     });
     mocks.envoyerEmailDepense.mockResolvedValue({ messageId: "abc" });
+    mocks.verifierPostesEnvoi.mockResolvedValue(null);
   });
 
   it("refuse l'envoi si le groupe n'a aucun trésorier", async () => {
@@ -538,6 +543,105 @@ describe("POST /api/send-expense", () => {
 
       expect(reponse.status).toBe(400);
       expect(mocks.envoyerEmailDepense).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("suivi budgétaire", () => {
+    const detailAvecPoste = (posteBudgetaireId: string | null) => ({
+      date: "2026-01-01",
+      modePaiement: "Carte de procurement",
+      activite: "",
+      description: "Courses",
+      lignes: [{ categorie: "Formation", montant: 12 }],
+      posteBudgetaireId,
+    });
+    const preparer = (
+      budgetActif: boolean,
+      details: ReturnType<typeof detailAvecPoste>[],
+    ) => {
+      mocks.recupererRoleMembre.mockResolvedValue("owner");
+      mocks.recupererGroupeActif.mockResolvedValue({
+        ...mocks.recupererGroupeActif.mock.results[0]?.value,
+        organisation: { id: "org_1", name: "Groupe test" },
+        unites: [{ id: "farfadets", label: "Farfadets", color: "#6CC24A" }],
+        emailsTresoriers: ["tresorerie@example.test"],
+        nomenclature: {
+          anneeComptable: { mois: 9, jour: 1, format: "debut-fin" },
+          depense: { format: null },
+          recette: { format: null },
+        },
+        parametres: {
+          scanJustificatifsActif: false,
+          convertirJustificatifsEnPdf: false,
+          moyensPaiement: ["Carte de procurement"],
+          budgetActif,
+        },
+      });
+      mocks.requeteClient.mockImplementation(async (texte: string) => {
+        if (texte.includes("SELECT historique_actif"))
+          return {
+            rows: [{ historique_actif: true, budget_actif: budgetActif }],
+          };
+        if (texte.includes("scouticket_postes_budgetaires"))
+          return {
+            rows: [{ id: "poste-camp", label: "Camp", domaine: "depense" }],
+          };
+        return { rows: [] };
+      });
+      const corps = mocks.validerCorpsRequete();
+      corps.donneesEmail.detailsDepenses = details;
+      mocks.validerCorpsRequete.mockReturnValue(corps);
+    };
+    const insertion = () =>
+      mocks.requeteClient.mock.calls.find(([texte]) =>
+        String(texte).includes("INSERT INTO scouticket_historique"),
+      );
+
+    it("vérifie les postes de chaque pièce et les enregistre dans l'historique", async () => {
+      preparer(true, [
+        detailAvecPoste("poste-camp"),
+        detailAvecPoste("poste-camp"),
+      ]);
+
+      const reponse = await POST(REQUETE_BASE() as never);
+
+      expect(reponse.status).toBe(200);
+      expect(mocks.verifierPostesEnvoi).toHaveBeenCalledWith(
+        "org_1",
+        true,
+        "depense",
+        ["poste-camp", "poste-camp"],
+      );
+      expect(insertion()?.[1].slice(-2)).toEqual(["poste-camp", "Camp"]);
+    });
+
+    it("refuse l'envoi (400) sans e-mail quand un poste est manquant ou invalide", async () => {
+      preparer(true, [detailAvecPoste(null)]);
+      mocks.verifierPostesEnvoi.mockResolvedValue("Poste budgétaire manquant");
+
+      const reponse = await POST(REQUETE_BASE() as never);
+
+      expect(reponse.status).toBe(400);
+      await expect(reponse.json()).resolves.toMatchObject({
+        error: "Poste budgétaire manquant",
+      });
+      expect(mocks.envoyerEmailDepense).not.toHaveBeenCalled();
+      expect(insertion()).toBeUndefined();
+    });
+
+    it("ignore les postes envoyés quand le suivi est désactivé", async () => {
+      preparer(false, [detailAvecPoste("poste-camp")]);
+
+      const reponse = await POST(REQUETE_BASE() as never);
+
+      expect(reponse.status).toBe(200);
+      expect(mocks.verifierPostesEnvoi).toHaveBeenCalledWith(
+        "org_1",
+        false,
+        "depense",
+        ["poste-camp"],
+      );
+      expect(insertion()?.[1].slice(-2)).toEqual([null, null]);
     });
   });
 });

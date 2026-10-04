@@ -12,6 +12,8 @@ const entree: LigneHistoriqueApi = {
   uniteId: "unite-1",
   uniteLabel: "Louveteaux",
   uniteCouleur: "#112233",
+  posteId: null,
+  posteLabel: null,
   reference: "2026-001",
   modePaiement: "Carte du groupe",
   activite: "",
@@ -26,14 +28,35 @@ const entree: LigneHistoriqueApi = {
 
 const unites = [{ id: "unite-1", label: "Louveteaux", color: "#112233" }];
 
-const afficher = (responsable: boolean) => {
+const postes = {
+  depense: [
+    { id: "poste-camp", domaine: "depense" as const, label: "Camp" },
+    { id: "poste-materiel", domaine: "depense" as const, label: "Matériel" },
+  ],
+  recette: [
+    {
+      id: "poste-calendrier",
+      domaine: "recette" as const,
+      label: "Calendrier",
+    },
+  ],
+};
+
+const afficher = (
+  responsable: boolean,
+  options: {
+    entree?: LigneHistoriqueApi;
+    avecPostes?: boolean;
+  } = {},
+) => {
   const surChangement = vi.fn();
   const surFermeture = vi.fn();
   render(
     <DialogHistorique
-      entree={entree}
+      entree={options.entree ?? entree}
       responsable={responsable}
       unites={unites}
+      postes={options.avecPostes ? postes : undefined}
       moyensPaiement={["Carte du groupe"]}
       onFermer={surFermeture}
       onChange={surChangement}
@@ -132,5 +155,77 @@ describe("DialogHistorique", () => {
 
     expect(await screen.findByRole("alert")).toBeTruthy();
     expect(surChangement).not.toHaveBeenCalled();
+  });
+
+  it("n'affiche aucun poste quand le suivi budgétaire est désactivé", () => {
+    afficher(true);
+
+    expect(screen.queryByText("Poste budgétaire")).toBeNull();
+  });
+
+  it("affiche « Non affecté » pour une écriture sans poste", () => {
+    afficher(false, { avecPostes: true });
+
+    expect(screen.getByText("Poste budgétaire")).toBeTruthy();
+    expect(screen.getByText("Non affecté")).toBeTruthy();
+  });
+
+  it("propose les postes du domaine de l'écriture et envoie le changement de poste", async () => {
+    const utilisateur = userEvent.setup();
+    const { surChangement } = afficher(true, { avecPostes: true });
+
+    await utilisateur.click(screen.getByRole("button", { name: "Modifier" }));
+    const selecteur = screen.getByLabelText("Poste budgétaire");
+    expect(
+      Array.from((selecteur as HTMLSelectElement).options).map(
+        (option) => option.textContent,
+      ),
+    ).toEqual(["Non affecté", "Camp", "Matériel"]);
+    await utilisateur.selectOptions(selecteur, "poste-materiel");
+    await utilisateur.click(
+      screen.getByRole("button", { name: "Enregistrer" }),
+    );
+
+    await waitFor(() => expect(surChangement).toHaveBeenCalled());
+    const corps = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(corps.posteBudgetaireId).toBe("poste-materiel");
+  });
+
+  it("n'envoie pas le poste s'il n'a pas changé", async () => {
+    const utilisateur = userEvent.setup();
+    const { surChangement } = afficher(true, {
+      avecPostes: true,
+      entree: { ...entree, posteId: "poste-camp", posteLabel: "Camp" },
+    });
+
+    await utilisateur.click(screen.getByRole("button", { name: "Modifier" }));
+    await utilisateur.click(
+      screen.getByRole("button", { name: "Enregistrer" }),
+    );
+
+    await waitFor(() => expect(surChangement).toHaveBeenCalled());
+    const corps = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(corps).not.toHaveProperty("posteBudgetaireId");
+  });
+
+  it("propose les postes de recettes pour une recette", async () => {
+    const utilisateur = userEvent.setup();
+    afficher(true, {
+      avecPostes: true,
+      entree: {
+        ...entree,
+        type: "recette",
+        modePaiement: "Virement",
+      },
+    });
+
+    await utilisateur.click(screen.getByRole("button", { name: "Modifier" }));
+
+    expect(
+      Array.from(
+        (screen.getByLabelText("Poste budgétaire") as HTMLSelectElement)
+          .options,
+      ).map((option) => option.textContent),
+    ).toEqual(["Non affecté", "Calendrier"]);
   });
 });

@@ -10,6 +10,7 @@ import {
   MAX_LIGNES_NOTE_DE_FRAIS,
   MAX_LIGNES_PAR_JUSTIFICATIF,
 } from "@/constants/piecesJointes";
+import { recupererPostes } from "@/lib/budgetServer";
 import { totalLignes } from "@/lib/depenses";
 import {
   recupererAccesHistorique,
@@ -44,6 +45,7 @@ const schemaModification = z
   .object({
     date: z.string().refine((date) => analyserDateIso(date) !== null),
     uniteId: z.string().min(1).max(100),
+    posteBudgetaireId: z.string().min(1).max(100),
     modePaiement: z.string().trim().max(50),
     activite: z.string().trim().max(200),
     description: z.string().trim().max(1000),
@@ -129,6 +131,19 @@ export async function PATCH(requete: Request, { params }: Contexte) {
       definir("unite_id", unite.id);
       definir("unite_label", unite.label);
       definir("unite_couleur", unite.color);
+    }
+    if (modification.posteBudgetaireId !== undefined) {
+      if (!acces.groupe.parametres.budgetActif)
+        return jsonError("Le suivi budgétaire n'est pas activé", 400);
+      const domaine = existante.type === "recette" ? "recette" : "depense";
+      const poste = (await recupererPostes(acces.identifiantOrganisation)).find(
+        (item) =>
+          item.id === modification.posteBudgetaireId &&
+          item.domaine === domaine,
+      );
+      if (!poste) return jsonError("Poste budgétaire invalide", 400);
+      definir("poste_id", poste.id);
+      definir("poste_label", poste.label);
     }
     if (
       modification.modePaiement !== undefined &&

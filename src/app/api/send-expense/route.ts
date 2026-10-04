@@ -21,6 +21,7 @@ import {
   verifierRateLimit,
 } from "@/lib/api/securiteRequetes";
 import { executerRouteAvecLogs } from "@/lib/api/routeAvecLogs";
+import { verifierPostesEnvoi } from "@/lib/budgetServer";
 import { journal } from "@/lib/logger";
 import { recupererContexteGroupe } from "@/lib/sessionServeur";
 
@@ -122,6 +123,18 @@ export async function POST(req: NextRequest) {
         if (!unitesAutorisees.has(unit.id))
           return jsonError("Vous n'avez pas accès à cette unité", 403);
       }
+      // Suivi budgétaire : poste obligatoire et valide pour chaque pièce ;
+      // ignoré (jamais enregistré) quand le suivi est désactivé.
+      const erreurPoste = await verifierPostesEnvoi(
+        identifiantOrganisation,
+        group.parametres.budgetActif,
+        "depense",
+        donneesEmail.detailsDepenses.map((detail) => detail.posteBudgetaireId),
+      );
+      if (erreurPoste) return jsonError(erreurPoste, 400);
+      if (!group.parametres.budgetActif)
+        for (const detail of donneesEmail.detailsDepenses)
+          detail.posteBudgetaireId = null;
       donneesEmail.branche = unit.label;
       donneesEmail.groupe = group.organisation.name;
       donneesEmail.couleur = unit.color;

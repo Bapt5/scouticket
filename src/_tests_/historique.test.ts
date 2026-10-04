@@ -50,6 +50,17 @@ describe("versEntreesDepense", () => {
     );
     expect(entree.reference).toBeNull();
   });
+
+  it("transmet le poste budgétaire de chaque justificatif", () => {
+    const entrees = versEntreesDepense(
+      [detail({ posteBudgetaireId: "p1" }), detail()],
+      "depense",
+    );
+    expect(entrees.map((entree) => entree.posteBudgetaireId)).toEqual([
+      "p1",
+      null,
+    ]);
+  });
 });
 
 describe("versEntreeRecette", () => {
@@ -70,7 +81,20 @@ describe("versEntreeRecette", () => {
       activite: "",
       description: "Vente",
       lignes: [{ categorie: "Vente article boutique", montant: 40 }],
+      posteBudgetaireId: null,
     });
+  });
+
+  it("transmet le poste budgétaire de la recette", () => {
+    expect(
+      versEntreeRecette({
+        date: "2026-04-01",
+        modePaiement: "Virement",
+        description: "",
+        lignes: [{ categorie: "Vente article boutique", montant: 40 }],
+        posteBudgetaireId: "poste-1",
+      }).posteBudgetaireId,
+    ).toBe("poste-1");
   });
 });
 
@@ -105,6 +129,55 @@ describe("export CSV", () => {
     expect(cellulesCsv("normal")).toBe("normal");
   });
 
+  it("ajoute la colonne Poste budgétaire uniquement quand le suivi est actif", () => {
+    const ligne: LigneHistoriqueApi = {
+      id: "1",
+      envoiId: "e",
+      type: "depense",
+      date: "2026-03-10",
+      uniteId: "u",
+      uniteLabel: "Louveteaux",
+      uniteCouleur: "#fff",
+      posteId: "p1",
+      posteLabel: "Camp",
+      reference: null,
+      modePaiement: "Carte",
+      activite: "",
+      description: "Courses",
+      montantTotal: 10,
+      lignes: [{ categorie: "Formation", montant: 10 }],
+      auteurNom: null,
+      creeLe: "2026-03-10T10:00:00.000Z",
+      modifieLe: null,
+      modifieParNom: null,
+    };
+    const sansPoste: LigneHistoriqueApi = {
+      ...ligne,
+      id: "2",
+      posteId: null,
+      posteLabel: null,
+    };
+
+    const sans = genererCsvHistorique([ligne]).trim().split("\r\n");
+    const avec = genererCsvHistorique([ligne, sansPoste], {
+      avecPoste: true,
+    })
+      .trim()
+      .split("\r\n");
+
+    expect(sans[0]).not.toContain("Poste budgétaire");
+    expect(avec[0]).toBe(
+      "Date;Référence;Type;Unité;Poste budgétaire;Mode de paiement;Activité;Description;Montant total;Formation",
+    );
+    expect(avec[1]).toBe(
+      "2026-03-10;;Dépense;Louveteaux;Camp;Carte;;Courses;10,00;10,00",
+    );
+    // Écriture non affectée : cellule vide.
+    expect(avec[2]).toBe(
+      "2026-03-10;;Dépense;Louveteaux;;Carte;;Courses;10,00;10,00",
+    );
+  });
+
   it("génère un fichier avec BOM, montants français et détail par catégorie", () => {
     const ligne: LigneHistoriqueApi = {
       id: "1",
@@ -114,6 +187,8 @@ describe("export CSV", () => {
       uniteId: "u",
       uniteLabel: "Louveteaux",
       uniteCouleur: "#fff",
+      posteId: "p1",
+      posteLabel: "Camp",
       reference: "2026-001",
       modePaiement: "Carte",
       activite: "",

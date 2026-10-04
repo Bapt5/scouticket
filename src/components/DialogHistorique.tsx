@@ -23,11 +23,17 @@ import {
   type LigneHistoriqueApi,
 } from "@/lib/historique";
 import type { UniteGroupe } from "@/lib/group";
+import { LIBELLE_NON_AFFECTE, type PosteBudgetaire } from "@/lib/budget";
 
 interface DialogHistoriqueProps {
   readonly entree: LigneHistoriqueApi;
   readonly responsable: boolean;
   readonly unites: readonly UniteGroupe[];
+  /** Postes budgétaires par domaine ; `undefined` quand le suivi budgétaire est désactivé. */
+  readonly postes?: {
+    depense: readonly PosteBudgetaire[];
+    recette: readonly PosteBudgetaire[];
+  };
   readonly moyensPaiement: readonly string[];
   readonly onFermer: () => void;
   /** Appelé après une modification ou une suppression réussie. */
@@ -66,6 +72,7 @@ export function DialogHistorique({
   entree,
   responsable,
   unites,
+  postes,
   moyensPaiement,
   onFermer,
   onChange,
@@ -78,6 +85,10 @@ export function DialogHistorique({
 
   const [date, setDate] = useState(entree.date);
   const [uniteId, setUniteId] = useState(entree.uniteId ?? "");
+  const [posteId, setPosteId] = useState(entree.posteId ?? "");
+  const postesEntree = postes
+    ? postes[entree.type === "recette" ? "recette" : "depense"]
+    : undefined;
   const [modePaiement, setModePaiement] = useState(entree.modePaiement);
   const [activite, setActivite] = useState(entree.activite);
   const [description, setDescription] = useState(entree.description);
@@ -135,6 +146,10 @@ export function DialogHistorique({
         body: JSON.stringify({
           date,
           ...(uniteId && { uniteId }),
+          // Seul un changement de poste est envoyé (« Non affecté » n'est pas un choix).
+          ...(postesEntree && posteId && posteId !== entree.posteId
+            ? { posteBudgetaireId: posteId }
+            : {}),
           modePaiement,
           activite,
           description,
@@ -223,6 +238,25 @@ export function DialogHistorique({
                   ))}
                 </select>
               </label>
+              {postesEntree && (
+                <label className="block text-sm font-medium text-zinc-700">
+                  Poste budgétaire
+                  <select
+                    value={posteId}
+                    onChange={(e) => setPosteId(e.target.value)}
+                    className={`mt-1 ${classeChamp}`}
+                  >
+                    {!entree.posteId && (
+                      <option value="">{LIBELLE_NON_AFFECTE}</option>
+                    )}
+                    {postesEntree.map((poste) => (
+                      <option key={poste.id} value={poste.id}>
+                        {poste.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
               {entree.type !== "note-de-frais" && (
                 <label className="block text-sm font-medium text-zinc-700">
                   Mode de paiement
@@ -287,6 +321,15 @@ export function DialogHistorique({
                   {entree.uniteLabel}
                 </span>
               </Champ>
+              {postes && (
+                <Champ libelle="Poste budgétaire">
+                  {entree.posteId ? (
+                    entree.posteLabel
+                  ) : (
+                    <span className="text-zinc-500">{LIBELLE_NON_AFFECTE}</span>
+                  )}
+                </Champ>
+              )}
               {entree.modePaiement && (
                 <Champ libelle="Mode de paiement">{entree.modePaiement}</Champ>
               )}

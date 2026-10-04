@@ -326,6 +326,31 @@ describe("circuit de signature complet", () => {
     });
   });
 
+  it("transmet le poste budgétaire global de la note à l'unique entrée d'historique", async () => {
+    await parcourirJusquauTresorier();
+    // Le poste est choisi une fois au dépôt : toutes les pièces le portent.
+    for (const detail of bd.note!.donneesNdf.detailsDepenses)
+      detail.posteBudgetaireId = "poste-camp";
+
+    await signer(TRESORIER, { dateVirement: "2026-09-30" });
+
+    const [, historique] = bd.envoiAvecHistorique.mock.calls[0];
+    expect(historique.entrees).toHaveLength(1);
+    expect(historique.entrees[0].posteBudgetaireId).toBe("poste-camp");
+    expect(
+      bd.envoiDepense.mock.calls[0][0].detailsDepenses[0].posteBudgetaireId,
+    ).toBe("poste-camp");
+  });
+
+  it("n'affecte aucun poste à une note déposée sans suivi budgétaire", async () => {
+    await parcourirJusquauTresorier();
+
+    await signer(TRESORIER, { dateVirement: "2026-09-30" });
+
+    const [, historique] = bd.envoiAvecHistorique.mock.calls[0];
+    expect(historique.entrees[0].posteBudgetaireId).toBeNull();
+  });
+
   it("applique la nomenclature du groupe à l'envoi final quand elle est configurée", async () => {
     bd.formatNomenclature = "{Annee}-{Global}";
     await parcourirJusquauTresorier();

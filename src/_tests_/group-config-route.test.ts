@@ -53,8 +53,50 @@ describe("GET /api/group/config", () => {
       organisation: { id: "org_1", name: "Groupe test" },
       unites: UNITES,
       emailsTresoriers: ["tresorier@example.test"],
+      parametres: { budgetActif: false },
     });
     mocks.query.mockResolvedValue({ rows: [] });
+  });
+
+  it("n'expose pas de postes budgétaires quand le suivi est désactivé", async () => {
+    mocks.recupererRoleMembre.mockResolvedValue("admin");
+
+    const reponse = await GET(
+      new Request("https://example.test/api/group/config"),
+    );
+    const corps = await reponse.json();
+
+    expect(corps.postesBudgetaires).toBeUndefined();
+    expect(mocks.query).toHaveBeenCalledTimes(1);
+  });
+
+  it("expose les postes par domaine à tous les membres quand le suivi est actif", async () => {
+    mocks.recupererRoleMembre.mockResolvedValue("member");
+    mocks.recupererUnitesAutoriseesMembre.mockResolvedValue(
+      new Set(["farfadets"]),
+    );
+    mocks.recupererGroupeActif.mockResolvedValue({
+      organisation: { id: "org_1", name: "Groupe test" },
+      unites: UNITES,
+      emailsTresoriers: ["tresorier@example.test"],
+      parametres: { budgetActif: true },
+    });
+    mocks.query.mockResolvedValueOnce({ rows: [] }).mockResolvedValueOnce({
+      rows: [
+        { id: "p1", domaine: "depense", label: "Camp" },
+        { id: "p2", domaine: "recette", label: "Calendrier" },
+      ],
+    });
+
+    const reponse = await GET(
+      new Request("https://example.test/api/group/config"),
+    );
+    const corps = await reponse.json();
+
+    expect(corps.postesBudgetaires).toEqual({
+      depense: [{ id: "p1", domaine: "depense", label: "Camp" }],
+      recette: [{ id: "p2", domaine: "recette", label: "Calendrier" }],
+    });
   });
 
   it("ne renvoie à un membre simple que les unités qui lui sont autorisées", async () => {
