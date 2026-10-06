@@ -36,7 +36,7 @@ const metadonneesPages: Record<string, { titre: string; description: string }> =
     "technical/overview.md": {
       titre: "Vue d’ensemble technique",
       description:
-        "Architecture, fonctionnalités et choix techniques de Scoutréso : Next.js, Clerk, SMTP et PWA.",
+        "Architecture, fonctionnalités et choix techniques de Scoutréso : Next.js, Better Auth, SMTP et PWA.",
     },
     "technical/scan-justificatifs.md": {
       titre: "Scan automatique des justificatifs",

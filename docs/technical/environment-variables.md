@@ -64,15 +64,6 @@ Les cartes sont associées à `service=scoutreso-web`, `env=production` et au SH
 
 Le bouton « Continuer avec Google » n’est affiché, et le fournisseur n’est activé côté serveur, que si les deux variables sont renseignées.
 
-## Ancienne configuration Clerk
-
-| Variable                            | Requis | Description                                  |
-| ----------------------------------- | :----: | -------------------------------------------- |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` |   ✅   | Clé publique de l’application Clerk          |
-| `CLERK_SECRET_KEY`                  |   ✅   | Clé secrète de l’application Clerk           |
-| `NEXT_PUBLIC_CLERK_SIGN_IN_URL`     |   ✅   | Route de connexion, généralement `/sign-in`  |
-| `NEXT_PUBLIC_CLERK_SIGN_UP_URL`     |   ✅   | Route d’inscription, généralement `/sign-up` |
-
 ## Maintenance
 
 | Variable           |  Requis   | Description                                                                                                                                                                                                     |

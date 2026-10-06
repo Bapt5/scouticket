@@ -1,11 +1,11 @@
 # Dépannage
 
-## Erreurs Clerk fréquentes
+## Erreurs d’authentification fréquentes
 
-- **Redirection boucle** : vérifier les URLs sign-in/sign-up
-- **Accès refusé** : vérifier clés Clerk et domaine autorisé
-- **Impossible de créer ou sélectionner un groupe** : activer **Organizations** dans Clerk et autoriser la création d’organisations par les responsables
-- **Impossible d’inviter un membre** : vérifier que l’authentification e-mail et les invitations d’organisation sont actives dans Clerk
+- **Redirection en boucle** : vérifier que `BETTER_AUTH_URL` correspond à l’URL publique de l’application
+- **Accès refusé** : vérifier `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` et que les migrations (`pnpm auth:migrate`, `pnpm db:migrate`) ont été appliquées
+- **Impossible de créer ou sélectionner un groupe** : vérifier que les migrations ont été appliquées et consulter les logs du serveur
+- **Impossible d’inviter un membre** : vérifier la configuration SMTP, l’invitation étant envoyée par e-mail
 
 ## Erreurs SMTP fréquentes
 
@@ -22,8 +22,8 @@
 ## Checklist rapide
 
 - Variables d’environnement complètes
-- Domaine Clerk bien configuré
+- `BETTER_AUTH_URL` identique à l’URL publique
 - Test d’envoi vers Trésorier(s) + utilisateur validé
-- Fonctionnalité Organizations et création d’organisations activées dans Clerk
+- Migrations Better Auth et applicatives appliquées
 - Le groupe compte au moins un membre avec le rôle Trésorier
 - Build local et déploiement sans erreur

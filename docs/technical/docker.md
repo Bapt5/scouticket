@@ -7,8 +7,8 @@ Variables optionnelles et exemples fournisseurs : [Variables d'environnement](/t
 ## Build et run
 
 ```bash
-docker build -t sgdf-notes-de-frais .
-docker run -p 3000:3000 --env-file .env.local sgdf-notes-de-frais
+docker build -t scoutreso .
+docker run -p 3000:3000 --env-file .env.local scoutreso
 ```
 
 ## Checklist

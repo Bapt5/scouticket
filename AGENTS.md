@@ -45,11 +45,11 @@ src/
 
 ## 📂 Fichiers clés et leur rôle
 
-- **`src/app/layout.tsx`** – encapsule toutes les pages, injecte les styles globaux Tailwind et configure le provider Clerk.
+- **`src/app/layout.tsx`** – encapsule toutes les pages, injecte les styles globaux Tailwind, le service worker et le suivi de performances.
 - **`src/app/api/`** – contient les gestionnaires de routes côté serveur (endpoints `POST`) pour l'envoi d'e-mails.
 - **`src/components/`** – blocs de construction UI (ex. : `CaptureButton`, `InvoiceForm`).
 - **`src/lib/`** – logiques métiers partagées, validations, transformations de données et utilitaires comme `formatFileName.ts` ou `emailSender.ts`.
-- **`proxy.ts`** – protège les routes, redirige les utilisateurs non authentifiés vers la page de connexion Clerk.
+- **`proxy.ts`** – protège les routes, redirige les utilisateurs non authentifiés vers la page de connexion Better Auth.
 - **`public/`** – assets statiques (icônes, manifest PWA).
 - **`tailwind.config.js`** – palette de couleurs personnalisée et configuration du dark mode.
 

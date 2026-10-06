@@ -420,7 +420,7 @@ Frontend (React + Better Auth) → API Route (/api/send-expense) → Gmail SMTP 
 
 **"Non autorisé"**
 
-- Vérifiez les clés Clerk
+- Vérifiez `BETTER_AUTH_SECRET` et `BETTER_AUTH_URL`
 - Assurez-vous que l'utilisateur est connecté
 
 **Logs & debug**
@@ -448,12 +448,12 @@ Frontend (React + Better Auth) → API Route (/api/send-expense) → Gmail SMTP 
 
 ### Problème : "Non autorisé" ou impossible de se connecter
 
-**Cause** : Les clés Clerk sont incorrectes ou le domaine n'est pas configuré.
+**Cause** : Les variables Better Auth sont incorrectes ou les migrations n'ont pas été appliquées.
 
 **Solution** :
 
-1. Vérifiez `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` et `CLERK_SECRET_KEY` dans l’environnement de déploiement
-2. Vérifiez que votre domaine est configuré dans Clerk → Domains
+1. Vérifiez `BETTER_AUTH_SECRET` et `BETTER_AUTH_URL` dans l’environnement de déploiement (l’URL doit être celle de l’application)
+2. Vérifiez que `pnpm auth:migrate` et `pnpm db:migrate` ont été exécutés
 3. Redéployez l'application
 
 ### Problème : Les emails ne sont pas reçus
@@ -504,11 +504,10 @@ Frontend (React + Better Auth) → API Route (/api/send-expense) → Gmail SMTP 
 **Solutions** :
 
 1. Vérifiez les variables d’environnement de votre hébergeur.
-2. Vérifiez que les **10 variables minimum** sont présentes :
-   - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
-   - `CLERK_SECRET_KEY`
-   - `NEXT_PUBLIC_CLERK_SIGN_IN_URL`
-   - `NEXT_PUBLIC_CLERK_SIGN_UP_URL`
+2. Vérifiez que les **8 variables minimum** sont présentes :
+   - `DATABASE_URL`
+   - `BETTER_AUTH_SECRET`
+   - `BETTER_AUTH_URL`
    - `SMTP_HOST`
    - `SMTP_PORT`
    - `SMTP_SECURE`

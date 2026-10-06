@@ -1,18 +1,15 @@
 # Configuration
 
-## Configuration indispensable de Clerk
+## Authentification et groupes (Better Auth)
 
-L’application utilise une organisation Clerk pour chaque groupe scout. Sans cette fonctionnalité, il est impossible de créer des groupes, de distinguer leurs configurations ou d’inviter les membres.
+L’authentification, les groupes (organisations), les membres et les invitations sont gérés par l’application elle-même avec Better Auth : il n’y a pas de tableau de bord externe à configurer. Les données sont stockées dans votre base PostgreSQL.
 
-Dans le tableau de bord Clerk :
+1. Renseignez `DATABASE_URL`, `BETTER_AUTH_SECRET` (valeur aléatoire longue) et `BETTER_AUTH_URL` (URL publique de l’application). Voir la [référence des variables d’environnement](/technical/environment-variables).
+2. Appliquez les migrations : `pnpm auth:migrate` (schéma Better Auth), puis `pnpm db:migrate` (tables de l’application).
+3. Configurez le serveur SMTP ci-dessous : il sert à confirmer les adresses e-mail, à réinitialiser les mots de passe et à envoyer les invitations de membres.
+4. Facultatif : renseignez `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET` pour proposer « Continuer avec Google ».
 
-1. Activez **Organizations** dans les réglages de l’application.
-2. Activez l’authentification par **e-mail** : les invitations de membres sont envoyées par e-mail.
-3. Autorisez la création d’organisations par les utilisateurs : les responsables créent leur groupe depuis l’application.
-4. Réglez la limite de membres par organisation pour qu’elle couvre les besoins de vos groupes.
-5. Conservez les rôles par défaut : le créateur du groupe est administrateur et les personnes invitées sont membres.
-
-Le mode « adhésion obligatoire » est recommandé : l’application est conçue pour fonctionner dans le contexte d’un groupe. Consultez la [documentation officielle de configuration des organisations Clerk](https://clerk.com/docs/guides/organizations/configure) si les libellés du tableau de bord évoluent.
+Les rôles sont `owner` (Trésorier), `admin` (responsable) et `member`. Les responsables créent leur groupe et invitent les membres depuis l’application.
 
 ## Configuration SMTP
 
