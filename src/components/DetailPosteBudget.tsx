@@ -11,7 +11,7 @@ import type { SelectionPoste } from "@/lib/budgetPilotage";
 import type { UniteGroupe } from "@/lib/group";
 import {
   LIBELLES_TYPES_HISTORIQUE,
-  estRecetteHistorique,
+  formaterEffetTresorerieHistorique,
   formaterDateHistorique,
   formaterMontantHistorique,
   type LigneHistoriqueApi,
@@ -191,8 +191,10 @@ export function DetailPosteBudget({
                             {ligne.description}
                           </td>
                           <td className="whitespace-nowrap px-3 py-2 text-right">
-                            {estRecetteHistorique(ligne.type) ? "+" : "-"}{" "}
-                            {formaterMontantHistorique(ligne.montantTotal)}
+                            {formaterEffetTresorerieHistorique(
+                              ligne.type,
+                              ligne.montantTotal,
+                            )}
                           </td>
                         </tr>
                       ))}

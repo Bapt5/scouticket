@@ -244,3 +244,18 @@ const formateurMontant = new Intl.NumberFormat("fr-FR", {
 });
 export const formaterMontantHistorique = (montant: number) =>
   formateurMontant.format(montant);
+
+/** Effet signé sur la trésorerie : un montant négatif inverse le sens (dépense remboursée, recette annulée). */
+export const effetTresorerieHistorique = (
+  type: TypeHistorique,
+  montant: number,
+) => (estRecetteHistorique(type) ? montant : -montant);
+
+/** Montant précédé de son signe explicite ("+ 10,00 €" / "- 10,00 €"), sans double signe. */
+export const formaterEffetTresorerieHistorique = (
+  type: TypeHistorique,
+  montant: number,
+) => {
+  const effet = effetTresorerieHistorique(type, montant);
+  return `${effet < 0 ? "-" : "+"} ${formateurMontant.format(Math.abs(effet))}`;
+};
