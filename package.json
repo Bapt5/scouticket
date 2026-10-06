@@ -30,7 +30,7 @@
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx --max-warnings 0",
     "format": "prettier --write . --ignore-path .prettierignore --ignore-unknown",
     "format:check": "prettier --check . --ignore-path .prettierignore --ignore-unknown",
-    "type": "tsc --noEmit",
+    "type": "next typegen && tsc --noEmit",
     "db:migrate": "node --env-file-if-exists=.env scripts/migrate-base-de-donnees.mjs",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",

@@ -17,7 +17,7 @@ pnpm test:watch            # vitest watch mode
 pnpm lint                  # eslint --max-warnings 0
 pnpm format                # prettier --write
 pnpm format:check
-pnpm type                  # tsc --noEmit
+pnpm type                  # next typegen && tsc --noEmit (typegen produit next-env.d.ts, absent d'un checkout propre)
 pnpm validate               # lint && type && test && build (run before considering work done)
 ```
 
