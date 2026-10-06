@@ -18,12 +18,12 @@ export function OpenObserveRum() {
     ]).then(([{ openobserveRum }, { openobserveLogs }]) => {
       if (!openobserveRum.getInitConfiguration()) {
         openobserveRum.init({
-          applicationId: "scouticket",
+          applicationId: "scoutreso",
           clientToken: jetonClient,
           site,
           organizationIdentifier:
             process.env.NEXT_PUBLIC_OPENOBSERVE_ORGANISATION ?? "default",
-          service: "scouticket-web",
+          service: "scoutreso-web",
           env: process.env.NODE_ENV,
           version: process.env.NEXT_PUBLIC_VERSION_DEPLOIEMENT,
           trackResources: true,
@@ -45,7 +45,7 @@ export function OpenObserveRum() {
           site,
           organizationIdentifier:
             process.env.NEXT_PUBLIC_OPENOBSERVE_ORGANISATION ?? "default",
-          service: "scouticket-web",
+          service: "scoutreso-web",
           env: process.env.NODE_ENV,
           version: process.env.NEXT_PUBLIC_VERSION_DEPLOIEMENT,
           forwardErrorsToLogs: true,

@@ -90,7 +90,7 @@ describe("Page principale", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: "Scouticket",
+        name: "Scoutréso",
       }),
     ).toBeInTheDocument();
     expect(

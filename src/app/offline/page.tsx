@@ -3,18 +3,18 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Mode hors ligne",
   description:
-    "Scouticket reste accessible hors ligne pour préparer une note de frais.",
+    "Scoutréso reste accessible hors ligne pour préparer une note de frais.",
   openGraph: {
-    title: "Mode hors ligne | Scouticket",
+    title: "Mode hors ligne | Scoutréso",
     description:
-      "Scouticket reste accessible hors ligne pour préparer une note de frais.",
-    images: ["/og-scouticket.png"],
+      "Scoutréso reste accessible hors ligne pour préparer une note de frais.",
+    images: ["/og-scoutreso.png"],
   },
   twitter: {
-    title: "Mode hors ligne | Scouticket",
+    title: "Mode hors ligne | Scoutréso",
     description:
-      "Scouticket reste accessible hors ligne pour préparer une note de frais.",
-    images: ["/og-scouticket.png"],
+      "Scoutréso reste accessible hors ligne pour préparer une note de frais.",
+    images: ["/og-scoutreso.png"],
   },
   robots: {
     index: false,

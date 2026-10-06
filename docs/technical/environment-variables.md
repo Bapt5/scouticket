@@ -44,7 +44,7 @@ La publication GitHub Actions envoie automatiquement les cartes sources de chaqu
 | `OPENOBSERVE_ORG_ID` | Identifiant de l’organisation OpenObserve                                      |
 | `OPENOBSERVE_AUTH`   | Valeur complète de l’en-tête d’autorisation (`Basic …` ou `Bearer …`) de l’API |
 
-Les cartes sont associées à `service=scouticket-web`, `env=production` et au SHA complet du commit. Ces trois valeurs doivent correspondre exactement aux métadonnées RUM. Les fichiers `.map` ne sont jamais inclus dans l’image de production ni accessibles par les navigateurs.
+Les cartes sont associées à `service=scoutreso-web`, `env=production` et au SHA complet du commit. Ces trois valeurs doivent correspondre exactement aux métadonnées RUM. Les fichiers `.map` ne sont jamais inclus dans l’image de production ni accessibles par les navigateurs.
 
 ## Connexion Google (optionnelle)
 

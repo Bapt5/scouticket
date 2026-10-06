@@ -1,4 +1,4 @@
-name: scouticket
+name: scoutreso
 
 services:
   postgres:
@@ -19,12 +19,12 @@ services:
       retries: 10
 
   app:
-    image: ghcr.io/yipfram/scouticket:latest
+    image: ghcr.io/bapt5/scoutreso:latest
     build:
       context: .
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-scouticket}
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-scoutreso}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
       AUDIT_LOG_SECRET: ${AUDIT_LOG_SECRET}
       NDF_SCELLEMENT_P12_BASE64: ${NDF_SCELLEMENT_P12_BASE64}

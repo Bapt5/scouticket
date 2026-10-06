@@ -54,16 +54,16 @@ describe("Proxy Better Auth", () => {
   });
 
   it("utilise APP_URL pour une redirection derrière un proxy HTTP", async () => {
-    process.env.APP_URL = "https://app.scouticket.fr";
+    process.env.APP_URL = "https://app.scoutreso.me";
     mocks.cookieSession.mockReturnValue(null);
     const { default: proxy } = await import("../proxy");
     const reponse = proxy({
-      nextUrl: new URL("http://app.scouticket.fr/invitation?id=invitation-1"),
-      url: "http://app.scouticket.fr/invitation?id=invitation-1",
+      nextUrl: new URL("http://app.scoutreso.me/invitation?id=invitation-1"),
+      url: "http://app.scoutreso.me/invitation?id=invitation-1",
     } as never);
 
     expect(reponse.headers.get("location")).toContain(
-      "https://app.scouticket.fr/sign-in",
+      "https://app.scoutreso.me/sign-in",
     );
   });
 

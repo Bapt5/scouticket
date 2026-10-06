@@ -90,7 +90,7 @@ const classeChamp =
 
 /** Clé locale de la dernière année comptable consultée, par groupe. */
 const cleAnneeMemorisee = (identifiantOrganisation: string) =>
-  `scouticket:historique:anneeComptable:${identifiantOrganisation}`;
+  `scoutreso:historique:anneeComptable:${identifiantOrganisation}`;
 
 /** Lecture/écriture tolérantes : le stockage peut être indisponible ou bloqué. */
 function lireAnneeMemorisee(identifiantOrganisation: string): string {

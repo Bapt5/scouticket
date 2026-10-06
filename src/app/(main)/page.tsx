@@ -373,7 +373,7 @@ export default function Home() {
       <div className="mx-auto max-w-md overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm">
         <header className="flex items-start justify-between border-b border-zinc-200 p-6">
           <div>
-            <h1 className="text-2xl font-semibold text-zinc-900">Scouticket</h1>
+            <h1 className="text-2xl font-semibold text-zinc-900">Scoutréso</h1>
             <p className="mt-2 text-zinc-500">{organisation.name}</p>
           </div>
           <div className="flex flex-col items-end gap-2">

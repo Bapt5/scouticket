@@ -2,13 +2,13 @@
 layout: home
 
 hero:
-  name: Scouticket
+  name: Scoutréso
   text: Envoyez vos justificatifs dès que vous les avez
   tagline: Prenez une photo ou ajoutez un PDF, envoyez-le immédiatement à la trésorerie et gardez-en une copie dans vos e-mails.
   actions:
     - theme: brand
       text: Je suis responsable de groupe
-      link: https://app.scouticket.fr
+      link: https://app.scoutreso.me
     - theme: alt
       text: Je suis membre du groupe
       link: "#rejoindre-un-groupe"

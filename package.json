@@ -1,18 +1,24 @@
 {
-  "name": "scouticket",
+  "name": "scoutreso",
   "version": "0.1",
   "packageManager": "pnpm@12.4.2",
   "private": true,
   "description": "Application de gestion de justificatifs et de notes de frais pour les scouts",
   "license": "MIT",
-  "homepage": "https://scouticket.fr",
+  "homepage": "https://scoutreso.me",
   "author": {
     "name": "Yipfram",
     "email": "romain@romain-rochas.fr"
   },
+  "contributors": [
+    {
+      "name": "Bapt5",
+      "url": "https://github.com/Bapt5"
+    }
+  ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yipfram/scouticket.git"
+    "url": "git+https://github.com/Bapt5/scoutreso.git"
   },
   "scripts": {
     "dev": "node scripts/copier-assets-scanic.mjs && next dev",

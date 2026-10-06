@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Scouticket: a Next.js 16 (App Router) app that lets scout group members send expense receipts to their treasurer by email. No receipt storage: uploaded files are only ever emailed, never persisted server-side, except the one documented, time-bounded exception for "note de frais signée" (see below), where the generated PDF is persisted only for the duration of the e-signature circuit, then deleted with its row. The optional group "historique" stores accounting data only (never receipts, see below). French-language codebase, see "Conventions" below.
+Scoutréso: a Next.js 16 (App Router) app that lets scout group members send expense receipts to their treasurer by email. No receipt storage: uploaded files are only ever emailed, never persisted server-side, except the one documented, time-bounded exception for "note de frais signée" (see below), where the generated PDF is persisted only for the duration of the e-signature circuit, then deleted with its row. The optional group "historique" stores accounting data only (never receipts, see below). French-language codebase, see "Conventions" below.
 
 ## Commands
 

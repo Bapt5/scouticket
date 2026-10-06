@@ -1,7 +1,7 @@
-# Scouticket
+# Scoutréso
 
-Scouticket est une application gratuite (et open-source) destinée aux groupes scouts pour envoyer plus facilement les justificatifs aux trésorier·e.
-l'appication est disponible ici: https://scouticket.fr
+Scoutréso est une application gratuite (et open-source) destinée aux groupes scouts pour envoyer plus facilement les justificatifs aux trésorier·e.
+l'appication est disponible ici: https://scoutreso.me
 
 ## Authentification et migration
 
@@ -11,7 +11,7 @@ Ce repository est sous license MIT, vous pouvez l'utiliser comme bon vous semble
 
 # Docs
 
-Pour savoir comment l'utiliser avec [la documentation](https://scouticket.fr)
+Pour savoir comment l'utiliser avec [la documentation](https://scoutreso.me)
 
 ## Fonctionnalités
 
@@ -21,7 +21,7 @@ Pour savoir comment l'utiliser avec [la documentation](https://scouticket.fr)
 - 👥 **Multi-groupes** : chaque groupe configure ses unités, invite ses membres et valide sa propre adresse de trésorerie
 - 📌 **Préférences mémorisées** : le dernier choix d’unité et le groupe principal sont enregistrés par compte
 - 🔐 **Connexion complète** : inscription, vérification d’e-mail, connexion e-mail/mot de passe, réinitialisation sécurisée et Google en option
-- 🔐 **Validation de trésorerie** : aucun envoi n’est possible avant la confirmation reçue par e-mail du trésorier, via un e-mail HTML reprenant la charte Scouticket
+- 🔐 **Validation de trésorerie** : aucun envoi n’est possible avant la confirmation reçue par e-mail du trésorier, via un e-mail HTML reprenant la charte Scoutréso
 - 🏷️ **Nom de fichier structuré** : `YYYY-MM-DD - Branche - Type - Montant - 01.pdf` (ou `.jpg/.png/.webp`)
 - 📲 **Installation PWA** : Ajout possible à l'écran d'accueil (Android / iOS / Desktop)
 - 🔄 **Mise à jour PWA sûre** : chaque déploiement active un nouveau cache et recharge automatiquement l’application à jour
@@ -37,7 +37,7 @@ Pour savoir comment l'utiliser avec [la documentation](https://scouticket.fr)
 
 Après votre inscription, créez ou sélectionnez votre groupe depuis le sélecteur dans l’en-tête. Son responsable configure l’adresse de trésorerie et les unités. Une confirmation est envoyée à la trésorerie : tant que le lien n’est pas validé, aucune note ne peut être transmise.
 
-Définissez `APP_URL` avec l’URL publique de l’application (par exemple `https://app.scouticket.fr`) afin que les liens de confirmation envoyés par e-mail soient valides.
+Définissez `APP_URL` avec l’URL publique de l’application (par exemple `https://app.scoutreso.me`) afin que les liens de confirmation envoyés par e-mail soient valides.
 
 La liste d’unités par défaut peut être renommée, complétée ou simplifiée par chaque groupe. Chaque unité possède une couleur, reprise dans les e-mails de notes de frais.
 
@@ -103,7 +103,7 @@ Docker Desktop doit être démarré. Compose démarre aussi PostgreSQL avec un v
 # Construire, démarrer et attendre que le contrôle de santé réussisse
 docker compose up --build --wait
 
-# Initialiser Better Auth et les tables Scouticket (à chaque nouvelle migration)
+# Initialiser Better Auth et les tables Scoutréso (à chaque nouvelle migration)
 docker compose exec app pnpm auth:migrate
 docker compose exec app pnpm db:migrate
 
@@ -117,7 +117,7 @@ docker compose down
 
 ## Audit Better Auth et OpenObserve
 
-Définissez `AUDIT_LOG_SECRET` avec une valeur aléatoire distincte de `BETTER_AUTH_SECRET`. Scouticket écrit alors les opérations Better Auth importantes (connexion, inscription, mots de passe, vérification e-mail, organisations et invitations) au format JSON sur stdout. Configurez votre collecteur OpenObserve pour ingérer les logs du conteneur `app`; les champs `utilisateur` et `organisation` sont chiffrés en AES-256-GCM, sans e-mail ni identifiant brut. Ils peuvent être déchiffrés avec la même valeur de `AUDIT_LOG_SECRET`.
+Définissez `AUDIT_LOG_SECRET` avec une valeur aléatoire distincte de `BETTER_AUTH_SECRET`. Scoutréso écrit alors les opérations Better Auth importantes (connexion, inscription, mots de passe, vérification e-mail, organisations et invitations) au format JSON sur stdout. Configurez votre collecteur OpenObserve pour ingérer les logs du conteneur `app`; les champs `utilisateur` et `organisation` sont chiffrés en AES-256-GCM, sans e-mail ni identifiant brut. Ils peuvent être déchiffrés avec la même valeur de `AUDIT_LOG_SECRET`.
 
 ## RUM OpenObserve
 
@@ -129,7 +129,7 @@ NEXT_PUBLIC_OPENOBSERVE_CLIENT_TOKEN=votre-jeton-rum
 NEXT_PUBLIC_OPENOBSERVE_ORGANISATION=default
 ```
 
-Sans `NEXT_PUBLIC_OPENOBSERVE_SITE` ou `NEXT_PUBLIC_OPENOBSERVE_CLIENT_TOKEN`, le SDK ne se charge pas. Scouticket collecte les performances, ressources, tâches longues, interactions et erreurs de toutes les sessions ; le rejeu est échantillonné à 50 % et les champs de saisie sont masqués. Lorsqu’un utilisateur est connecté, son identifiant envoyé à OpenObserve est chiffré en AES-256-GCM avec `AUDIT_LOG_SECRET` : aucun identifiant Better Auth brut ni e-mail n’est transmis.
+Sans `NEXT_PUBLIC_OPENOBSERVE_SITE` ou `NEXT_PUBLIC_OPENOBSERVE_CLIENT_TOKEN`, le SDK ne se charge pas. Scoutréso collecte les performances, ressources, tâches longues, interactions et erreurs de toutes les sessions ; le rejeu est échantillonné à 50 % et les champs de saisie sont masqués. Lorsqu’un utilisateur est connecté, son identifiant envoyé à OpenObserve est chiffré en AES-256-GCM avec `AUDIT_LOG_SECRET` : aucun identifiant Better Auth brut ni e-mail n’est transmis.
 
 ## Mode maintenance
 

@@ -2,11 +2,11 @@ import { Pool } from "pg";
 import { journal } from "@/lib/logger";
 
 const globalAvecPool = globalThis as typeof globalThis & {
-  poolScouticket?: Pool;
+  poolScoutreso?: Pool;
 };
 
 export const pool =
-  globalAvecPool.poolScouticket ??
+  globalAvecPool.poolScoutreso ??
   new Pool({ connectionString: process.env.DATABASE_URL });
 
 pool.on("error", (erreur) => {
@@ -16,4 +16,4 @@ pool.on("error", (erreur) => {
   });
 });
 
-if (process.env.NODE_ENV !== "production") globalAvecPool.poolScouticket = pool;
+if (process.env.NODE_ENV !== "production") globalAvecPool.poolScoutreso = pool;

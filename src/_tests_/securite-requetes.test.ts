@@ -13,10 +13,10 @@ afterEach(() => {
 
 describe("verifierOrigineRequete", () => {
   it("accepte l’origine publique configurée derrière un proxy", () => {
-    process.env.APP_URL = "https://app.scouticket.fr";
+    process.env.APP_URL = "https://app.scoutreso.me";
     const requete = new Request("http://app:3000/api/group/config", {
       headers: {
-        origin: "https://app.scouticket.fr",
+        origin: "https://app.scoutreso.me",
         "x-forwarded-host": "tunnel-interne.example",
         "x-forwarded-proto": "http",
       },
@@ -26,7 +26,7 @@ describe("verifierOrigineRequete", () => {
   });
 
   it("refuse et journalise une origine différente de l’URL publique", async () => {
-    process.env.APP_URL = "https://app.scouticket.fr";
+    process.env.APP_URL = "https://app.scoutreso.me";
     const espion = vi.spyOn(console, "warn").mockImplementation(() => {});
     const requete = new Request("http://app:3000/api/group/config", {
       headers: { origin: "https://site-tiers.example" },
@@ -44,14 +44,14 @@ describe("verifierOrigineRequete", () => {
       codeErreur: "origine-differente",
       details: {
         origineRecue: "https://site-tiers.example",
-        origineAutorisee: "https://app.scouticket.fr",
+        origineAutorisee: "https://app.scoutreso.me",
       },
     });
     espion.mockRestore();
   });
 
   it("refuse une requête intersite, même sans en-tête Origin", () => {
-    process.env.APP_URL = "https://app.scouticket.fr";
+    process.env.APP_URL = "https://app.scoutreso.me";
     const requete = new Request("http://app:3000/api/group/config", {
       headers: { "sec-fetch-site": "cross-site" },
     });

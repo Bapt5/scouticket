@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Maintenance en cours",
-  description: "Scouticket est momentanément indisponible pour maintenance.",
+  description: "Scoutréso est momentanément indisponible pour maintenance.",
   robots: {
     index: false,
     follow: false,
@@ -17,7 +17,7 @@ export default function PageMaintenance() {
           Maintenance en cours
         </h1>
         <p className="mt-3 text-zinc-600">
-          Scouticket est momentanément indisponible. Revenez dans quelques
+          Scoutréso est momentanément indisponible. Revenez dans quelques
           instants.
         </p>
       </section>

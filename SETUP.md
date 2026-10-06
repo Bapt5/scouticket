@@ -1,4 +1,4 @@
-# 📖 Guide d'installation - Scouticket
+# 📖 Guide d'installation - Scoutréso
 
 Ce guide explique **pas à pas** comment installer et déployer l'application, que vous soyez développeur ou non.
 
@@ -123,7 +123,7 @@ Sinon :
 3. Cliquez dessus
 4. Dans **"Sélectionner une application"** :
    - Choisissez **"Autre (nom personnalisé)"**
-   - Tapez : `Scouticket`
+   - Tapez : `Scoutréso`
 5. Cliquez sur **"Générer"**
 6. Google affiche un mot de passe de **16 caractères** (ex: `abcd efgh ijkl mnop`)
 7. **⚠️ IMPORTANT** : Copiez ce mot de passe immédiatement dans un endroit sûr
@@ -193,7 +193,7 @@ Better Auth gère l’authentification depuis l’application. Configurez une ba
 
 Après le déploiement, exécutez `pnpm auth:migrate`, puis `pnpm db:migrate`. Cette dernière commande charge le fichier `.env` lorsqu’il existe. La première commande crée les tables Better Auth ; la seconde applique une seule fois chaque migration de `sql/` et l’historise dans PostgreSQL. Relancez ces deux commandes avant un déploiement qui introduit une migration. Google est optionnel : ajoutez `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET` pour l’activer ; si l’une des deux est absente, le bouton « Continuer avec Google » n’est pas affiché.
 
-Si une connexion sociale échoue avec `column "id" of relation "rateLimit" does not exist`, la base n’a pas encore reçu la migration Scouticket : exécutez `pnpm db:migrate` avec la `DATABASE_URL` de cet environnement.
+Si une connexion sociale échoue avec `column "id" of relation "rateLimit" does not exist`, la base n’a pas encore reçu la migration Scoutréso : exécutez `pnpm db:migrate` avec la `DATABASE_URL` de cet environnement.
 
 Si Google est activé, configurez dans Google Cloud Console l’URI `http://localhost:3000/api/auth/callback/google` en local et `https://votre-domaine/api/auth/callback/google` en production. Cette URL est construite à partir de `BETTER_AUTH_URL`.
 
@@ -205,21 +205,21 @@ Les variables d'environnement sont les "réglages secrets" de l'application.
 
 #### 3.1 Tableau récapitulatif des variables
 
-| Variable             | Requis | Description                                     | Exemple                     |
-| -------------------- | :----: | ----------------------------------------------- | --------------------------- |
-| `DATABASE_URL`       |   ✅   | Connexion PostgreSQL                            | `postgresql://…/scouticket` |
-| `BETTER_AUTH_SECRET` |   ✅   | Secret Better Auth long et aléatoire            | `…`                         |
-| `BETTER_AUTH_URL`    |   ✅   | URL publique de l’application                   | `https://app.exemple.fr`    |
-| `SMTP_HOST`          |   ✅   | Adresse du serveur SMTP                         | `smtp.gmail.com`            |
-| `SMTP_PORT`          |   ✅   | Port SMTP (587 TLS, 465 SSL)                    | `587`                       |
-| `SMTP_SECURE`        |   ✅   | SSL/TLS activé (`true`/`false`)                 | `false`                     |
-| `SMTP_USER`          |   ✅   | Identifiant SMTP (votre email)                  | `monemail@gmail.com`        |
-| `SMTP_PASSWORD`      |   ✅   | Mot de passe SMTP                               | `motdepasse16caracteres`    |
-| `APP_URL`            |   ✅   | URL publique utilisée dans les liens par e-mail | `https://app.scouticket.fr` |
-| `MAINTENANCE_MODE`   |   ♠️   | Active la page de maintenance et bloque les API | `false`                     |
-| `SMTP_FROM`          |   ♠️   | Adresse e-mail expéditrice personnalisée        | `noreply@mondomaine.fr`     |
-| `SMTP_FROM_NAME`     |   ♠️   | Nom utilisé pour tous les e-mails expédiés      | `Scouticket`                |
-| `SMTP_FROM_EMAIL`    |   ♠️   | Email expéditeur de repli                       | `expediteur@email.fr`       |
+| Variable             | Requis | Description                                     | Exemple                    |
+| -------------------- | :----: | ----------------------------------------------- | -------------------------- |
+| `DATABASE_URL`       |   ✅   | Connexion PostgreSQL                            | `postgresql://…/scoutreso` |
+| `BETTER_AUTH_SECRET` |   ✅   | Secret Better Auth long et aléatoire            | `…`                        |
+| `BETTER_AUTH_URL`    |   ✅   | URL publique de l’application                   | `https://app.exemple.fr`   |
+| `SMTP_HOST`          |   ✅   | Adresse du serveur SMTP                         | `smtp.gmail.com`           |
+| `SMTP_PORT`          |   ✅   | Port SMTP (587 TLS, 465 SSL)                    | `587`                      |
+| `SMTP_SECURE`        |   ✅   | SSL/TLS activé (`true`/`false`)                 | `false`                    |
+| `SMTP_USER`          |   ✅   | Identifiant SMTP (votre email)                  | `monemail@gmail.com`       |
+| `SMTP_PASSWORD`      |   ✅   | Mot de passe SMTP                               | `motdepasse16caracteres`   |
+| `APP_URL`            |   ✅   | URL publique utilisée dans les liens par e-mail | `https://app.scoutreso.me` |
+| `MAINTENANCE_MODE`   |   ♠️   | Active la page de maintenance et bloque les API | `false`                    |
+| `SMTP_FROM`          |   ♠️   | Adresse e-mail expéditrice personnalisée        | `noreply@mondomaine.fr`    |
+| `SMTP_FROM_NAME`     |   ♠️   | Nom utilisé pour tous les e-mails expédiés      | `Scoutréso`                |
+| `SMTP_FROM_EMAIL`    |   ♠️   | Email expéditeur de repli                       | `expediteur@email.fr`      |
 
 > ✅ = Requis • ♠️ = Optionnel
 
@@ -306,7 +306,7 @@ Le Trésorier n’est pas une variable d’environnement : c’est un rôle (`ow
 Renseignez les variables suivantes dans `.env.local`, puis lancez `pnpm auth:migrate` suivi de `pnpm db:migrate` :
 
 ```bash
-DATABASE_URL=postgresql://user:password@localhost:5432/scouticket
+DATABASE_URL=postgresql://user:password@localhost:5432/scoutreso
 BETTER_AUTH_SECRET=une_valeur_longue_et_aleatoire
 BETTER_AUTH_URL=https://app.exemple.fr
 APP_URL=https://app.exemple.fr
@@ -323,11 +323,11 @@ SMTP_PORT=587                               # ou 465 pour SSL
 SMTP_SECURE=false                           # true pour port 465, false pour 587
 SMTP_USER=votre-email@example.com
 SMTP_PASSWORD=votre-mot-de-passe            # Mot de passe d'application pour Gmail
-APP_URL=https://app.scouticket.fr              # URL publique de l'application
+APP_URL=https://app.scoutreso.me              # URL publique de l'application
 
 # Optionnel
 SMTP_FROM=noreply@example.com              # Requis pour Resend ou si SMTP_USER n'est pas une adresse
-SMTP_FROM_NAME=Scouticket
+SMTP_FROM_NAME=Scoutréso
 SMTP_FROM_EMAIL=noreply@example.com        # Reste utile comme repli si SMTP_FROM absent
 ```
 
@@ -520,7 +520,7 @@ Frontend (React + Better Auth) → API Route (/api/send-expense) → Gmail SMTP 
 ### Besoin d'aide supplémentaire ?
 
 1. **Consultez les logs** de votre hébergeur
-2. **Ouvrez une issue** : [GitHub Issues](https://github.com/yipfram/sgdf-notes-de-frais/issues)
+2. **Ouvrez une issue** : [GitHub Issues](https://github.com/Bapt5/scoutreso/issues)
 3. Décrivez votre problème avec le message d'erreur et les étapes suivies
 
 ```

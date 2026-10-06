@@ -4,10 +4,10 @@ import { OpenObserveRum } from "@/components/OpenObserveRum";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://app.scouticket.fr"),
+  metadataBase: new URL("https://app.scoutreso.me"),
   title: {
-    default: "Scouticket",
-    template: "%s | Scouticket",
+    default: "Scoutréso",
+    template: "%s | Scoutréso",
   },
   description:
     "Envoyez vos justificatifs et notes de frais à la trésorerie de votre groupe scout.",
@@ -15,18 +15,18 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "fr_FR",
-    siteName: "Scouticket",
-    title: "Scouticket",
+    siteName: "Scoutréso",
+    title: "Scoutréso",
     description:
       "Envoyez vos justificatifs et notes de frais à la trésorerie de votre groupe scout.",
-    images: [{ url: "/og-scouticket.png", width: 1730, height: 909 }],
+    images: [{ url: "/og-scoutreso.png", width: 1730, height: 909 }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Scouticket",
+    title: "Scoutréso",
     description:
       "Envoyez vos justificatifs et notes de frais à la trésorerie de votre groupe scout.",
-    images: ["/og-scouticket.png"],
+    images: ["/og-scoutreso.png"],
   },
 };
 
@@ -51,12 +51,12 @@ export default function RootLayout({
         <meta name="theme-color" content="#18181B" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="Scouticket" />
+        <meta name="apple-mobile-web-app-title" content="Scoutréso" />
         <meta name="mobile-web-app-capable" content="yes" />
         <link rel="manifest" href="/manifest.json" />
         <script
           defer
-          src="https://analytics.scouticket.fr/script.js"
+          src="https://analytics.scoutreso.me/script.js"
           data-website-id="4260f7db-3623-438a-95a4-9ba2631bcc79"
         />
       </head>
