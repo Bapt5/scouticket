@@ -51,10 +51,13 @@ export function LignesCategories({
           afficherErreurs && !montantSaisiValide(ligne.montant);
         const idMontant = `${idPrefixe}-montant-${index}`;
         const idCategorie = `${idPrefixe}-categorie-${index}`;
+        const description = categories.find(
+          (categorie) => categorie.libelle === ligne.categorie,
+        )?.description;
         return (
           <div
             key={index}
-            className="grid grid-cols-[7rem_1fr_auto] gap-x-3 gap-y-1 items-start"
+            className="grid grid-cols-[7rem_minmax(0,1fr)_auto] gap-x-3 gap-y-1 items-start"
           >
             <div className="space-y-1">
               <label
@@ -84,6 +87,7 @@ export function LignesCategories({
             <SelecteurCategorie
               id={idCategorie}
               libelle="Catégorie comptable *"
+              libelleMobile="Catégorie *"
               valeur={ligne.categorie}
               onChange={(categorie) => modifierLigne(index, { categorie })}
               invalide={erreurCategorie}
@@ -91,7 +95,7 @@ export function LignesCategories({
               categories={categories}
             />
             {/* Colonne réservée pour que la mise en page ne bouge pas à l'ajout de lignes */}
-            <div className="pt-7 w-10">
+            <div className="pt-[31px] w-10">
               {index > 0 && (
                 <button
                   type="button"
@@ -103,6 +107,16 @@ export function LignesCategories({
                 </button>
               )}
             </div>
+            {/* Sur toute la largeur de la ligne, hauteur fixe (1 ligne) pour que
+                la mise en page ne bouge pas au choix de la catégorie. Le texte
+                complet s'affiche au survol via le tooltip natif (title). */}
+            <p
+              title={description || undefined}
+              className="col-span-3 h-5 line-clamp-1 text-xs leading-5 text-zinc-500"
+              aria-live="polite"
+            >
+              {description}
+            </p>
             {(erreurMontant || erreurCategorie) && (
               <div className="col-span-3 space-y-1 text-sm text-rose-700">
                 {erreurMontant && (
