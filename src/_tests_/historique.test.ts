@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { DetailDepense } from "@/constants/piecesJointes";
 import {
+  formaterEffetTresorerieHistorique,
   cellulesCsv,
   formaterDateHistorique,
   genererCsvHistorique,
@@ -246,5 +247,24 @@ describe("export CSV", () => {
 describe("formaterDateHistorique", () => {
   it("renvoie JJ/MM/AAAA", () => {
     expect(formaterDateHistorique("2026-03-09")).toBe("09/03/2026");
+  });
+});
+
+describe("formaterEffetTresorerieHistorique", () => {
+  const normaliser = (texte: string) => texte.replace(/\s/g, " ");
+
+  it("affiche un seul signe, y compris pour un montant négatif", () => {
+    expect(normaliser(formaterEffetTresorerieHistorique("depense", 10))).toBe(
+      "- 10,00 €",
+    );
+    expect(normaliser(formaterEffetTresorerieHistorique("depense", -10))).toBe(
+      "+ 10,00 €",
+    );
+    expect(normaliser(formaterEffetTresorerieHistorique("recette", 10))).toBe(
+      "+ 10,00 €",
+    );
+    expect(normaliser(formaterEffetTresorerieHistorique("recette", -10))).toBe(
+      "- 10,00 €",
+    );
   });
 });

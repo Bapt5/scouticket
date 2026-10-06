@@ -60,7 +60,7 @@ export const analyserMontantSaisi = (montant: string) =>
 
 export const montantSaisiValide = (montant: string) => {
   const valeur = analyserMontantSaisi(montant);
-  return Number.isFinite(valeur) && valeur > 0;
+  return Number.isFinite(valeur) && valeur !== 0;
 };
 
 export const detailSaisiComplet = (

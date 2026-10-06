@@ -11,6 +11,7 @@ import {
   MAX_LIGNES_PAR_JUSTIFICATIF,
 } from "@/constants/piecesJointes";
 import { recupererPostes } from "@/lib/budgetServer";
+import { MONTANT_ABSOLU_MAX } from "@/constants/piecesJointes";
 import { totalLignes } from "@/lib/depenses";
 import {
   recupererAccesHistorique,
@@ -33,8 +34,9 @@ const schemaLigne = z.object({
   categorie: z.string().trim().min(1).max(200),
   montant: z
     .number()
-    .gt(0)
-    .max(10_000_000)
+    .min(-MONTANT_ABSOLU_MAX)
+    .max(MONTANT_ABSOLU_MAX)
+    .refine((montant) => montant !== 0, { message: "Montant non nul" })
     .refine((montant) => Math.round(montant * 100) / 100 === montant, {
       message: "2 décimales maximum",
     }),

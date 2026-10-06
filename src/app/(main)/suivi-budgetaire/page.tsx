@@ -578,13 +578,16 @@ export default function PageSuiviBudgetaire() {
                                     aria-label={`Réalisation de ${ligne.label}`}
                                     aria-valuemin={0}
                                     aria-valuemax={100}
-                                    aria-valuenow={Math.min(taux, 100)}
+                                    aria-valuenow={Math.max(
+                                      0,
+                                      Math.min(taux, 100),
+                                    )}
                                     className="h-2 overflow-hidden rounded-full bg-zinc-200"
                                   >
                                     <div
                                       className={`h-full ${depasse && onglet === "depense" ? "bg-rose-600" : "bg-[#1E3A8A]"}`}
                                       style={{
-                                        width: `${Math.min(taux, 100)}%`,
+                                        width: `${Math.max(0, Math.min(taux, 100))}%`,
                                       }}
                                     />
                                   </div>

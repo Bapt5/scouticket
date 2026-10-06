@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  montantSaisiValide,
   totalLignes,
   versDepenseNomenclature,
   versDetailDepense,
@@ -178,5 +179,17 @@ describe("kilomètres", () => {
     expect(ligneKilometriqueComplete(ligne)).toBe(true);
     expect(ligneKilometriqueComplete({ ...ligne, objet: "court" })).toBe(false);
     expect(ligneKilometriqueComplete({ ...ligne, activite: " " })).toBe(false);
+  });
+});
+
+describe("montants négatifs", () => {
+  it("accepte un montant négatif mais refuse zéro et le vide", () => {
+    expect(montantSaisiValide("-2,16")).toBe(true);
+    expect(montantSaisiValide("0")).toBe(false);
+    expect(montantSaisiValide("")).toBe(false);
+  });
+
+  it("totalise des lignes négatives", () => {
+    expect(totalLignes([{ montant: 160 }, { montant: -2.16 }])).toBe(157.84);
   });
 });

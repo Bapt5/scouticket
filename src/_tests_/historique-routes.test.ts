@@ -281,6 +281,10 @@ describe("/api/historique/[id]", () => {
     ["date invalide", { date: "2026-02-31" }],
     ["aucune ligne", { lignes: [] }],
     ["montant nul", { lignes: [{ categorie: "Formation", montant: 0 }] }],
+    [
+      "montant hors bornes",
+      { lignes: [{ categorie: "Formation", montant: -10_000_001 }] },
+    ],
     ["3 décimales", { lignes: [{ categorie: "Formation", montant: 1.234 }] }],
   ])("PATCH refuse un corps invalide (%s)", async (_nom, corps) => {
     const reponse = await PATCH(

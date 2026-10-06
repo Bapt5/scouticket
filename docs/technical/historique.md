@@ -39,6 +39,10 @@ Les lignes d'un même envoi partagent un `envoi_id`. Modifier ou supprimer une l
 
 Une note de frais signée n'écrit rien au dépôt : l'entrée est créée à la validation finale (signature du trésorier), au moment de l'envoi de l'e-mail. Les circuits refusés ou abandonnés n'apparaissent pas, ce qui respecte la règle « rien ne reste en base » de [Note de frais signée](/technical/ndf-signee).
 
+## Signe des montants
+
+Le montant d'une ligne (sous-catégorie comptable) peut être négatif (objet rendu, produit financier bancaire négatif), jamais nul ; la valeur absolue est bornée à 10 000 000 €. Le total d'un justificatif peut donc être négatif, sauf pour une note de frais, dont le total doit rester supérieur à 0 € (contrôlé côté formulaire et dans `validateBody.ts`). Le kilométrique et les budgets prévisionnels restent positifs.
+
 ## Écriture atomique avec l'envoi
 
 L'écriture se fait dans la **même transaction** que la réservation des numéros de nomenclature, **avant** l'envoi de l'e-mail (`src/lib/envoiNomenclature.ts`, `src/lib/historiqueServer.ts`) :
