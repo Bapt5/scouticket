@@ -81,7 +81,7 @@ const metadonneesPages: Record<string, { titre: string; description: string }> =
     "technical/journalisation.md": {
       titre: "Journalisation structurée",
       description:
-        "Référence des journaux structurés Scoutréso et de leurs champs pour OpenObserve.",
+        "Référence des journaux structurés Scoutréso et de leurs champs pour un collecteur de logs.",
     },
     "technical/troubleshooting.md": {
       titre: "Dépannage",

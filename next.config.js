@@ -16,9 +16,6 @@ const versionScanic = JSON.parse(
 ).version;
 
 const nextConfig = {
-  // Générées pour être envoyées à OpenObserve durant la release, puis retirées
-  // de l'image de production afin de ne jamais exposer le code source.
-  productionBrowserSourceMaps: true,
   env: {
     NEXT_PUBLIC_VERSION_DEPLOIEMENT: versionDeploiement,
     NEXT_PUBLIC_SCANIC_ML_VERSION: versionScanicMl,

@@ -30,8 +30,7 @@ Pour savoir comment l'utiliser avec [la documentation](https://scoutreso.me)
 - 🛠️ **Mode maintenance** : une variable d’environnement permet d’afficher une page dédiée et de désactiver temporairement les API
 - 🌙 **Affichage plein écran** : Expérience proche d'une application native
 - 📋 **Logs techniques structurés** : erreurs serveur et réponses API rejetées, sans contenir de données personnelles ou de justificatifs
-- 🔎 **Audit Better Auth** : les actions d’authentification et de groupes sont journalisées en JSON sur stdout ; OpenObserve peut les ingérer depuis les logs Docker, avec des identifiants pseudonymisés
-- 📈 **RUM OpenObserve optionnel** : mesure les performances réelles et les erreurs côté navigateur ; le rejeu de session est limité à 50 % et les saisies sont masquées
+- 🔎 **Audit Better Auth** : les actions d’authentification et de groupes sont journalisées en JSON sur stdout ; un collecteur de logs peut les ingérer, avec des identifiants pseudonymisés
 
 ## Créer un groupe
 
@@ -115,21 +114,9 @@ docker compose logs -f app
 docker compose down
 ```
 
-## Audit Better Auth et OpenObserve
+## Audit Better Auth
 
-Définissez `AUDIT_LOG_SECRET` avec une valeur aléatoire distincte de `BETTER_AUTH_SECRET`. Scoutréso écrit alors les opérations Better Auth importantes (connexion, inscription, mots de passe, vérification e-mail, organisations et invitations) au format JSON sur stdout. Configurez votre collecteur OpenObserve pour ingérer les logs du conteneur `app`; les champs `utilisateur` et `organisation` sont chiffrés en AES-256-GCM, sans e-mail ni identifiant brut. Ils peuvent être déchiffrés avec la même valeur de `AUDIT_LOG_SECRET`.
-
-## RUM OpenObserve
-
-Pour mesurer l’expérience navigateur, renseignez ces variables publiques dans l’environnement de déploiement, puis redéployez :
-
-```bash
-NEXT_PUBLIC_OPENOBSERVE_SITE=openobserve.exemple.fr
-NEXT_PUBLIC_OPENOBSERVE_CLIENT_TOKEN=votre-jeton-rum
-NEXT_PUBLIC_OPENOBSERVE_ORGANISATION=default
-```
-
-Sans `NEXT_PUBLIC_OPENOBSERVE_SITE` ou `NEXT_PUBLIC_OPENOBSERVE_CLIENT_TOKEN`, le SDK ne se charge pas. Scoutréso collecte les performances, ressources, tâches longues, interactions et erreurs de toutes les sessions ; le rejeu est échantillonné à 50 % et les champs de saisie sont masqués. Lorsqu’un utilisateur est connecté, son identifiant envoyé à OpenObserve est chiffré en AES-256-GCM avec `AUDIT_LOG_SECRET` : aucun identifiant Better Auth brut ni e-mail n’est transmis.
+Définissez `AUDIT_LOG_SECRET` avec une valeur aléatoire distincte de `BETTER_AUTH_SECRET`. Scoutréso écrit alors les opérations Better Auth importantes (connexion, inscription, mots de passe, vérification e-mail, organisations et invitations) au format JSON sur stdout. Configurez votre collecteur de logs pour ingérer la sortie du conteneur `app`; les champs `utilisateur` et `organisation` sont chiffrés en AES-256-GCM, sans e-mail ni identifiant brut. Ils peuvent être déchiffrés avec la même valeur de `AUDIT_LOG_SECRET`.
 
 ## Mode maintenance
 

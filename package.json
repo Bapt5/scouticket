@@ -41,8 +41,6 @@
   "dependencies": {
     "@better-auth/i18n": "^1.7.5",
     "@heroicons/react": "^2.2.0",
-    "@openobserve/browser-logs": "0.4.2",
-    "@openobserve/browser-rum": "^0.4.2",
     "@signpdf/signer-p12": "^3.3.0",
     "@signpdf/signpdf": "^3.3.0",
     "@signpdf/utils": "^3.3.0",
