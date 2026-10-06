@@ -96,8 +96,4 @@ Vous êtes membre d’un groupe ? Demandez simplement à votre responsable de vo
   </div>
 </div>
 
-Si l’invitation ne peut pas être acceptée, un message explique la cause et affiche un code technique à communiquer au responsable du groupe ou au support.
-
-![Exemple d’erreur d’acceptation d’une invitation](/guide/invitation-erreur-acceptation.png)
-
 [Consulter le guide d’utilisation](/guide/usage){.VPButton .alt}

@@ -115,7 +115,8 @@ export default defineConfig({
       "link",
       {
         rel: "icon",
-        href: "https://scoutreso.me/favicon.ico",
+        type: "image/svg+xml",
+        href: "https://scoutreso.me/favicon.svg",
       },
     ],
   ],
