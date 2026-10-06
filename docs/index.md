@@ -2,13 +2,13 @@
 layout: home
 
 hero:
-  name: Scouticket
+  name: Scoutréso
   text: Envoyez vos justificatifs dès que vous les avez
   tagline: Prenez une photo ou ajoutez un PDF, envoyez-le immédiatement à la trésorerie et gardez-en une copie dans vos e-mails.
   actions:
     - theme: brand
       text: Je suis responsable de groupe
-      link: https://app.scouticket.fr
+      link: https://app.scoutreso.me
     - theme: alt
       text: Je suis membre du groupe
       link: "#rejoindre-un-groupe"
@@ -95,9 +95,5 @@ Vous êtes membre d’un groupe ? Demandez simplement à votre responsable de vo
     <span>La trésorerie les reçoit.</span>
   </div>
 </div>
-
-Si l’invitation ne peut pas être acceptée, un message explique la cause et affiche un code technique à communiquer au responsable du groupe ou au support.
-
-![Exemple d’erreur d’acceptation d’une invitation](/guide/invitation-erreur-acceptation.png)
 
 [Consulter le guide d’utilisation](/guide/usage){.VPButton .alt}

@@ -1,5 +1,6 @@
 import { ConnexionGoogle } from "@/components/ConnexionGoogle";
 import { FormulaireConnexionEmail } from "@/components/FormulairesAuthentification";
+import { LogoScoutreso } from "@/components/LogoScoutreso";
 import { googleActif } from "@/lib/google";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -9,18 +10,18 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Connexion",
   description:
-    "Connectez-vous à Scouticket pour envoyer vos justificatifs à la trésorerie de votre groupe.",
+    "Connectez-vous à Scoutréso pour envoyer vos justificatifs à la trésorerie de votre groupe.",
   openGraph: {
-    title: "Connexion | Scouticket",
+    title: "Connexion | Scoutréso",
     description:
-      "Connectez-vous à Scouticket pour envoyer vos justificatifs à la trésorerie de votre groupe.",
-    images: ["/og-scouticket.png"],
+      "Connectez-vous à Scoutréso pour envoyer vos justificatifs à la trésorerie de votre groupe.",
+    images: ["/og-scoutreso.png"],
   },
   twitter: {
-    title: "Connexion | Scouticket",
+    title: "Connexion | Scoutréso",
     description:
-      "Connectez-vous à Scouticket pour envoyer vos justificatifs à la trésorerie de votre groupe.",
-    images: ["/og-scouticket.png"],
+      "Connectez-vous à Scoutréso pour envoyer vos justificatifs à la trésorerie de votre groupe.",
+    images: ["/og-scoutreso.png"],
   },
   robots: {
     index: false,
@@ -33,7 +34,9 @@ function ContenuConnexion() {
     <div className="min-h-screen flex items-center justify-center p-4 bg-zinc-50">
       <div className="bg-white rounded-lg border border-zinc-200 shadow-sm w-full max-w-lg mx-auto">
         <div className="bg-white text-zinc-900 p-6 text-center border-b border-zinc-200 rounded-t-lg">
-          <h1 className="text-2xl font-semibold">Scouticket</h1>
+          <h1 className="flex justify-center">
+            <LogoScoutreso className="h-14" />
+          </h1>
           <p className="text-zinc-500 mt-2">Connexion</p>
         </div>
         <div className="p-6">

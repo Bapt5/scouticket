@@ -243,6 +243,7 @@ beforeEach(() => {
   bd.formatNomenclature = null;
   bd.envoiDepense.mockReset().mockResolvedValue({ success: true });
   bd.envoiNomenclature.mockReset().mockResolvedValue({ success: true });
+  bd.envoiAvecHistorique.mockReset();
   bd.utilisateurs = new Map([
     [BENEFICIAIRE, { nom: "Camille Martin", email: "benef@example.test" }],
     [APPROBATEUR, { nom: "Alex Dupont", email: "appro@example.test" }],

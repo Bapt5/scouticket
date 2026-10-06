@@ -38,7 +38,7 @@ describe("templates HTML des e-mails", () => {
     envoyerMailSimule.mockClear();
     verifierSimule.mockClear();
     process.env.SMTP_FROM = "expediteur@example.test";
-    process.env.SMTP_FROM_NAME = "Expéditeur Scouticket";
+    process.env.SMTP_FROM_NAME = "Expéditeur Scoutréso";
   });
 
   it("utilise toujours le nom d’expéditeur SMTP configuré", async () => {
@@ -53,7 +53,7 @@ describe("templates HTML des e-mails", () => {
     expect(envoyerMailSimule).toHaveBeenCalledWith(
       expect.objectContaining({
         from: {
-          name: "Expéditeur Scouticket",
+          name: "Expéditeur Scoutréso",
           address: "expediteur@example.test",
         },
       }),

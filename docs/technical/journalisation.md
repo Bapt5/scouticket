@@ -1,6 +1,6 @@
 # Journalisation structurée
 
-Les journaux techniques sont écrits au format JSON sur la sortie standard et peuvent être ingérés par OpenObserve.
+Les journaux techniques sont écrits au format JSON sur la sortie standard et peuvent être ingérés par n’importe quel collecteur de logs.
 
 Chaque événement contient un `evenement`, un `niveau` et un `contexte`. Le contexte impose une `categorie` parmi `api`, `authentification`, `email`, `base_de_donnees`, `depense`, `invitation`, `preference_unite`, `framework` ou `auth`.
 

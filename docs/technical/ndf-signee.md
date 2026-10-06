@@ -58,7 +58,7 @@ Le PDF initial (haché au dépôt) contient 3 pages de signature vides. Chaque s
 
 La date du virement n'existe qu'à la signature du trésorier, longtemps après le dépôt : elle est écrite dans le dossier de preuve de sa signature, pas dans le document initial. Le PDF reçu par e-mail n'est jamais réenregistré par `pdf-lib` (cela réécrirait tout le fichier et invaliderait les signatures).
 
-Seule fenêtre où le contenu n'est pas encore protégé : les quelques millisecondes côté serveur entre l'écriture du dossier et le calcul de la signature. C'est là que repose la confiance en Scouticket : les preuves d'identité sont une **attestation de Scouticket**, rendue inviolable par la signature. Un tiers peut vérifier qu'elles n'ont pas été modifiées, pas qu'elles sont vraies (l'adresse IP et le user-agent sont falsifiables ou partagés, la réception du mail ne se prouve pas).
+Seule fenêtre où le contenu n'est pas encore protégé : les quelques millisecondes côté serveur entre l'écriture du dossier et le calcul de la signature. C'est là que repose la confiance en Scoutréso : les preuves d'identité sont une **attestation de Scoutréso**, rendue inviolable par la signature. Un tiers peut vérifier qu'elles n'ont pas été modifiées, pas qu'elles sont vraies (l'adresse IP et le user-agent sont falsifiables ou partagés, la réception du mail ne se prouve pas).
 
 ## Envoi final
 

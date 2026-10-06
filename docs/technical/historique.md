@@ -92,7 +92,7 @@ Le filtre `anneeComptable` (année de début) est converti en intervalle de date
 
 - `/historique` : tableau triable et paginé (date, référence, type, unité, montant, description), recherche, filtres par type, unité et dates, sélecteur d'année comptable en tête (indépendant du filtre par date), filtres type et unité à sélection multiple (« Tout sélectionner » : tout coché ne filtre pas, tout décoché ne renvoie rien), totaux de la sélection, export CSV. Seul le montant total figure sur la ligne ; un clic ouvre le détail par catégorie comptable (`src/components/DialogHistorique.tsx`).
 - L'écran n'est pas adapté aux mobiles : sous le breakpoint `lg`, une page invite à ouvrir l'historique depuis un ordinateur.
-- La dernière année comptable choisie est mémorisée dans le navigateur de l'utilisateur (`localStorage`, une clé par groupe, `scouticket:historique:anneeComptable:<groupe>`) et restaurée à l'ouverture de la page ; seul « Toutes » l'efface (« Réinitialiser » remet les autres filtres à zéro mais conserve l'année). Rien n'est envoyé au serveur.
+- La dernière année comptable choisie est mémorisée dans le navigateur de l'utilisateur (`localStorage`, une clé par groupe, `scoutreso:historique:anneeComptable:<groupe>`) et restaurée à l'ouverture de la page ; seul « Toutes » l'efface (« Réinitialiser » remet les autres filtres à zéro mais conserve l'année). Rien n'est envoyé au serveur.
 - Le lien « Historique » de l'accueil n'apparaît que si l'option est active.
 
 ## Service externe

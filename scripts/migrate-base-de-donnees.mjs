@@ -89,8 +89,8 @@ async function principal() {
     const appliquees = await migrerBaseDeDonnees(pool, migrations);
     console.log(
       appliquees.length === 0
-        ? "Aucune migration Scouticket à appliquer."
-        : `Migrations Scouticket appliquées : ${appliquees.join(", ")}.`,
+        ? "Aucune migration Scoutréso à appliquer."
+        : `Migrations Scoutréso appliquées : ${appliquees.join(", ")}.`,
     );
   } finally {
     await pool.end();

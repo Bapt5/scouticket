@@ -1,31 +1,36 @@
 {
-  "name": "scouticket",
+  "name": "scoutreso",
   "version": "0.1",
   "packageManager": "pnpm@12.4.2",
   "private": true,
   "description": "Application de gestion de justificatifs et de notes de frais pour les scouts",
   "license": "MIT",
-  "homepage": "https://scouticket.fr",
+  "homepage": "https://scoutreso.me",
   "author": {
     "name": "Yipfram",
     "email": "romain@romain-rochas.fr"
   },
+  "contributors": [
+    {
+      "name": "Bapt5",
+      "url": "https://github.com/Bapt5"
+    }
+  ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yipfram/scouticket.git"
+    "url": "git+https://github.com/Bapt5/scoutreso.git"
   },
   "scripts": {
     "dev": "node scripts/copier-assets-scanic.mjs && next dev",
     "build": "node scripts/copier-assets-scanic.mjs && next build",
     "start": "next start",
-    "prepare": "husky",
     "test": "vitest run",
     "test:watch": "vitest",
     "validate": "pnpm lint && pnpm type && pnpm test && pnpm build",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx --max-warnings 0",
     "format": "prettier --write . --ignore-path .prettierignore --ignore-unknown",
     "format:check": "prettier --check . --ignore-path .prettierignore --ignore-unknown",
-    "type": "tsc --noEmit",
+    "type": "next typegen && tsc --noEmit",
     "db:migrate": "node --env-file-if-exists=.env scripts/migrate-base-de-donnees.mjs",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
@@ -36,16 +41,14 @@
   "dependencies": {
     "@better-auth/i18n": "^1.7.5",
     "@heroicons/react": "^2.2.0",
-    "@openobserve/browser-logs": "0.4.2",
-    "@openobserve/browser-rum": "^0.4.2",
     "@signpdf/signer-p12": "^3.3.0",
     "@signpdf/signpdf": "^3.3.0",
     "@signpdf/utils": "^3.3.0",
     "@sparticuz/chromium": "^153.0.0",
     "better-auth": "^1.7.5",
     "input-otp": "^1.5.0",
-    "next": "16.3.5",
-    "nodemailer": "^8.0.11",
+    "next": "16.3.8",
+    "nodemailer": "^10.0.15",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^6.3.289",
     "pg": "^8.23.0",
@@ -74,8 +77,7 @@
     "autoprefixer": "^10.6.1",
     "baseline-browser-mapping": "^2.11.25",
     "eslint": "^10.10.0",
-    "eslint-config-next": "16.3.5",
-    "husky": "^9.1.7",
+    "eslint-config-next": "16.3.8",
     "jsdom": "^29.1.1",
     "node-forge": "^1.4.0",
     "postcss": "^8.5.28",

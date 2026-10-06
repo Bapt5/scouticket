@@ -25,7 +25,7 @@ function queElide(mot: string): string {
 }
 
 function enteteHtml(titre: string) {
-  return `<div style="background-color: #1E3A8A; color: #ffffff; padding: 20px; text-align: center;"><h1 style="margin: 0; font-size: 24px;">Scouticket</h1><p style="margin: 10px 0 0; opacity: 0.9;">${echapperHtml(titre)}</p></div>`;
+  return `<div style="background-color: #1E3A8A; color: #ffffff; padding: 20px; text-align: center;"><h1 style="margin: 0; font-size: 24px;">Scoutréso</h1><p style="margin: 10px 0 0; opacity: 0.9;">${echapperHtml(titre)}</p></div>`;
 }
 
 /**
@@ -108,7 +108,7 @@ export async function envoyerEmailCodeVerification(parametres: {
 }) {
   await envoyerMail({
     to: parametres.destinataire,
-    subject: "Votre code de vérification Scouticket",
+    subject: "Votre code de vérification Scoutréso",
     text: `Votre code de vérification pour signer cette note de frais : ${parametres.code}\n\nCe code est valable ${parametres.dureeValiditeMinutes} minutes et à usage unique. Si vous n'êtes pas à l'origine de cette demande, ignorez cet e-mail.`,
     html: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       ${enteteHtml("Code de vérification")}

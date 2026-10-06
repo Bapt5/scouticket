@@ -414,7 +414,7 @@ export async function signerChamp(
     Reason: PDFString.of("Signature de la note de frais"),
     M: PDFString.fromDate(parametres.date),
     Name: PDFString.of(textePourPolice(police, parametres.nom)),
-    Location: PDFString.of("Scouticket"),
+    Location: PDFString.of("Scoutreso"),
     ...(certification && {
       Reference: [
         {

@@ -19,7 +19,7 @@ export function genererCertificatScellementTest(): {
   certificat.serialNumber = "01";
   certificat.validity.notBefore = new Date(Date.now() - 24 * 3600 * 1000);
   certificat.validity.notAfter = new Date(Date.now() + 24 * 3600 * 1000);
-  const identite = [{ name: "commonName", value: "Scouticket (test)" }];
+  const identite = [{ name: "commonName", value: "Scoutreso (test)" }];
   certificat.setSubject(identite);
   certificat.setIssuer(identite);
   certificat.sign(cles.privateKey, forge.md.sha256.create());

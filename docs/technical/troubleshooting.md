@@ -1,11 +1,11 @@
 # Dépannage
 
-## Erreurs Clerk fréquentes
+## Erreurs d’authentification fréquentes
 
-- **Redirection boucle** : vérifier les URLs sign-in/sign-up
-- **Accès refusé** : vérifier clés Clerk et domaine autorisé
-- **Impossible de créer ou sélectionner un groupe** : activer **Organizations** dans Clerk et autoriser la création d’organisations par les responsables
-- **Impossible d’inviter un membre** : vérifier que l’authentification e-mail et les invitations d’organisation sont actives dans Clerk
+- **Redirection en boucle** : vérifier que `BETTER_AUTH_URL` correspond à l’URL publique de l’application
+- **Accès refusé** : vérifier `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` et que les migrations (`pnpm auth:migrate`, `pnpm db:migrate`) ont été appliquées
+- **Impossible de créer ou sélectionner un groupe** : vérifier que les migrations ont été appliquées et consulter les logs du serveur
+- **Impossible d’inviter un membre** : vérifier la configuration SMTP, l’invitation étant envoyée par e-mail
 
 ## Erreurs SMTP fréquentes
 
@@ -16,14 +16,14 @@
 ## Problèmes mobile / PWA
 
 - Caméra indisponible : vérifier HTTPS
-- PWA non installable : ouvrir `https://app.scouticket.fr/manifest.json` dans le navigateur. Il doit afficher du JSON (et non la page de connexion) ; puis vérifier le service worker. Sur Android, utiliser Chrome, ouvrir le menu ⋮ puis choisir « Installer l'application » ou « Ajouter à l'écran d'accueil ».
+- PWA non installable : ouvrir `https://app.scoutreso.me/manifest.json` dans le navigateur. Il doit afficher du JSON (et non la page de connexion) ; puis vérifier le service worker. Sur Android, utiliser Chrome, ouvrir le menu ⋮ puis choisir « Installer l'application » ou « Ajouter à l'écran d'accueil ».
 - Hors ligne limité : comportement normal (envoi nécessite réseau)
 
 ## Checklist rapide
 
 - Variables d’environnement complètes
-- Domaine Clerk bien configuré
+- `BETTER_AUTH_URL` identique à l’URL publique
 - Test d’envoi vers Trésorier(s) + utilisateur validé
-- Fonctionnalité Organizations et création d’organisations activées dans Clerk
+- Migrations Better Auth et applicatives appliquées
 - Le groupe compte au moins un membre avec le rôle Trésorier
 - Build local et déploiement sans erreur

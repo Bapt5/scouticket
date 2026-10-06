@@ -1,39 +1,42 @@
 import { defineConfig } from "vitepress";
 
-const urlDocumentation = "https://scouticket.fr";
-const imagePartage = `${urlDocumentation}/og-scouticket.png`;
+const urlDocumentation = "https://scoutreso.me";
+// Mesure d'audience Umami, activée uniquement si les deux variables sont définies au build.
+const urlScriptAudience = process.env.NEXT_PUBLIC_UMAMI_SCRIPT_URL;
+const identifiantSiteAudience = process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID;
+const imagePartage = `${urlDocumentation}/og-scoutreso.png`;
 
 const metadonneesPages: Record<string, { titre: string; description: string }> =
   {
     "index.md": {
       titre: "Envoyez vos justificatifs dès que vous les avez",
       description:
-        "Scouticket aide les groupes scouts à centraliser leurs justificatifs et notes de frais : photos ou PDF envoyés immédiatement à la trésorerie, avec une copie pour chaque membre.",
+        "Scoutréso aide les groupes scouts à centraliser leurs justificatifs et notes de frais : photos ou PDF envoyés immédiatement à la trésorerie, avec une copie pour chaque membre.",
     },
     "about.md": {
       titre: "À propos",
       description:
-        "Découvrez Scouticket, l’outil gratuit et open source qui simplifie la gestion des justificatifs des groupes scouts.",
+        "Découvrez Scoutréso, l’outil gratuit et open source qui simplifie la gestion des justificatifs des groupes scouts.",
     },
     "guide/usage.md": {
       titre: "Envoyer un justificatif",
       description:
-        "Apprenez à photographier ou importer un justificatif et à l’envoyer à la trésorerie avec Scouticket.",
+        "Apprenez à photographier ou importer un justificatif et à l’envoyer à la trésorerie avec Scoutréso.",
     },
     "guide/groupes.md": {
       titre: "Configurer un groupe",
       description:
-        "Configurez la trésorerie, les unités et les invitations de votre groupe scout dans Scouticket.",
+        "Configurez la trésorerie, les unités et les invitations de votre groupe scout dans Scoutréso.",
     },
     "guide/e-mails.md": {
       titre: "Les e-mails de justificatifs",
       description:
-        "Comprenez les informations, pièces jointes et copies envoyées par Scouticket après chaque note de frais.",
+        "Comprenez les informations, pièces jointes et copies envoyées par Scoutréso après chaque note de frais.",
     },
     "technical/overview.md": {
       titre: "Vue d’ensemble technique",
       description:
-        "Architecture, fonctionnalités et choix techniques de Scouticket : Next.js, Clerk, SMTP et PWA.",
+        "Architecture, fonctionnalités et choix techniques de Scoutréso : Next.js, Better Auth, SMTP et PWA.",
     },
     "technical/scan-justificatifs.md": {
       titre: "Scan automatique des justificatifs",
@@ -43,79 +46,84 @@ const metadonneesPages: Record<string, { titre: string; description: string }> =
     "technical/ndf-signee.md": {
       titre: "Note de frais signée",
       description:
-        "Comprenez le circuit de signature électronique à 3 niveaux des notes de frais Scouticket : dépôt, code de vérification, chaînage cryptographique et certificat.",
+        "Comprenez le circuit de signature électronique à 3 niveaux des notes de frais Scoutréso : dépôt, code de vérification, chaînage cryptographique et certificat.",
     },
     "technical/historique.md": {
       titre: "Historique des dépenses et recettes",
       description:
-        "Comprenez l'historique optionnel des dépenses, recettes et notes de frais de Scouticket : données conservées, droits, rétention et écriture atomique.",
+        "Comprenez l'historique optionnel des dépenses, recettes et notes de frais de Scoutréso : données conservées, droits, rétention et écriture atomique.",
     },
     "technical/suivi-budgetaire.md": {
       titre: "Suivi budgétaire",
       description:
-        "Comprenez le suivi budgétaire optionnel de Scouticket : postes, budgets par année comptable, réalisé issu de l'historique, droits et suppression.",
+        "Comprenez le suivi budgétaire optionnel de Scoutréso : postes, budgets par année comptable, réalisé issu de l'historique, droits et suppression.",
     },
     "technical/local-installation.md": {
       titre: "Installation locale",
       description:
-        "Installez et lancez Scouticket en local pour contribuer au projet ou l’adapter à votre groupe.",
+        "Installez et lancez Scoutréso en local pour contribuer au projet ou l’adapter à votre groupe.",
     },
     "technical/configuration.md": {
       titre: "Configuration",
       description:
-        "Configurez Scouticket pour l’authentification, l’envoi d’e-mails et le déploiement de l’application.",
+        "Configurez Scoutréso pour l’authentification, l’envoi d’e-mails et le déploiement de l’application.",
     },
     "technical/environment-variables.md": {
       titre: "Variables d’environnement",
       description:
-        "Référence des variables d’environnement nécessaires pour configurer Scouticket en toute sécurité.",
+        "Référence des variables d’environnement nécessaires pour configurer Scoutréso en toute sécurité.",
     },
     "technical/docker.md": {
       titre: "Déploiement Docker",
       description:
-        "Déployez Scouticket avec Docker pour héberger l’application dans votre propre environnement.",
+        "Déployez Scoutréso avec Docker pour héberger l’application dans votre propre environnement.",
     },
     "technical/journalisation.md": {
       titre: "Journalisation structurée",
       description:
-        "Référence des journaux structurés Scouticket et de leurs champs pour OpenObserve.",
+        "Référence des journaux structurés Scoutréso et de leurs champs pour un collecteur de logs.",
     },
     "technical/troubleshooting.md": {
       titre: "Dépannage",
       description:
-        "Résolvez les problèmes fréquents d’installation, de configuration et d’envoi d’e-mails de Scouticket.",
+        "Résolvez les problèmes fréquents d’installation, de configuration et d’envoi d’e-mails de Scoutréso.",
     },
     "technical/vitepress-docs.md": {
       titre: "Documentation VitePress",
       description:
-        "Découvrez l’organisation et les conventions de rédaction de la documentation Scouticket avec VitePress.",
+        "Découvrez l’organisation et les conventions de rédaction de la documentation Scoutréso avec VitePress.",
     },
   };
 
 export default defineConfig({
   lang: "fr-FR",
-  title: "Scouticket",
+  title: "Scoutréso",
   description:
-    "Documentation du projet Scouticket, application de gestion de justificatifs et de notes de frais pour les scouts",
+    "Documentation du projet Scoutréso, application de gestion de justificatifs et de notes de frais pour les scouts",
   base: "/",
   lastUpdated: true,
   head: [
-    ["meta", { property: "og:site_name", content: "Scouticket" }],
+    ["meta", { property: "og:site_name", content: "Scoutréso" }],
     ["meta", { property: "og:locale", content: "fr_FR" }],
     ["meta", { name: "twitter:card", content: "summary_large_image" }],
-    [
-      "script",
-      {
-        defer: "",
-        src: "https://analytics.scouticket.fr/script.js",
-        "data-website-id": "65c3c4c1-8db5-4f98-b57e-79dc22cc6910",
-      },
-    ],
+    ...(urlScriptAudience && identifiantSiteAudience
+      ? [
+          [
+            "script",
+            {
+              defer: "",
+              src: urlScriptAudience,
+              "data-website-id": identifiantSiteAudience,
+            },
+          ] as [string, Record<string, string>],
+        ]
+      : []),
     [
       "link",
       {
         rel: "icon",
-        href: "https://scouticket.fr/favicon.ico",
+        type: "image/svg+xml",
+        href: "https://scoutreso.me/favicon.svg",
       },
     ],
   ],
@@ -128,7 +136,7 @@ export default defineConfig({
         ? "/"
         : `/${pageData.relativePath.replace(/\.md$/, ".html")}`;
     const urlCanonique = new URL(chemin, urlDocumentation).toString();
-    const titre = `${metadonnees.titre} | Scouticket`;
+    const titre = `${metadonnees.titre} | Scoutréso`;
 
     pageData.frontmatter.title = metadonnees.titre;
     pageData.frontmatter.description = metadonnees.description;
@@ -216,12 +224,12 @@ export default defineConfig({
     socialLinks: [
       {
         icon: "github",
-        link: "https://github.com/yipfram/sgdf-notes-de-frais",
+        link: "https://github.com/Bapt5/scoutreso",
       },
     ],
   },
   sitemap: {
-    hostname: "https://scouticket.fr",
+    hostname: "https://scoutreso.me",
     lastmodDateOnly: false,
   },
 });

@@ -94,7 +94,7 @@ function creerExpediteurEmail() {
   const adresseDepuisFormatComplet = adresse.match(/<\s*([^<>\s]+)\s*>$/)?.[1];
 
   return {
-    name: process.env.SMTP_FROM_NAME || "Scouticket",
+    name: process.env.SMTP_FROM_NAME || "Scoutréso",
     address: adresseDepuisFormatComplet || adresse,
   };
 }
@@ -231,7 +231,7 @@ export const envoyerEmailDepense = async (donnees: DonneesEmailDepense) => {
   // paiement du groupe est seulement déclarée.
   const libelleAuteur =
     estNoteDeFrais || libelleTypeAffiche ? "Demandeur" : "Déclarant";
-  const sujet = `Scouticket - ${libelleType} - ${groupe} - ${branche} - ${date}`;
+  const sujet = `Scoutréso - ${libelleType} - ${groupe} - ${branche} - ${date}`;
   const resultatCouleur = schemaCouleurHtml.safeParse(couleur);
   const couleurPrincipale = resultatCouleur.success
     ? resultatCouleur.data
@@ -288,7 +288,7 @@ export const envoyerEmailDepense = async (donnees: DonneesEmailDepense) => {
   const contenuHtml = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <div style="background-color: ${couleurPrincipale}; color: ${texteSurCouleurPrincipale}; padding: 20px; text-align: center;">
-  <h1 style="margin: 0; font-size: 24px;">📜 Scouticket</h1>
+  <h1 style="margin: 0; font-size: 24px;">📜 Scoutréso</h1>
         <p style="margin: 10px 0 0 0; opacity: 0.9;">${echapperHtml(groupe)}</p>
       </div>
 
@@ -392,14 +392,14 @@ export const envoyerEmailDepense = async (donnees: DonneesEmailDepense) => {
         ${blocLienHistoriqueHtml(lienHistorique, couleurPrincipale)}
 
         <p style="color: #6B7280; font-size: 14px; margin-top: 30px;">
-          Email envoyé automatiquement par Scouticket.
+          Email envoyé automatiquement par Scoutréso.
         </p>
       </div>
     </div>
   `;
 
   const contenuTexte = `
-Scouticket - ${groupe}
+Scoutréso - ${groupe}
 
 ${libelleType}
 
@@ -437,7 +437,7 @@ ${sansJustificatifAttesteParResponsable ? "\n⚠️ Dépense envoyée sans justi
 Pièce(s) jointe(s) (${toutesPiecesJointes.length}) :
 ${toutesPiecesJointes.map((pieceJointe) => `- ${pieceJointe.filename}`).join("\n")}
 
-${ligneLienHistoriqueTexte(lienHistorique)}Email envoyé automatiquement par Scouticket.
+${ligneLienHistoriqueTexte(lienHistorique)}Email envoyé automatiquement par Scoutréso.
   `;
 
   const optionsEmail = {
@@ -495,7 +495,7 @@ export const envoyerEmailRecette = async (donnees: DonneesEmailRecette) => {
     throw new Error("TREASURY_EMAIL_UNDEFINED");
   const piecesJointesAnalysees = piecesJointes.map(analyserPieceJointe);
   const libelleType = "Recette";
-  const sujet = `Scouticket - ${libelleType} - ${groupe} - ${branche} - ${date}`;
+  const sujet = `Scoutréso - ${libelleType} - ${groupe} - ${branche} - ${date}`;
   const resultatCouleur = schemaCouleurHtml.safeParse(couleur);
   const couleurPrincipale = resultatCouleur.success
     ? resultatCouleur.data
@@ -508,7 +508,7 @@ export const envoyerEmailRecette = async (donnees: DonneesEmailRecette) => {
   const contenuHtml = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <div style="background-color: ${couleurPrincipale}; color: ${texteSurCouleurPrincipale}; padding: 20px; text-align: center;">
-  <h1 style="margin: 0; font-size: 24px;">📜 Scouticket</h1>
+  <h1 style="margin: 0; font-size: 24px;">📜 Scoutréso</h1>
         <p style="margin: 10px 0 0 0; opacity: 0.9;">${echapperHtml(groupe)}</p>
       </div>
 
@@ -582,14 +582,14 @@ export const envoyerEmailRecette = async (donnees: DonneesEmailRecette) => {
         ${blocLienHistoriqueHtml(lienHistorique, couleurPrincipale)}
 
         <p style="color: #6B7280; font-size: 14px; margin-top: 30px;">
-          Email envoyé automatiquement par Scouticket.
+          Email envoyé automatiquement par Scoutréso.
         </p>
       </div>
     </div>
   `;
 
   const contenuTexte = `
-Scouticket - ${groupe}
+Scoutréso - ${groupe}
 
 ${libelleType}
 
@@ -606,7 +606,7 @@ Déclarant : ${emailUtilisateur}
 Pièce(s) jointe(s) (${piecesJointesAnalysees.length}) :
 ${piecesJointesAnalysees.length === 0 ? "Aucune pièce jointe" : piecesJointesAnalysees.map((pieceJointe) => `- ${pieceJointe.filename}`).join("\n")}
 
-${ligneLienHistoriqueTexte(lienHistorique)}Email envoyé automatiquement par Scouticket.
+${ligneLienHistoriqueTexte(lienHistorique)}Email envoyé automatiquement par Scoutréso.
   `;
 
   const optionsEmail = {

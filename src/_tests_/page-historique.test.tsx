@@ -11,7 +11,7 @@ vi.mock("@/lib/auth-client", () => ({
   },
 }));
 
-const CLE = "scouticket:historique:anneeComptable:org_1";
+const CLE = "scoutreso:historique:anneeComptable:org_1";
 
 const reponse = (corps: unknown) =>
   Promise.resolve({ ok: true, json: () => Promise.resolve(corps) });

@@ -12,7 +12,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import forge from "node-forge";
 
-const organisation = process.argv[2]?.trim() || "Scouticket";
+const organisation = process.argv[2]?.trim() || "Scoutreso";
 const motDePasse = randomBytes(24).toString("base64url");
 
 const cles = forge.pki.rsa.generateKeyPair({ bits: 2048 });

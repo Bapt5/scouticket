@@ -1,7 +1,7 @@
-/* Service Worker for Scouticket PWA */
+/* Service Worker for Scoutréso PWA */
 const versionDeploiement =
   new URL(self.location.href).searchParams.get("version") || "inconnue";
-const CACHE_VERSION = `scouticket-${versionDeploiement}`;
+const CACHE_VERSION = `scoutreso-${versionDeploiement}`;
 const APP_SHELL = ["/manifest.json", "/offline.html"];
 
 self.addEventListener("install", (event) => {
