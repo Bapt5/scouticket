@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { DialogHistorique } from "@/components/DialogHistorique";
 import { FiltreMultiple } from "@/components/FiltreMultiple";
 import { clientAuth } from "@/lib/auth-client";
@@ -51,7 +52,6 @@ type Reponse = {
 };
 
 interface Filtres {
-  page: number;
   tri: ColonneTriHistorique;
   sens: "asc" | "desc";
   /** `null` = tous ; liste vide = aucun. */
@@ -64,9 +64,10 @@ interface Filtres {
   q: string;
 }
 
-const TAILLE_PAGE = 25;
+/** Entrées chargées à chaque lot du défilement infini (maximum accepté par l'API). */
+const TAILLE_LOT = 100;
+const HAUTEUR_LIGNE = 41;
 const FILTRES_INITIAUX: Filtres = {
-  page: 1,
   tri: "date",
   sens: "desc",
   type: null,
@@ -78,12 +79,17 @@ const FILTRES_INITIAUX: Filtres = {
   q: "",
 };
 
-const COLONNES: { cle: ColonneTriHistorique; libelle: string }[] = [
-  { cle: "date", libelle: "Date" },
-  { cle: "reference", libelle: "Référence" },
-  { cle: "type", libelle: "Type" },
-  { cle: "unite", libelle: "Unité" },
-  { cle: "montant", libelle: "Montant" },
+// Largeurs fixes : avec les lignes virtualisées, une disposition automatique redimensionnerait les colonnes au défilement.
+const COLONNES: {
+  cle: ColonneTriHistorique;
+  libelle: string;
+  largeur: string;
+}[] = [
+  { cle: "date", libelle: "Date", largeur: "w-28" },
+  { cle: "reference", libelle: "Référence", largeur: "w-36" },
+  { cle: "type", libelle: "Type", largeur: "w-32" },
+  { cle: "unite", libelle: "Unité", largeur: "w-36" },
+  { cle: "montant", libelle: "Montant", largeur: "w-32" },
 ];
 
 const classeChamp =
@@ -112,12 +118,12 @@ function memoriserAnnee(identifiantOrganisation: string, annee: string) {
   }
 }
 
-/** Paramètres d'URL des filtres (sans pagination pour l'export). */
-function versParametres(filtres: Filtres, avecPagination: boolean) {
+/** Paramètres d'URL des filtres (`page` nulle pour l'export, qui n'est pas paginé). */
+function versParametres(filtres: Filtres, page: number | null) {
   const parametres = new URLSearchParams();
-  if (avecPagination) {
-    parametres.set("page", String(filtres.page));
-    parametres.set("taille", String(TAILLE_PAGE));
+  if (page !== null) {
+    parametres.set("page", String(page));
+    parametres.set("taille", String(TAILLE_LOT));
   }
   parametres.set("tri", filtres.tri);
   parametres.set("sens", filtres.sens);
@@ -137,10 +143,16 @@ export default function PageHistorique() {
   const [filtres, setFiltres] = useState<Filtres>(FILTRES_INITIAUX);
   const [recherche, setRecherche] = useState("");
   const [reponse, setReponse] = useState<Reponse | null>(null);
+  // Lignes déjà chargées (lots successifs) ; `reponse` porte total et totaux de toute la sélection.
+  const [entrees, setEntrees] = useState<LigneHistoriqueApi[]>([]);
+  const [lotsCharges, setLotsCharges] = useState(0);
   const [chargement, setChargement] = useState(true);
+  const [chargementSuite, setChargementSuite] = useState(false);
+  // Identifie la sélection courante : la réponse d'une sélection périmée est ignorée.
+  const generation = useRef(0);
+  const conteneur = useRef<HTMLDivElement>(null);
   const [erreur, setErreur] = useState("");
   const [selection, setSelection] = useState<LigneHistoriqueApi | null>(null);
-  const [rechargement, setRechargement] = useState(0);
   // La première requête attend la lecture de l'année mémorisée (évite une requête « Toutes » inutile).
   const [anneeRestauree, setAnneeRestauree] = useState(false);
   const identifiantOrganisation = organisation?.id;
@@ -160,7 +172,7 @@ export default function PageHistorique() {
   useEffect(() => {
     if (!identifiantOrganisation) return;
     const annee = lireAnneeMemorisee(identifiantOrganisation);
-    setFiltres((actuels) => ({ ...actuels, anneeComptable: annee, page: 1 }));
+    setFiltres((actuels) => ({ ...actuels, anneeComptable: annee }));
     setAnneeRestauree(true);
   }, [identifiantOrganisation]);
 
@@ -211,9 +223,7 @@ export default function PageHistorique() {
     const minuteur = setTimeout(
       () =>
         setFiltres((actuels) =>
-          actuels.q === recherche
-            ? actuels
-            : { ...actuels, q: recherche, page: 1 },
+          actuels.q === recherche ? actuels : { ...actuels, q: recherche },
         ),
       300,
     );
@@ -223,14 +233,21 @@ export default function PageHistorique() {
   useEffect(() => {
     if (!actif || !anneeRestauree) return;
     const annulation = new AbortController();
+    generation.current += 1;
     setChargement(true);
+    setChargementSuite(false);
     setErreur("");
-    fetch(`/api/historique?${versParametres(filtres, true)}`, {
+    fetch(`/api/historique?${versParametres(filtres, 1)}`, {
       signal: annulation.signal,
     })
       .then(async (retour) => {
         if (!retour.ok) throw new Error("HISTORIQUE_INDISPONIBLE");
-        setReponse((await retour.json()) as Reponse);
+        const corps = (await retour.json()) as Reponse;
+        setReponse(corps);
+        setEntrees(corps.lignes);
+        setLotsCharges(1);
+        // Nouvelle sélection : retour en haut de la liste.
+        conteneur.current?.scrollTo?.({ top: 0 });
       })
       .catch((erreurChargement: unknown) => {
         if ((erreurChargement as Error).name === "AbortError") return;
@@ -240,21 +257,76 @@ export default function PageHistorique() {
         if (!annulation.signal.aborted) setChargement(false);
       });
     return () => annulation.abort();
-  }, [actif, anneeRestauree, filtres, rechargement]);
+  }, [actif, anneeRestauree, filtres]);
+
+  const total = reponse?.total ?? 0;
+
+  /** Charge le lot suivant (défilement vers le bas). */
+  const chargerSuite = useCallback(async () => {
+    if (chargement || chargementSuite || entrees.length >= total) return;
+    const courante = generation.current;
+    setChargementSuite(true);
+    try {
+      const retour = await fetch(
+        `/api/historique?${versParametres(filtres, lotsCharges + 1)}`,
+      );
+      if (!retour.ok) throw new Error("HISTORIQUE_INDISPONIBLE");
+      const corps = (await retour.json()) as Reponse;
+      if (courante !== generation.current) return;
+      setEntrees((actuelles) => {
+        // Un OFFSET peut répéter une entrée si la liste a changé entre deux lots.
+        const connues = new Set(actuelles.map((ligne) => ligne.id));
+        return [
+          ...actuelles,
+          ...corps.lignes.filter((ligne) => !connues.has(ligne.id)),
+        ];
+      });
+      setLotsCharges((lots) => lots + 1);
+    } catch {
+      if (courante === generation.current)
+        setErreur("Impossible de charger la suite de l’historique.");
+    } finally {
+      if (courante === generation.current) setChargementSuite(false);
+    }
+  }, [
+    chargement,
+    chargementSuite,
+    entrees.length,
+    total,
+    filtres,
+    lotsCharges,
+  ]);
+
+  /** Recharge les lots déjà affichés (après édition ou suppression), sans perdre la position. */
+  const rafraichir = useCallback(async () => {
+    const courante = generation.current;
+    try {
+      const lots = await Promise.all(
+        Array.from({ length: Math.max(1, lotsCharges) }, async (_, indice) => {
+          const retour = await fetch(
+            `/api/historique?${versParametres(filtres, indice + 1)}`,
+          );
+          if (!retour.ok) throw new Error("HISTORIQUE_INDISPONIBLE");
+          return (await retour.json()) as Reponse;
+        }),
+      );
+      if (courante !== generation.current) return;
+      setReponse(lots[0]);
+      setEntrees(lots.flatMap((lot) => lot.lignes));
+    } catch {
+      setErreur("Impossible de charger l’historique.");
+    }
+  }, [filtres, lotsCharges]);
 
   const modifierFiltre = useCallback(
     (modification: Partial<Filtres>) =>
-      setFiltres((actuels) => ({ ...actuels, ...modification, page: 1 })),
+      setFiltres((actuels) => ({ ...actuels, ...modification })),
     [],
   );
 
   const definirAnnee = useCallback(
     (annee: string) => {
-      setFiltres((actuels) => ({
-        ...actuels,
-        anneeComptable: annee,
-        page: 1,
-      }));
+      setFiltres((actuels) => ({ ...actuels, anneeComptable: annee }));
       if (identifiantOrganisation)
         memoriserAnnee(identifiantOrganisation, annee);
     },
@@ -280,14 +352,33 @@ export default function PageHistorique() {
       ...actuels,
       tri: colonne,
       sens: actuels.tri === colonne && actuels.sens === "desc" ? "asc" : "desc",
-      page: 1,
     }));
+
+  // TanStack Virtual n'est pas mémoïsable par React Compiler : le composant est simplement ignoré.
+  // eslint-disable-next-line react-hooks/incompatible-library
+  const virtualiseur = useVirtualizer({
+    count: entrees.length,
+    getScrollElement: () => conteneur.current,
+    estimateSize: () => HAUTEUR_LIGNE,
+    overscan: 10,
+  });
+  const lignesVirtuelles = virtualiseur.getVirtualItems();
+  const derniereVisible =
+    lignesVirtuelles[lignesVirtuelles.length - 1]?.index ?? -1;
+
+  // Approche de la fin des lignes chargées : demande le lot suivant.
+  useEffect(() => {
+    if (derniereVisible >= entrees.length - 20) void chargerSuite();
+  }, [derniereVisible, entrees.length, chargerSuite]);
 
   if (!organisation) return <main className="p-6">Aucun groupe actif.</main>;
 
-  const nombrePages = reponse
-    ? Math.max(1, Math.ceil(reponse.total / TAILLE_PAGE))
-    : 1;
+  const espaceHaut = lignesVirtuelles[0]?.start ?? 0;
+  const espaceBas = lignesVirtuelles.length
+    ? virtualiseur.getTotalSize() -
+      (lignesVirtuelles[lignesVirtuelles.length - 1]?.end ?? 0)
+    : 0;
+  const nombreColonnes = COLONNES.length + (budgetActif ? 2 : 1);
 
   return (
     <main className="min-h-screen bg-zinc-50 p-4">
@@ -426,7 +517,7 @@ export default function PageHistorique() {
                 Réinitialiser
               </button>
               <a
-                href={`/api/historique/export?${versParametres(filtres, false)}`}
+                href={`/api/historique/export?${versParametres(filtres, null)}`}
                 className="ml-auto rounded-lg border border-zinc-300 px-3 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-100"
               >
                 Exporter en CSV
@@ -444,9 +535,12 @@ export default function PageHistorique() {
               </p>
             )}
 
-            <div className="mt-4 overflow-x-auto rounded-lg border border-zinc-200">
-              <table className="w-full text-left text-sm text-zinc-900">
-                <thead className="bg-zinc-50 text-zinc-700">
+            <div
+              ref={conteneur}
+              className="mt-4 max-h-[65vh] overflow-auto rounded-lg border border-zinc-200"
+            >
+              <table className="w-full table-fixed text-left text-sm text-zinc-900">
+                <thead className="sticky top-0 z-10 bg-zinc-50 text-zinc-700">
                   <tr>
                     {COLONNES.map((colonne) => (
                       <th
@@ -459,7 +553,7 @@ export default function PageHistorique() {
                               : "descending"
                             : "none"
                         }
-                        className={`px-3 py-2 font-semibold text-zinc-700 ${colonne.cle === "montant" ? "text-right" : ""}`}
+                        className={`px-3 py-2 font-semibold text-zinc-700 ${colonne.largeur} ${colonne.cle === "montant" ? "text-right" : ""}`}
                       >
                         <button
                           type="button"
@@ -480,7 +574,7 @@ export default function PageHistorique() {
                     {budgetActif && (
                       <th
                         scope="col"
-                        className="px-3 py-2 font-semibold text-zinc-700"
+                        className="w-48 px-3 py-2 font-semibold text-zinc-700"
                       >
                         Poste
                       </th>
@@ -496,71 +590,86 @@ export default function PageHistorique() {
                 <tbody
                   className={`divide-y divide-zinc-100 ${chargement ? "opacity-60" : ""}`}
                 >
-                  {reponse?.lignes.map((ligne) => (
-                    <tr
-                      key={ligne.id}
-                      tabIndex={0}
-                      onClick={() => setSelection(ligne)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          setSelection(ligne);
-                        }
-                      }}
-                      className="cursor-pointer hover:bg-zinc-50 focus:bg-zinc-50"
-                    >
-                      <td className="whitespace-nowrap px-3 py-2">
-                        {formaterDateHistorique(ligne.date)}
-                      </td>
-                      <td className="px-3 py-2 text-zinc-700">
-                        {ligne.reference ?? "-"}
-                      </td>
-                      <td className="px-3 py-2">
-                        {LIBELLES_TYPES_HISTORIQUE[ligne.type]}
-                      </td>
-                      <td className="px-3 py-2">
-                        <span className="inline-flex items-center gap-2">
-                          <span
-                            aria-hidden="true"
-                            className="h-3 w-3 rounded-full"
-                            style={{ backgroundColor: ligne.uniteCouleur }}
-                          />
-                          {ligne.uniteLabel}
-                        </span>
-                      </td>
-                      <td
-                        className={`whitespace-nowrap px-3 py-2 text-right font-medium ${effetTresorerieHistorique(ligne.type, ligne.montantTotal) > 0 ? "text-emerald-700" : "text-zinc-900"}`}
-                      >
-                        {formaterEffetTresorerieHistorique(
-                          ligne.type,
-                          ligne.montantTotal,
-                        )}
-                      </td>
-                      {budgetActif && (
-                        <td className="px-3 py-2 text-zinc-700">
-                          {ligne.posteId
-                            ? ligne.posteLabel
-                            : LIBELLE_NON_AFFECTE}
-                        </td>
-                      )}
-                      <td className="max-w-sm px-3 py-2 text-zinc-600">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="min-w-0 truncate">
-                            {ligne.description}
-                          </span>
-                          {ligne.modifieLe && (
-                            <span className="shrink-0 rounded bg-zinc-100 px-1.5 py-0.5 text-xs text-zinc-600">
-                              modifié
-                            </span>
-                          )}
-                        </div>
-                      </td>
+                  {espaceHaut > 0 && (
+                    <tr aria-hidden="true" style={{ height: espaceHaut }}>
+                      <td colSpan={nombreColonnes} className="p-0" />
                     </tr>
-                  ))}
-                  {reponse && reponse.lignes.length === 0 && (
+                  )}
+                  {lignesVirtuelles.map((virtuelle) => {
+                    const ligne = entrees[virtuelle.index];
+                    return (
+                      <tr
+                        key={ligne.id}
+                        ref={virtualiseur.measureElement}
+                        data-index={virtuelle.index}
+                        tabIndex={0}
+                        onClick={() => setSelection(ligne)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            setSelection(ligne);
+                          }
+                        }}
+                        className="cursor-pointer hover:bg-zinc-50 focus:bg-zinc-50"
+                      >
+                        <td className="whitespace-nowrap px-3 py-2">
+                          {formaterDateHistorique(ligne.date)}
+                        </td>
+                        <td className="px-3 py-2 text-zinc-700">
+                          {ligne.reference ?? "-"}
+                        </td>
+                        <td className="px-3 py-2">
+                          {LIBELLES_TYPES_HISTORIQUE[ligne.type]}
+                        </td>
+                        <td className="px-3 py-2">
+                          <span className="inline-flex items-center gap-2">
+                            <span
+                              aria-hidden="true"
+                              className="h-3 w-3 shrink-0 rounded-full"
+                              style={{ backgroundColor: ligne.uniteCouleur }}
+                            />
+                            {ligne.uniteLabel}
+                          </span>
+                        </td>
+                        <td
+                          className={`whitespace-nowrap px-3 py-2 text-right font-medium ${effetTresorerieHistorique(ligne.type, ligne.montantTotal) > 0 ? "text-emerald-700" : "text-zinc-900"}`}
+                        >
+                          {formaterEffetTresorerieHistorique(
+                            ligne.type,
+                            ligne.montantTotal,
+                          )}
+                        </td>
+                        {budgetActif && (
+                          <td className="px-3 py-2 text-zinc-700">
+                            {ligne.posteId
+                              ? ligne.posteLabel
+                              : LIBELLE_NON_AFFECTE}
+                          </td>
+                        )}
+                        <td className="max-w-sm px-3 py-2 text-zinc-600">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="min-w-0 truncate">
+                              {ligne.description}
+                            </span>
+                            {ligne.modifieLe && (
+                              <span className="shrink-0 rounded bg-zinc-100 px-1.5 py-0.5 text-xs text-zinc-600">
+                                modifié
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {espaceBas > 0 && (
+                    <tr aria-hidden="true" style={{ height: espaceBas }}>
+                      <td colSpan={nombreColonnes} className="p-0" />
+                    </tr>
+                  )}
+                  {reponse && entrees.length === 0 && (
                     <tr>
                       <td
-                        colSpan={COLONNES.length + (budgetActif ? 2 : 1)}
+                        colSpan={nombreColonnes}
                         className="px-3 py-6 text-center text-zinc-500"
                       >
                         Aucune entrée.
@@ -572,7 +681,7 @@ export default function PageHistorique() {
             </div>
 
             {reponse && (
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-4 text-sm">
+              <div className="mt-2 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm">
                 <div className="flex flex-wrap gap-x-6 gap-y-1 text-zinc-700">
                   <span>
                     {reponse.total} entrée{reponse.total > 1 ? "s" : ""}
@@ -596,37 +705,6 @@ export default function PageHistorique() {
                     </strong>
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    disabled={filtres.page <= 1}
-                    onClick={() =>
-                      setFiltres((actuels) => ({
-                        ...actuels,
-                        page: actuels.page - 1,
-                      }))
-                    }
-                    className="rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold text-zinc-700 hover:bg-zinc-100 disabled:opacity-50"
-                  >
-                    Précédent
-                  </button>
-                  <span className="text-zinc-600">
-                    Page {filtres.page} / {nombrePages}
-                  </span>
-                  <button
-                    type="button"
-                    disabled={filtres.page >= nombrePages}
-                    onClick={() =>
-                      setFiltres((actuels) => ({
-                        ...actuels,
-                        page: actuels.page + 1,
-                      }))
-                    }
-                    className="rounded-lg border border-zinc-300 px-3 py-1.5 font-semibold text-zinc-700 hover:bg-zinc-100 disabled:opacity-50"
-                  >
-                    Suivant
-                  </button>
-                </div>
               </div>
             )}
           </>
@@ -644,7 +722,7 @@ export default function PageHistorique() {
           onFermer={() => setSelection(null)}
           onChange={() => {
             setSelection(null);
-            setRechargement((valeur) => valeur + 1);
+            void rafraichir();
           }}
         />
       )}

@@ -1,6 +1,14 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import PageHistorique from "../app/(main)/historique/page";
 
 vi.mock("@/lib/auth-client", () => ({
@@ -10,6 +18,20 @@ vi.mock("@/lib/auth-client", () => ({
     }),
   },
 }));
+
+// jsdom ne calcule aucune mise en page : le défilement virtualisé a besoin de tailles (conteneur 600 px, lignes 41 px).
+beforeAll(() => {
+  Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
+    configurable: true,
+    get() {
+      return (this as HTMLElement).tagName === "TR" ? 41 : 600;
+    },
+  });
+  Object.defineProperty(HTMLElement.prototype, "offsetWidth", {
+    configurable: true,
+    get: () => 1000,
+  });
+});
 
 const CLE = "scoutreso:historique:anneeComptable:org_1";
 
@@ -326,5 +348,110 @@ describe("Page Historique : suivi budgétaire", () => {
     expect(poste?.split(",")).toEqual(
       expect.arrayContaining(["p-camp", "non-affecte"]),
     );
+  });
+});
+
+describe("Page Historique : défilement infini", () => {
+  const fetchMock = vi.fn();
+
+  const ligne = (indice: number) => ({
+    id: `h-${indice}`,
+    envoiId: `e-${indice}`,
+    type: "depense",
+    date: "2026-03-10",
+    uniteId: "u1",
+    uniteLabel: "Louveteaux",
+    uniteCouleur: "#111111",
+    posteId: null,
+    posteLabel: null,
+    reference: null,
+    modePaiement: "Carte",
+    activite: "",
+    description: `Entrée ${indice}`,
+    montantTotal: 10,
+    lignes: [{ categorie: "Formation", montant: 10 }],
+    auteurNom: null,
+    creeLe: "2026-03-10T10:00:00.000Z",
+    modifieLe: null,
+    modifieParNom: null,
+  });
+
+  const lot = (debut: number, fin: number) => ({
+    ...historique,
+    total: 150,
+    totaux: { depenses: 1500, recettes: 0, solde: -1500 },
+    lignes: Array.from({ length: fin - debut }, (_, i) => ligne(debut + i)),
+  });
+
+  const appelsHistorique = () =>
+    fetchMock.mock.calls
+      .map(([url]) => String(url))
+      .filter((url) => url.startsWith("/api/historique?"));
+
+  beforeEach(() => {
+    const donnees = new Map<string, string>();
+    vi.stubGlobal("localStorage", {
+      getItem: (cle: string) => donnees.get(cle) ?? null,
+      setItem: (cle: string, valeur: string) => donnees.set(cle, valeur),
+      removeItem: (cle: string) => donnees.delete(cle),
+      clear: () => donnees.clear(),
+    });
+    fetchMock.mockReset();
+    fetchMock.mockImplementation((url: string) => {
+      if (url === "/api/group/config") return reponse(config);
+      return reponse(
+        new URL(`https://x.test${url}`).searchParams.get("page") === "2"
+          ? lot(100, 150)
+          : lot(0, 100),
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("charge un lot de 100 sans bouton de pagination et garde le récapitulatif affiché", async () => {
+    render(<PageHistorique />);
+
+    expect(await screen.findByText("Entrée 0")).toBeInTheDocument();
+    expect(appelsHistorique()).toHaveLength(1);
+    expect(appelsHistorique()[0]).toContain("page=1");
+    expect(appelsHistorique()[0]).toContain("taille=100");
+    expect(screen.queryByRole("button", { name: "Suivant" })).toBeNull();
+    expect(screen.getByText("150 entrées")).toBeInTheDocument();
+  });
+
+  it("charge le lot suivant en approchant de la fin des lignes chargées", async () => {
+    render(<PageHistorique />);
+    await screen.findByText("Entrée 0");
+
+    const conteneur = screen.getByRole("table").parentElement as HTMLElement;
+    conteneur.scrollTop = 3000;
+    fireEvent.scroll(conteneur);
+
+    await waitFor(() =>
+      expect(appelsHistorique().some((url) => url.includes("page=2"))).toBe(
+        true,
+      ),
+    );
+    // Le lot est demandé une seule fois.
+    expect(
+      appelsHistorique().filter((url) => url.includes("page=2")),
+    ).toHaveLength(1);
+  });
+
+  it("repart de la première page quand un filtre change", async () => {
+    const utilisateur = userEvent.setup();
+    render(<PageHistorique />);
+    await screen.findByText("Entrée 0");
+
+    await utilisateur.type(
+      screen.getByLabelText("Rechercher dans l’historique"),
+      "camp",
+    );
+
+    await waitFor(() =>
+      expect(appelsHistorique().slice(-1)[0]).toContain("q=camp"),
+    );
+    expect(appelsHistorique().slice(-1)[0]).toContain("page=1");
   });
 });
