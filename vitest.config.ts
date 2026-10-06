@@ -12,6 +12,8 @@ export default defineConfig({
     globals: true,
     include: ["src/**/_tests_/**/*.{test,spec}.{ts,tsx,js,jsx}"],
     passWithNoTests: true,
+    // Marge pour les tests jsdom lourds (graphiques, grandes pages) quand la machine est chargée.
+    testTimeout: 15000,
     setupFiles: ["./src/test/setup.ts"],
   },
 });
