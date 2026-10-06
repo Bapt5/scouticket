@@ -13,7 +13,8 @@ export type CategorieJournal =
   | "framework"
   | "auth"
   | "note-de-frais-signee"
-  | "historique";
+  | "historique"
+  | "budget";
 
 export type ValeurDetailJournal = string | number | boolean | null;
 

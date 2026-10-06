@@ -22,12 +22,16 @@ import {
   type DetailSaisieRecette,
 } from "@/lib/recettes";
 import { LignesCategories } from "@/components/LignesCategories";
+import { SelecteurPosteBudgetaire } from "@/components/SelecteurPosteBudgetaire";
+import type { PosteBudgetaire } from "@/lib/budget";
 import { CapturePhoto } from "@/components/PhotoCapture";
 import type { UniteGroupe } from "@/lib/group";
 
 interface FormulaireRecetteProps {
   readonly emailUtilisateur: string;
   readonly units: UniteGroupe[];
+  /** Postes budgétaires des recettes ; `undefined` quand le suivi budgétaire est désactivé. */
+  readonly postesBudgetaires?: PosteBudgetaire[];
   readonly uniteInitiale?: string;
   readonly aTresorier: boolean;
   readonly onChangementUnite?: (unitId: string) => void;
@@ -39,6 +43,7 @@ interface FormulaireRecetteProps {
 export function FormulaireRecette({
   emailUtilisateur,
   units,
+  postesBudgetaires,
   uniteInitiale = "",
   aTresorier,
   onChangementUnite,
@@ -67,7 +72,16 @@ export function FormulaireRecette({
     })),
   );
   const detailValide = detailSaisieRecetteComplet(detail);
-  const formulaireEstValide = Boolean(branche && detailValide);
+  const suiviBudgetaireActif = postesBudgetaires !== undefined;
+  const erreurPoste =
+    afficherErreursValidation &&
+    suiviBudgetaireActif &&
+    !detail.posteBudgetaireId;
+  const formulaireEstValide = Boolean(
+    branche &&
+    detailValide &&
+    (!suiviBudgetaireActif || detail.posteBudgetaireId),
+  );
   const erreurUnite = afficherErreursValidation && !branche;
 
   const envoyerRecette = async (evenement: FormEvent) => {
@@ -89,6 +103,9 @@ export function FormulaireRecette({
             date: detail.date,
             paymentMethod: detail.modePaiement,
             description: detail.description,
+            ...(suiviBudgetaireActif
+              ? { budgetPostId: detail.posteBudgetaireId }
+              : {}),
             lines: detail.lignes.map((ligne) => ({
               category: ligne.categorie,
               amount: analyserMontantSaisi(ligne.montant),
@@ -330,6 +347,18 @@ export function FormulaireRecette({
           />
         )}
       </div>
+
+      {suiviBudgetaireActif && (
+        <SelecteurPosteBudgetaire
+          id="poste-budgetaire-recette"
+          postes={postesBudgetaires}
+          valeur={detail.posteBudgetaireId}
+          onChange={(posteBudgetaireId) =>
+            setDetail((precedent) => ({ ...precedent, posteBudgetaireId }))
+          }
+          erreur={erreurPoste}
+        />
+      )}
 
       <div className="flex items-center justify-between rounded-lg border border-zinc-200 bg-zinc-50 p-3">
         <span className="text-sm font-medium text-zinc-700">

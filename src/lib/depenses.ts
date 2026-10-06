@@ -25,6 +25,8 @@ export interface DetailSaisie {
   activite: string;
   description: string;
   lignes: LigneSaisie[];
+  /** Poste budgétaire choisi (vide tant qu'aucun poste n'est sélectionné). */
+  posteBudgetaireId: string;
 }
 
 export const dateDuJour = () => new Date().toISOString().split("T")[0];
@@ -50,6 +52,7 @@ export const detailSaisieVide = (): DetailSaisie => ({
   activite: "",
   description: "",
   lignes: [{ categorie: "", montant: "" }],
+  posteBudgetaireId: "",
 });
 
 export const analyserMontantSaisi = (montant: string) =>

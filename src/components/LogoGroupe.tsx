@@ -85,7 +85,9 @@ export function LogoGroupe({ logoPersonnalise, onChange }: LogoGroupeProps) {
   return (
     <div className="flex items-center justify-between gap-3">
       <div className="min-w-0">
-        <p className="text-sm font-medium text-zinc-900">Logo de la note de frais</p>
+        <p className="text-sm font-medium text-zinc-900">
+          Logo de la note de frais
+        </p>
         <p className="text-sm text-zinc-500">
           {logoPersonnalise ? "Logo personnalisé" : "Logo SGDF par défaut"}
         </p>

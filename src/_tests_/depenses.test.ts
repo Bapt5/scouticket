@@ -30,6 +30,7 @@ const detailSaisi = (modification: Partial<DetailSaisie>): DetailSaisie => ({
   activite: "",
   description: "",
   lignes: [{ categorie: "Eau", montant: "12,5" }],
+  posteBudgetaireId: "",
   ...modification,
 });
 

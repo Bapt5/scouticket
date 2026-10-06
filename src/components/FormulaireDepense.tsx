@@ -56,6 +56,8 @@ import { AccordeonJustificatif } from "@/components/AccordeonJustificatif";
 import { IconeVoiture } from "@/components/IconeVoiture";
 import { ChampsKilometrage } from "@/components/ChampsKilometrage";
 import { LignesCategories } from "@/components/LignesCategories";
+import { SelecteurPosteBudgetaire } from "@/components/SelecteurPosteBudgetaire";
+import type { PosteBudgetaire } from "@/lib/budget";
 import type { UniteGroupe } from "@/lib/group";
 
 const lireFichierBase64 = (fichier: File) =>
@@ -74,6 +76,8 @@ interface FormulaireDepenseProps {
   readonly piecesJointes: PieceJointeDepense[];
   readonly emailUtilisateur: string;
   readonly units: UniteGroupe[];
+  /** Postes budgétaires des dépenses ; `undefined` quand le suivi budgétaire est désactivé. */
+  readonly postesBudgetaires?: PosteBudgetaire[];
   readonly moyensPaiement?: string[];
   /** Note de frais signée active pour ce groupe : notice avant envoi (uniquement typeEnvoi note-de-frais). */
   readonly ndfSigneeActif?: boolean;
@@ -102,6 +106,7 @@ export function FormulaireDepense({
   piecesJointes,
   emailUtilisateur,
   units,
+  postesBudgetaires,
   moyensPaiement = MOYENS_PAIEMENT_PAR_DEFAUT as string[],
   ndfSigneeActif = false,
   kilometrages = [],
@@ -128,6 +133,12 @@ export function FormulaireDepense({
   const [formulaire, setFormulaire] = useState({
     branche: uniteInitiale || "",
   });
+  // Suivi budgétaire : un poste par pièce, ou un poste global pour la note de
+  // frais signée (une seule ligne d'historique à la validation finale).
+  const suiviBudgetaireActif = postesBudgetaires !== undefined;
+  const posteGlobal = suiviBudgetaireActif && estNoteDeFrais && ndfSigneeActif;
+  const posteParPiece = suiviBudgetaireActif && !posteGlobal;
+  const [posteGlobalId, setPosteGlobalId] = useState("");
   const [rib, setRib] = useState<PieceJointeDepense | null>(null);
   const [erreurRib, setErreurRib] = useState("");
   const [detailsDepenses, setDetailsDepenses] = useState<DetailSaisie[]>([]);
@@ -279,11 +290,15 @@ export function FormulaireDepense({
         (nombreKm > 0 ? montantTotalKm : 0)) *
         100,
     ) / 100;
+  const detailComplet = (detail: DetailSaisie) =>
+    detailSaisiComplet(detail, typeEnvoi) &&
+    (!posteParPiece || Boolean(detail.posteBudgetaireId));
   const detailsDepensesValides =
     (nombreEmplacements > 0 || nombreKm > 0) &&
     Array.from({ length: nombreEmplacements }).every((_, index) =>
-      detailSaisiComplet(detailPourIndex(index), typeEnvoi),
+      detailComplet(detailPourIndex(index)),
     );
+  const erreurPosteGlobal = afficherErreursValidation && !posteGlobalId;
   // Date de référence (nomenclature) : la plus ancienne des dates saisies.
   const dateReference =
     Array.from({ length: nombreEmplacements })
@@ -309,6 +324,7 @@ export function FormulaireDepense({
         : [`les informations du déplacement ${index + 1}`],
     ),
     ...(!formulaire.branche ? ["l’unité"] : []),
+    ...(posteGlobal && !posteGlobalId ? ["le poste budgétaire"] : []),
     ...Array.from({ length: nombreEmplacements }).flatMap((_, index) => {
       const detail = detailPourIndex(index);
       const numero = index + 1;
@@ -327,6 +343,9 @@ export function FormulaireDepense({
           : []),
         ...(!estNoteDeFrais && !detail.modePaiement
           ? [`le moyen de paiement ${libelleJustificatif}`]
+          : []),
+        ...(posteParPiece && !detail.posteBudgetaireId
+          ? [`le poste budgétaire ${libelleJustificatif}`]
           : []),
         ...detail.lignes.flatMap((ligne, indexLigne) => [
           ...(!ligne.categorie
@@ -393,9 +412,7 @@ export function FormulaireDepense({
       // Ouvre le premier justificatif incomplet pour que ses erreurs soient visibles.
       const premierIncomplet = Array.from({
         length: nombreEmplacements,
-      }).findIndex(
-        (_, index) => !detailSaisiComplet(detailPourIndex(index), typeEnvoi),
-      );
+      }).findIndex((_, index) => !detailComplet(detailPourIndex(index)));
       if (premierIncomplet >= 0) {
         setIndexOuvert(premierIncomplet);
         setIndexKmOuvert(null);
@@ -455,9 +472,13 @@ export function FormulaireDepense({
           ...(nombreKm > 0
             ? { kilometrages: kilometrages.map(versLigneKilometrique) }
             : {}),
+          ...(posteGlobal ? { budgetPostId: posteGlobalId } : {}),
           expenses: detailsDepenses.map((detail) => ({
             date: detail.date,
             description: detail.description,
+            ...(posteParPiece
+              ? { budgetPostId: detail.posteBudgetaireId }
+              : {}),
             ...(estNoteDeFrais
               ? { activity: detail.activite }
               : { paymentMethod: detail.modePaiement }),
@@ -516,6 +537,7 @@ export function FormulaireDepense({
         setIndexKmOuvert(null);
         onKilometragesChange?.([]);
         setSansJustificatifDeclare(false);
+        setPosteGlobalId("");
         onCreerNouvelleNote?.();
       } else {
         const piecesJointesTropLourdes =
@@ -567,6 +589,7 @@ export function FormulaireDepense({
       nombreKm > 0 ||
       declarationSansJustificatifActive) &&
     formulaire.branche &&
+    (!posteGlobal || posteGlobalId) &&
     detailsDepensesValides &&
     kilometragesValides,
   );
@@ -706,6 +729,17 @@ export function FormulaireDepense({
             )}
           </div>
         )}
+        {posteParPiece && (
+          <SelecteurPosteBudgetaire
+            id={`${idPrefixe}-poste`}
+            postes={postesBudgetaires}
+            valeur={detail.posteBudgetaireId}
+            onChange={(posteBudgetaireId) =>
+              modifierDetailDepense(index, { posteBudgetaireId })
+            }
+            erreur={afficherErreursValidation && !detail.posteBudgetaireId}
+          />
+        )}
         <div className="space-y-2">
           <label
             htmlFor={`${idPrefixe}-description`}
@@ -747,6 +781,7 @@ export function FormulaireDepense({
     setIndexKmOuvert(null);
     onKilometragesChange?.([]);
     setSansJustificatifDeclare(false);
+    setPosteGlobalId("");
     if (onCreerNouvelleNote) onCreerNouvelleNote();
   };
 
@@ -997,6 +1032,16 @@ export function FormulaireDepense({
           </p>
         )}
       </div>
+
+      {posteGlobal && (
+        <SelecteurPosteBudgetaire
+          id="poste-budgetaire-global"
+          postes={postesBudgetaires}
+          valeur={posteGlobalId}
+          onChange={setPosteGlobalId}
+          erreur={erreurPosteGlobal}
+        />
+      )}
 
       {(nombreEmplacements > 0 || nombreKm > 0) && (
         <div className="p-3 bg-zinc-50 border border-zinc-200 rounded-lg flex items-center justify-between">

@@ -1,5 +1,15 @@
 import { z } from "zod";
 import { MOYENS_PAIEMENT_PAR_DEFAUT } from "@/constants/configDepenses";
+import {
+  PARAMETRES_ANNEE_COMPTABLE_PAR_DEFAUT,
+  erreurDebutAnneeComptable,
+} from "./nomenclature";
+
+/** Début de l'année comptable (jour et mois), défini même sans nomenclature personnalisée. */
+export interface DebutAnneeComptable {
+  mois: number;
+  jour: number;
+}
 
 /** Paramètres activables du groupe, modifiables par les responsables. */
 export interface ParametresGroupe {
@@ -17,6 +27,10 @@ export interface ParametresGroupe {
   logoPersonnalise: boolean;
   /** Historique des dépenses, recettes et notes de frais conservé en base (sans justificatifs). */
   historiqueActif: boolean;
+  /** Suivi budgétaire par poste (nécessite `historiqueActif`). */
+  budgetActif: boolean;
+  /** Début de l'année comptable, base de l'historique et du suivi budgétaire. */
+  anneeComptableDebut: DebutAnneeComptable;
 }
 
 export const PARAMETRES_GROUPE_PAR_DEFAUT: ParametresGroupe = {
@@ -29,6 +43,11 @@ export const PARAMETRES_GROUPE_PAR_DEFAUT: ParametresGroupe = {
   kmTauxMajLe: "2025-11-05",
   logoPersonnalise: false,
   historiqueActif: false,
+  budgetActif: false,
+  anneeComptableDebut: {
+    mois: PARAMETRES_ANNEE_COMPTABLE_PAR_DEFAUT.mois,
+    jour: PARAMETRES_ANNEE_COMPTABLE_PAR_DEFAUT.jour,
+  },
 };
 
 const NOMBRE_MAX_MOYENS_PAIEMENT = 20;
@@ -57,6 +76,16 @@ export const schemaMiseAJourParametresGroupe = z
     historiqueActif: z.boolean().optional(),
     /** Exigé pour désactiver l'historique : toutes ses entrées sont alors supprimées. */
     confirmationSuppressionHistorique: z.boolean().optional(),
+    budgetActif: z.boolean().optional(),
+    /** Exigé pour désactiver le suivi budgétaire : postes et budgets sont alors supprimés. */
+    confirmationSuppressionBudget: z.boolean().optional(),
+    anneeComptableDebut: z
+      .object({ mois: z.number().int(), jour: z.number().int() })
+      .strict()
+      .refine(
+        ({ mois, jour }) => erreurDebutAnneeComptable(mois, jour) === null,
+      )
+      .optional(),
     kmActif: z.boolean().optional(),
     kmTaux: z
       .number()

@@ -69,6 +69,8 @@ describe("/api/group/parametres", () => {
         kmTaux: 0.354,
         kmTauxMajLe: "2025-11-05",
         historiqueActif: false,
+        budgetActif: false,
+        anneeComptableDebut: { mois: 9, jour: 1 },
       },
     });
     mocks.query.mockResolvedValue({ rowCount: 1, rows: [] });
@@ -92,6 +94,8 @@ describe("/api/group/parametres", () => {
         kmTaux: 0.354,
         kmTauxMajLe: "2025-11-05",
         historiqueActif: false,
+        budgetActif: false,
+        anneeComptableDebut: { mois: 9, jour: 1 },
       },
     });
   });
@@ -146,6 +150,8 @@ describe("/api/group/parametres", () => {
         kmTaux: 0.354,
         kmTauxMajLe: "2025-11-05",
         historiqueActif: false,
+        budgetActif: false,
+        anneeComptableDebut: { mois: 9, jour: 1 },
       },
     });
     expect(mocks.query.mock.calls[0][0]).toMatch(/ON CONFLICT/);
@@ -159,6 +165,9 @@ describe("/api/group/parametres", () => {
       0.354,
       "2025-11-05",
       false,
+      false,
+      9,
+      1,
     ]);
   });
 
@@ -173,6 +182,8 @@ describe("/api/group/parametres", () => {
         kmTaux: 0.354,
         kmTauxMajLe: "2025-11-05",
         historiqueActif: false,
+        budgetActif: false,
+        anneeComptableDebut: { mois: 9, jour: 1 },
       },
     });
 
@@ -194,6 +205,9 @@ describe("/api/group/parametres", () => {
       0.354,
       "2025-11-05",
       false,
+      false,
+      9,
+      1,
     ]);
   });
 
@@ -216,6 +230,9 @@ describe("/api/group/parametres", () => {
       0.354,
       "2025-11-05",
       false,
+      false,
+      9,
+      1,
     ]);
   });
 
@@ -240,6 +257,9 @@ describe("/api/group/parametres", () => {
       0.354,
       "2025-11-05",
       false,
+      false,
+      9,
+      1,
     ]);
   });
 
@@ -263,6 +283,9 @@ describe("/api/group/parametres", () => {
       0.354,
       "2025-11-05",
       false,
+      false,
+      9,
+      1,
     ]);
   });
 
@@ -284,6 +307,8 @@ describe("/api/group/parametres", () => {
         kmTaux: 0.354,
         kmTauxMajLe: "2025-11-05",
         historiqueActif: false,
+        budgetActif: false,
+        anneeComptableDebut: { mois: 9, jour: 1 },
       },
     });
 
@@ -300,6 +325,9 @@ describe("/api/group/parametres", () => {
       0.354,
       "2025-11-05",
       false,
+      false,
+      9,
+      1,
     ]);
   });
 
@@ -314,6 +342,8 @@ describe("/api/group/parametres", () => {
         kmTaux: 0.4,
         kmTauxMajLe: "2026-01-01",
         historiqueActif: false,
+        budgetActif: false,
+        anneeComptableDebut: { mois: 9, jour: 1 },
       },
     });
 
@@ -328,6 +358,9 @@ describe("/api/group/parametres", () => {
       0.4,
       "2026-01-01",
       false,
+      false,
+      9,
+      1,
     ]);
   });
 
@@ -342,6 +375,8 @@ describe("/api/group/parametres", () => {
         kmTaux: 0.354,
         kmTauxMajLe: "2025-11-05",
         historiqueActif: false,
+        budgetActif: false,
+        anneeComptableDebut: { mois: 9, jour: 1 },
       },
     });
 
@@ -378,6 +413,8 @@ describe("/api/group/parametres", () => {
           kmTaux: 0.354,
           kmTauxMajLe: "2025-11-05",
           historiqueActif,
+          budgetActif: false,
+          anneeComptableDebut: { mois: 9, jour: 1 },
         },
       });
 
@@ -391,7 +428,7 @@ describe("/api/group/parametres", () => {
       const reponse = await patch({ historiqueActif: true });
 
       expect(reponse.status).toBe(200);
-      expect(mocks.query.mock.calls[0][1].at(-1)).toBe(true);
+      expect(mocks.query.mock.calls[0][1][8]).toBe(true);
       expect(mocks.clientQuery).not.toHaveBeenCalled();
     });
 
@@ -444,6 +481,145 @@ describe("/api/group/parametres", () => {
       );
       expect(instructions).toContain("ROLLBACK");
       expect(instructions).not.toContain("COMMIT");
+    });
+  });
+
+  describe("suivi budgétaire et année comptable", () => {
+    const groupeAvec = (surcharges: Record<string, unknown>) =>
+      mocks.recupererGroupeActif.mockResolvedValue({
+        parametres: {
+          scanJustificatifsActif: false,
+          convertirJustificatifsEnPdf: false,
+          moyensPaiement: ["Espèces du groupe"],
+          ndfSigneeActif: false,
+          kmActif: false,
+          kmTaux: 0.354,
+          kmTauxMajLe: "2025-11-05",
+          historiqueActif: true,
+          budgetActif: false,
+          anneeComptableDebut: { mois: 9, jour: 1 },
+          ...surcharges,
+        },
+      });
+    const instructions = () =>
+      mocks.clientQuery.mock.calls.map(
+        ([texte]) => String(texte).trim().split(/\s+/)[0],
+      );
+
+    beforeEach(() => {
+      mocks.clientQuery.mockResolvedValue({ rowCount: 0, rows: [] });
+    });
+
+    it("refuse d'activer le suivi sans historique", async () => {
+      groupeAvec({ historiqueActif: false });
+
+      const reponse = await patch({ budgetActif: true });
+
+      expect(reponse.status).toBe(400);
+      expect(mocks.query).not.toHaveBeenCalled();
+      expect(mocks.clientQuery).not.toHaveBeenCalled();
+    });
+
+    it("active le suivi et crée les postes par défaut dans une transaction", async () => {
+      groupeAvec({});
+
+      const reponse = await patch({ budgetActif: true });
+
+      expect(reponse.status).toBe(200);
+      await expect(reponse.json()).resolves.toMatchObject({
+        parametres: { budgetActif: true },
+      });
+      expect(instructions().slice(0, 3)).toEqual(["BEGIN", "INSERT", "SELECT"]);
+      expect(instructions().slice(-1)[0]).toBe("COMMIT");
+      // 9 postes de dépenses et 5 de recettes par défaut.
+      expect(
+        instructions().filter((instruction) => instruction === "INSERT"),
+      ).toHaveLength(1 + 14);
+      expect(mocks.query).not.toHaveBeenCalled();
+    });
+
+    it("ne recrée pas les postes si le groupe en a déjà", async () => {
+      groupeAvec({});
+      mocks.clientQuery.mockResolvedValue({ rowCount: 3, rows: [] });
+
+      await patch({ budgetActif: true });
+
+      expect(
+        instructions().filter((instruction) => instruction === "INSERT"),
+      ).toHaveLength(1);
+    });
+
+    it("refuse la désactivation du suivi sans confirmation explicite", async () => {
+      groupeAvec({ budgetActif: true });
+
+      const reponse = await patch({ budgetActif: false });
+
+      expect(reponse.status).toBe(400);
+      expect(mocks.query).not.toHaveBeenCalled();
+      expect(mocks.clientQuery).not.toHaveBeenCalled();
+    });
+
+    it("désactive le suivi : supprime les postes et retire les affectations", async () => {
+      groupeAvec({ budgetActif: true });
+
+      const reponse = await patch({
+        budgetActif: false,
+        confirmationSuppressionBudget: true,
+      });
+
+      expect(reponse.status).toBe(200);
+      expect(instructions()).toEqual([
+        "BEGIN",
+        "INSERT",
+        "UPDATE",
+        "DELETE",
+        "COMMIT",
+      ]);
+      expect(String(mocks.clientQuery.mock.calls[2][0])).toMatch(
+        /poste_id = NULL/,
+      );
+      expect(String(mocks.clientQuery.mock.calls[3][0])).toMatch(
+        /scouticket_postes_budgetaires/,
+      );
+      expect(mocks.release).toHaveBeenCalled();
+    });
+
+    it("refuse de désactiver l'historique tant que le suivi est actif", async () => {
+      groupeAvec({ budgetActif: true });
+
+      const reponse = await patch({
+        historiqueActif: false,
+        confirmationSuppressionHistorique: true,
+      });
+
+      expect(reponse.status).toBe(400);
+      expect(mocks.query).not.toHaveBeenCalled();
+      expect(mocks.clientQuery).not.toHaveBeenCalled();
+    });
+
+    it("enregistre le début de l'année comptable", async () => {
+      groupeAvec({});
+
+      const reponse = await patch({
+        anneeComptableDebut: { mois: 1, jour: 1 },
+      });
+
+      expect(reponse.status).toBe(200);
+      expect(mocks.query.mock.calls[0][0]).toMatch(
+        /annee_comptable_debut_mois/,
+      );
+      expect(mocks.query.mock.calls[0][1].slice(-2)).toEqual([1, 1]);
+    });
+
+    it("refuse un début d'année comptable invalide (29 février)", async () => {
+      groupeAvec({});
+
+      const reponse = await patch({
+        anneeComptableDebut: { mois: 2, jour: 29 },
+      });
+
+      expect(reponse.status).toBe(400);
+      expect(mocks.query).not.toHaveBeenCalled();
     });
   });
 });

@@ -208,3 +208,123 @@ describe("Page Historique : année comptable mémorisée", () => {
     });
   });
 });
+
+describe("Page Historique : suivi budgétaire", () => {
+  const fetchMock = vi.fn();
+
+  const configBudget = (budgetActif: boolean) => ({
+    ...config,
+    parametres: { ...config.parametres, budgetActif },
+    postesBudgetaires: {
+      depense: [{ id: "p-camp", domaine: "depense", label: "Camp" }],
+      recette: [{ id: "p-camp-r", domaine: "recette", label: "Camp" }],
+    },
+  });
+
+  const ligne = (surcharge: Record<string, unknown> = {}) => ({
+    id: "h-1",
+    envoiId: "e-1",
+    type: "depense",
+    date: "2026-03-10",
+    uniteId: "u1",
+    uniteLabel: "Louveteaux",
+    uniteCouleur: "#111111",
+    posteId: "p-camp",
+    posteLabel: "Camp",
+    reference: null,
+    modePaiement: "Carte",
+    activite: "",
+    description: "Courses",
+    montantTotal: 20,
+    lignes: [{ categorie: "Formation", montant: 20 }],
+    auteurNom: null,
+    creeLe: "2026-03-10T10:00:00.000Z",
+    modifieLe: null,
+    modifieParNom: null,
+    ...surcharge,
+  });
+
+  const brancher = (budgetActif: boolean) =>
+    fetchMock.mockImplementation((url: string) =>
+      url === "/api/group/config"
+        ? reponse(configBudget(budgetActif))
+        : reponse({
+            ...historique,
+            total: 2,
+            lignes: [
+              ligne(),
+              ligne({ id: "h-2", posteId: null, posteLabel: null }),
+            ],
+          }),
+    );
+  const appelsHistorique = () =>
+    fetchMock.mock.calls
+      .map(([url]) => String(url))
+      .filter((url) => url.startsWith("/api/historique?"));
+
+  beforeEach(() => {
+    const donnees = new Map<string, string>();
+    vi.stubGlobal("localStorage", {
+      getItem: (cle: string) => donnees.get(cle) ?? null,
+      setItem: (cle: string, valeur: string) => donnees.set(cle, valeur),
+      removeItem: (cle: string) => donnees.delete(cle),
+      clear: () => donnees.clear(),
+    });
+    fetchMock.mockReset();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("affiche la colonne Poste et « Non affecté » quand le suivi est actif", async () => {
+    brancher(true);
+
+    render(<PageHistorique />);
+
+    expect(
+      await screen.findByRole("columnheader", { name: "Poste" }),
+    ).toBeInTheDocument();
+    expect(await screen.findByText("Camp")).toBeInTheDocument();
+    expect(screen.getByText("Non affecté")).toBeInTheDocument();
+  });
+
+  it("masque la colonne et le filtre quand le suivi est désactivé", async () => {
+    brancher(false);
+
+    render(<PageHistorique />);
+
+    await screen.findAllByText("Courses");
+    expect(
+      screen.queryByRole("columnheader", { name: "Poste" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Filtrer par poste budgétaire"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("filtre par poste et envoie la liste au serveur", async () => {
+    brancher(true);
+    const utilisateur = userEvent.setup();
+
+    render(<PageHistorique />);
+    await utilisateur.click(
+      await screen.findByRole("button", {
+        name: /Filtrer par poste budgétaire/,
+      }),
+    );
+    // Les postes des deux domaines et « Non affecté » sont proposés, distingués par leur type.
+    expect(screen.getByText("Camp (dépense)")).toBeInTheDocument();
+    expect(screen.getByText("Camp (recette)")).toBeInTheDocument();
+    await utilisateur.click(screen.getByText("Camp (recette)"));
+
+    await waitFor(() =>
+      expect(appelsHistorique().slice(-1)[0]).toContain("poste="),
+    );
+    const poste = new URL(
+      `https://x.test${appelsHistorique().slice(-1)[0]}`,
+    ).searchParams.get("poste");
+    expect(poste?.split(",")).not.toContain("p-camp-r");
+    expect(poste?.split(",")).toEqual(
+      expect.arrayContaining(["p-camp", "non-affecte"]),
+    );
+  });
+});

@@ -22,25 +22,56 @@ export async function enregistrerHistorique(
   entrees: readonly EntreeHistorique[],
 ): Promise<string[]> {
   if (entrees.length === 0) return [];
-  const parametre = await client.query<{ historique_actif: boolean }>(
-    `SELECT historique_actif FROM scouticket_group_data
+  const parametre = await client.query<{
+    historique_actif: boolean;
+    budget_actif: boolean;
+  }>(
+    `SELECT historique_actif, budget_actif FROM scouticket_group_data
       WHERE organization_id = $1`,
     [identifiantOrganisation],
   );
   if (!parametre.rows[0]?.historique_actif) return [];
+
+  // Postes demandés : seuls ceux qui existent dans le bon domaine (dépense ou
+  // recette) sont enregistrés, avec une copie texte du libellé.
+  const postes = new Map<string, { label: string; domaine: string }>();
+  const idsPostes = [
+    ...new Set(
+      entrees.flatMap((entree) =>
+        entree.posteBudgetaireId ? [entree.posteBudgetaireId] : [],
+      ),
+    ),
+  ];
+  if (parametre.rows[0].budget_actif && idsPostes.length > 0) {
+    const trouves = await client.query<{
+      id: string;
+      label: string;
+      domaine: string;
+    }>(
+      `SELECT id, label, domaine FROM scouticket_postes_budgetaires
+        WHERE organization_id = $1 AND id = ANY($2::text[])`,
+      [identifiantOrganisation, idsPostes],
+    );
+    for (const poste of trouves.rows) postes.set(poste.id, poste);
+  }
 
   const identifiantEnvoi = randomUUID();
   const identifiants: string[] = [];
   for (const entree of entrees) {
     const identifiant = randomUUID();
     identifiants.push(identifiant);
+    const poste = entree.posteBudgetaireId
+      ? postes.get(entree.posteBudgetaireId)
+      : undefined;
+    const domaineEntree = entree.type === "recette" ? "recette" : "depense";
+    const posteValide = poste?.domaine === domaineEntree ? poste : undefined;
     await client.query(
       `INSERT INTO scouticket_historique
          (id, organization_id, envoi_id, type, date, unite_id, unite_label,
           unite_couleur, reference, mode_paiement, activite, description,
-          montant_total, lignes, auteur_user_id)
+          montant_total, lignes, auteur_user_id, poste_id, poste_label)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
-               $14::jsonb, $15)`,
+               $14::jsonb, $15, $16, $17)`,
       [
         identifiant,
         identifiantOrganisation,
@@ -57,6 +88,8 @@ export async function enregistrerHistorique(
         montantTotalEntree(entree),
         JSON.stringify(entree.lignes),
         contexte.auteurUserId,
+        posteValide ? entree.posteBudgetaireId : null,
+        posteValide?.label ?? null,
       ],
     );
   }

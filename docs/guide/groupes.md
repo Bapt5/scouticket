@@ -26,7 +26,7 @@ Conservez au moins une unité : un justificatif doit toujours être rattaché à
 
 ## Nomenclature des justificatifs
 
-Par défaut, les pièces jointes envoyées à la trésorerie gardent le nom du fichier importé par le membre. Les responsables peuvent définir un format de nom depuis **Administration** puis **Nomenclature** ; en cochant l’option, le format est pré-rempli avec `date - unité - type - mode de paiement - montant` et reste modifiable. Un bascule en haut de la page permet de définir un format et une numérotation **différents pour les dépenses et pour les recettes** ; seule l’année comptable (mois/jour de début) est commune aux deux et se modifie depuis l’onglet « Dépenses ».
+Par défaut, les pièces jointes envoyées à la trésorerie gardent le nom du fichier importé par le membre. Les responsables peuvent définir un format de nom depuis **Administration** puis **Nomenclature** ; en cochant l’option, le format est pré-rempli avec `date - unité - type - mode de paiement - montant` et reste modifiable. Un bascule en haut de la page permet de définir un format et une numérotation **différents pour les dépenses et pour les recettes** ; l’année comptable est commune aux deux (son format d’affichage se règle depuis l’onglet « Dépenses »).
 
 Le format mélange du texte fixe et des variables entre accolades, par exemple `{YYYY}-{MM}-{DD} - {Branche} - {Type} - {Montant} - {Numero}` donne `2026-03-05 - Louveteaux - Carburant - 28.50 - 01.pdf`. Les boutons de la page insèrent les variables, et un aperçu montre le résultat. L’extension du fichier est ajoutée automatiquement.
 
@@ -39,7 +39,7 @@ Le format mélange du texte fixe et des variables entre accolades, par exemple `
 | `{GlobalNumeroComptable}`                         | Rang dans l’année comptable, tous envois confondus (001, 002…)                                                                                                                |
 | `{GlobalNumero}`                                  | Rang dans l’ensemble des envois du groupe (001, 002…)                                                                                                                         |
 
-**Année comptable.** Elle commence par défaut le 1er septembre et se termine le 31 août. Vous pouvez changer le jour et le mois de début (pas le 29 février). Lorsqu’elle chevauche deux années civiles, choisissez l’affichage de `{AnneeComptable}` : année de début (2023), année de fin (2024) ou les deux (2023-2024). La numérotation `{GlobalNumeroComptable}` repart de 001 à chaque nouvelle année comptable.
+**Année comptable.** Elle commence par défaut le 1er septembre et se termine le 31 août. Le jour et le mois de début se règlent dans **Administration** puis **Paramètres du groupe**, section « Année comptable », même sans nomenclature personnalisée (pas le 29 février). Lorsqu’elle chevauche deux années civiles, choisissez l’affichage de `{AnneeComptable}` : année de début (2023), année de fin (2024) ou les deux (2023-2024). La numérotation `{GlobalNumeroComptable}` repart de 001 à chaque nouvelle année comptable.
 
 **Numéros.** Un numéro n’est consommé que si l’e-mail est bien parti : un envoi en échec ne crée pas de trou. Pour reprendre une numérotation existante, saisissez le prochain numéro à attribuer dans la page. Si deux justificatifs d’un même envoi devaient porter le même nom, un ` - 01`, ` - 02`… est ajouté.
 
@@ -90,3 +90,13 @@ Depuis **Paramètres du groupe**, les responsables gèrent la liste des moyens d
 - pour **retirer** un moyen, cliquez sur l’icône poubelle à côté de son nom. Il doit toujours en rester au moins un.
 
 Cette liste est propre à chaque groupe ; elle n’a aucun impact sur les notes de frais, qui ne demandent pas de moyen de paiement.
+
+## Suivi budgétaire
+
+Dans **Paramètres du groupe**, les responsables peuvent activer le **suivi budgétaire** (il nécessite l’historique). Chaque dépense, recette ou note de frais est alors rattachée à un **poste budgétaire** (« Camp », « Matériel », « Calendrier »…), choisi par le membre dans le formulaire. Des postes par défaut sont créés à l’activation et se modifient depuis la page **Suivi budgétaire**.
+
+Cette page, réservée aux responsables et disponible sur ordinateur uniquement, compare pour l’année comptable choisie le budget prévu et le réalisé de chaque poste, avec camemberts et barres, une alerte en cas de dépassement et un export CSV. Un responsable peut corriger le poste d’une écriture depuis l’historique.
+
+L’onglet **Tableau** sert à saisir les budgets et à gérer les postes. L’onglet **Pilotage** donne la vue d’ensemble : le résultat prévu et réalisé (recettes moins dépenses), l’avancement de l’année face à la consommation des budgets, les postes à surveiller (budget dépassé ou consommé à 80 % et plus, recettes en retard), et la comparaison avec l’année précédente. Un clic sur une ligne de poste affiche ses écritures ; un clic sur une écriture l’ouvre, pour la corriger ou la reclasser dans un autre poste.
+
+Désactiver le suivi supprime les postes, les budgets et les affectations (les montants de l’historique sont conservés), après confirmation.

@@ -37,12 +37,17 @@ export async function GET(requete: Request) {
         413,
       );
 
-    return new NextResponse(genererCsvHistorique(resultat.lignes), {
-      headers: {
-        "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": 'attachment; filename="historique.csv"',
-        "Cache-Control": "no-store",
+    return new NextResponse(
+      genererCsvHistorique(resultat.lignes, {
+        avecPoste: acces.groupe.parametres.budgetActif,
+      }),
+      {
+        headers: {
+          "Content-Type": "text/csv; charset=utf-8",
+          "Content-Disposition": 'attachment; filename="historique.csv"',
+          "Cache-Control": "no-store",
+        },
       },
-    });
+    );
   });
 }

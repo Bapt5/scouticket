@@ -25,6 +25,7 @@ const detailSaisie = (
   modePaiement: "Virement",
   description: "",
   lignes: [{ categorie: "Cotisations SGDF", montant: "45" }],
+  posteBudgetaireId: "",
   ...modification,
 });
 

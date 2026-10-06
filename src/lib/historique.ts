@@ -44,6 +44,8 @@ export interface EntreeHistorique {
   activite: string;
   description: string;
   lignes: LigneHistorique[];
+  /** Poste budgétaire (id) : ignoré si le suivi est désactivé ou le poste inconnu. */
+  posteBudgetaireId?: string | null;
 }
 
 /** Une entrée par justificatif d'une dépense ou d'une note de frais. */
@@ -62,6 +64,7 @@ export const versEntreesDepense = (
       categorie,
       montant,
     })),
+    posteBudgetaireId: detail.posteBudgetaireId ?? null,
   }));
 
 export const versEntreeRecette = (detail: DetailRecette): EntreeHistorique => ({
@@ -75,6 +78,7 @@ export const versEntreeRecette = (detail: DetailRecette): EntreeHistorique => ({
     categorie,
     montant,
   })),
+  posteBudgetaireId: detail.posteBudgetaireId ?? null,
 });
 
 export const montantTotalEntree = (entree: Pick<EntreeHistorique, "lignes">) =>
@@ -89,6 +93,10 @@ export interface LigneHistoriqueApi {
   uniteId: string | null;
   uniteLabel: string;
   uniteCouleur: string;
+  /** Poste budgétaire courant (`null` : non affecté ou suivi désactivé). */
+  posteId: string | null;
+  /** Libellé du poste au moment de l'affectation (copie texte). */
+  posteLabel: string | null;
   reference: string | null;
   modePaiement: string;
   activite: string;
@@ -169,9 +177,17 @@ export function categoriesExportees(
  */
 export function genererCsvHistorique(
   lignes: readonly LigneHistoriqueApi[],
+  options: { avecPoste?: boolean } = {},
 ): string {
   const categories = categoriesExportees(lignes);
-  const entetes = [...ENTETES_CSV, ...categories].map(cellulesCsv).join(";");
+  const entetes = [
+    ...ENTETES_CSV.slice(0, 4),
+    ...(options.avecPoste ? ["Poste budgétaire"] : []),
+    ...ENTETES_CSV.slice(4),
+    ...categories,
+  ]
+    .map(cellulesCsv)
+    .join(";");
   const corps = lignes.map((ligne) => {
     const parCategorie = new Map<string, number>();
     for (const { categorie, montant } of ligne.lignes)
@@ -182,6 +198,7 @@ export function genererCsvHistorique(
         ligne.reference ?? "",
         LIBELLES_TYPES_HISTORIQUE[ligne.type],
         ligne.uniteLabel,
+        ...(options.avecPoste ? [ligne.posteLabel ?? ""] : []),
         ligne.modePaiement,
         ligne.activite,
         ligne.description,

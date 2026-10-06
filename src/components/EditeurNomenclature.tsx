@@ -1,16 +1,16 @@
 "use client";
 
+import Link from "next/link";
 import { useRef } from "react";
 import {
   VARIABLES_NOMENCLATURE,
-  erreurDebutAnneeComptable,
   genererNomsNomenclature,
-  joursMaxDuMois,
   libelleAnneeComptable,
   validerFormatNomenclature,
   type FormatAnneeComptable,
   type ParametresAnneeComptable,
 } from "@/lib/nomenclature";
+import { MOIS } from "@/components/ChampDebutAnneeComptable";
 import { InfoBulle } from "@/components/InfoBulle";
 
 export interface BrouillonNomenclature {
@@ -42,21 +42,6 @@ const EXEMPLES_APERCU_PAR_DEFAUT: readonly ExempleApercu[] = [
   { typeDepense: "Fournitures", modePaiement: "Espèces", montant: 12 },
 ];
 
-const MOIS = [
-  "janvier",
-  "février",
-  "mars",
-  "avril",
-  "mai",
-  "juin",
-  "juillet",
-  "août",
-  "septembre",
-  "octobre",
-  "novembre",
-  "décembre",
-];
-
 function dateDuJourIso(): string {
   const maintenant = new Date();
   const mois = String(maintenant.getMonth() + 1).padStart(2, "0");
@@ -82,10 +67,7 @@ export function EditeurNomenclature({
   const commenceEnJanvier =
     anneeComptable.mois === 1 && anneeComptable.jour === 1;
 
-  const erreurDebut = erreurDebutAnneeComptable(
-    anneeComptable.mois,
-    anneeComptable.jour,
-  );
+  const jourMoisDebut = `${anneeComptable.jour === 1 ? "1er" : anneeComptable.jour} ${MOIS[anneeComptable.mois - 1] ?? ""}`;
 
   const modifierAnnee = (modification: Partial<ParametresAnneeComptable>) =>
     onChange({
@@ -194,58 +176,17 @@ export function EditeurNomenclature({
             <legend className="mb-1 text-base font-semibold text-zinc-900">
               Année comptable
             </legend>
-            <div className="flex items-center gap-2 text-sm text-zinc-700">
-              <span>Début le</span>
-              <input
-                type="number"
-                min={1}
-                max={joursMaxDuMois(anneeComptable.mois)}
-                aria-label="Jour de début de l'année comptable"
-                aria-invalid={Boolean(erreurDebut)}
-                value={
-                  Number.isNaN(anneeComptable.jour) ? "" : anneeComptable.jour
-                }
-                onChange={(e) =>
-                  modifierAnnee({
-                    jour:
-                      e.target.value === ""
-                        ? Number.NaN
-                        : Number(e.target.value),
-                  })
-                }
-                className="w-20 rounded-lg border border-zinc-300 bg-white p-2"
-              />
-              <select
-                aria-label="Mois de début de l'année comptable"
-                value={anneeComptable.mois}
-                onChange={(e) => {
-                  const mois = Number(e.target.value);
-                  // Ramène le jour dans le mois choisi (ex. 31 → 28 en février).
-                  modifierAnnee({
-                    mois,
-                    jour: Math.min(anneeComptable.jour, joursMaxDuMois(mois)),
-                  });
-                }}
-                className="rounded-lg border border-zinc-300 bg-white p-2"
+            <p className="text-xs text-zinc-500">
+              Le début de l&apos;année comptable ({jourMoisDebut}) se règle dans
+              les{" "}
+              <Link
+                href="/parametres-groupe"
+                className="underline text-[#1E3A8A]"
               >
-                {MOIS.map((mois, index) => (
-                  <option key={mois} value={index + 1}>
-                    {mois}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {erreurDebut ? (
-              <p className="text-sm text-rose-600" role="alert">
-                {erreurDebut}
-              </p>
-            ) : (
-              anneeComptable.mois === 2 && (
-                <p className="text-xs text-zinc-500">
-                  En février, le début ne peut pas dépasser le 28.
-                </p>
-              )
-            )}
+                paramètres du groupe
+              </Link>
+              .
+            </p>
             {!commenceEnJanvier && (
               <div>
                 <label

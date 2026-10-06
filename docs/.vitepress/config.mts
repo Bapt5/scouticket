@@ -50,6 +50,11 @@ const metadonneesPages: Record<string, { titre: string; description: string }> =
       description:
         "Comprenez l'historique optionnel des dépenses, recettes et notes de frais de Scouticket : données conservées, droits, rétention et écriture atomique.",
     },
+    "technical/suivi-budgetaire.md": {
+      titre: "Suivi budgétaire",
+      description:
+        "Comprenez le suivi budgétaire optionnel de Scouticket : postes, budgets par année comptable, réalisé issu de l'historique, droits et suppression.",
+    },
     "technical/local-installation.md": {
       titre: "Installation locale",
       description:
@@ -186,6 +191,10 @@ export default defineConfig({
           {
             text: "Historique",
             link: "/technical/historique",
+          },
+          {
+            text: "Suivi budgétaire",
+            link: "/technical/suivi-budgetaire",
           },
           {
             text: "Variables d'environnement",

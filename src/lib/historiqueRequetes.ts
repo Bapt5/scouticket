@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { pool } from "@/lib/baseDeDonnees";
+import { VALEUR_NON_AFFECTE } from "@/lib/budget";
 import {
   COLONNES_TRI_HISTORIQUE,
   TYPES_HISTORIQUE,
@@ -28,6 +29,8 @@ export const schemaFiltresHistorique = z.object({
   sens: z.enum(["asc", "desc"]).default("desc"),
   type: listeCsv(z.enum(TYPES_HISTORIQUE)).optional(),
   unite: listeCsv(z.string().min(1).max(100)).optional(),
+  /** Ids de postes budgétaires ; `non-affecte` retient les lignes sans poste. */
+  poste: listeCsv(z.string().min(1).max(100)).optional(),
   du: dateIso.optional(),
   au: dateIso.optional(),
   anneeComptable: z.coerce.number().int().min(1900).max(3000).optional(),
@@ -36,13 +39,14 @@ export const schemaFiltresHistorique = z.object({
 export type FiltresHistorique = z.infer<typeof schemaFiltresHistorique>;
 
 /**
- * Lit les filtres de l'URL. Les paramètres vides sont ignorés, sauf `type` et
- * `unite` : vides, ils signifient « aucune valeur retenue » (aucun résultat).
+ * Lit les filtres de l'URL. Les paramètres vides sont ignorés, sauf `type`,
+ * `unite` et `poste` : vides, ils signifient « aucune valeur retenue » (aucun résultat).
  */
 export function analyserFiltresHistorique(parametres: URLSearchParams) {
   const brut: Record<string, string> = {};
   for (const [cle, valeur] of parametres)
-    if (valeur !== "" || cle === "type" || cle === "unite") brut[cle] = valeur;
+    if (valeur !== "" || cle === "type" || cle === "unite" || cle === "poste")
+      brut[cle] = valeur;
   return schemaFiltresHistorique.safeParse(brut);
 }
 
@@ -80,6 +84,16 @@ export function construireWhere(
   if (filtres.unite)
     ajouter((i) => `h.unite_id = ANY($${i}::text[])`, filtres.unite);
 
+  if (filtres.poste) {
+    const ids = filtres.poste.filter((poste) => poste !== VALEUR_NON_AFFECTE);
+    const nonAffecte = filtres.poste.includes(VALEUR_NON_AFFECTE);
+    ajouter(
+      (i) =>
+        `(h.poste_id = ANY($${i}::text[])${nonAffecte ? " OR h.poste_id IS NULL" : ""})`,
+      ids,
+    );
+  }
+
   let du = filtres.du;
   let au = filtres.au;
   if (filtres.anneeComptable !== undefined) {
@@ -113,6 +127,8 @@ interface LigneSql {
   unite_id: string | null;
   unite_label: string;
   unite_couleur: string;
+  poste_id: string | null;
+  poste_label: string | null;
   reference: string | null;
   mode_paiement: string;
   activite: string;
@@ -127,7 +143,8 @@ interface LigneSql {
 
 export const SELECT_HISTORIQUE = `
   SELECT h.id, h.envoi_id, h.type, TO_CHAR(h.date, 'YYYY-MM-DD') AS date,
-         h.unite_id, h.unite_label, h.unite_couleur, h.reference,
+         h.unite_id, h.unite_label, h.unite_couleur, h.poste_id, h.poste_label,
+         h.reference,
          h.mode_paiement, h.activite, h.description,
          h.montant_total::float8 AS montant_total, h.lignes,
          auteur.name AS auteur_nom, h.cree_le, h.modifie_le,
@@ -146,6 +163,8 @@ export const versLigneApi = (ligne: LigneSql): LigneHistoriqueApi => ({
   uniteId: ligne.unite_id,
   uniteLabel: ligne.unite_label,
   uniteCouleur: ligne.unite_couleur,
+  posteId: ligne.poste_id,
+  posteLabel: ligne.poste_label,
   reference: ligne.reference,
   modePaiement: ligne.mode_paiement,
   activite: ligne.activite,
