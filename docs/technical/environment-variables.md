@@ -34,6 +34,15 @@ En développement local, `@sparticuz/chromium` ne fournit qu'un binaire Linux : 
 
 Lorsque le RUM est configuré et qu’un utilisateur est connecté, son adresse e-mail est transmise en clair à OpenObserve dans les contextes utilisateur RUM et Browser Logs. Les replays sont enregistrés pour 100 % des sessions. Cette configuration est réservée au mode test et ne prévoit pas de recueil de consentement.
 
+## Mesure d’audience (Umami)
+
+| Variable                       |  Requis   | Description                                                                                                  |
+| ------------------------------ | :-------: | ------------------------------------------------------------------------------------------------------------ |
+| `NEXT_PUBLIC_UMAMI_SCRIPT_URL` | Optionnel | URL du script Umami, par exemple `https://cloud.umami.is/script.js` (Umami Cloud) ou celle de votre instance |
+| `NEXT_PUBLIC_UMAMI_WEBSITE_ID` | Optionnel | Identifiant du site fourni par Umami                                                                         |
+
+Le script n’est ajouté aux pages que si **les deux** variables sont définies. Umami ne dépose pas de cookie et ne collecte pas d’identifiant personnel. Ces variables sont lues au build : redéployez après les avoir modifiées. Le site de documentation (VitePress) lit les mêmes variables au moment de `pnpm docs:build`.
+
 ## Publication des cartes sources OpenObserve
 
 La publication GitHub Actions envoie automatiquement les cartes sources de chaque commit sur `main`, avant de publier l’image Docker. Configurez ces **secrets de dépôt GitHub** (et non des variables de l’application) :

@@ -1,6 +1,9 @@
 import { defineConfig } from "vitepress";
 
 const urlDocumentation = "https://scoutreso.me";
+// Mesure d'audience Umami, activée uniquement si les deux variables sont définies au build.
+const urlScriptAudience = process.env.NEXT_PUBLIC_UMAMI_SCRIPT_URL;
+const identifiantSiteAudience = process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID;
 const imagePartage = `${urlDocumentation}/og-scoutreso.png`;
 
 const metadonneesPages: Record<string, { titre: string; description: string }> =
@@ -103,14 +106,18 @@ export default defineConfig({
     ["meta", { property: "og:site_name", content: "Scoutréso" }],
     ["meta", { property: "og:locale", content: "fr_FR" }],
     ["meta", { name: "twitter:card", content: "summary_large_image" }],
-    [
-      "script",
-      {
-        defer: "",
-        src: "https://analytics.scoutreso.me/script.js",
-        "data-website-id": "65c3c4c1-8db5-4f98-b57e-79dc22cc6910",
-      },
-    ],
+    ...(urlScriptAudience && identifiantSiteAudience
+      ? [
+          [
+            "script",
+            {
+              defer: "",
+              src: urlScriptAudience,
+              "data-website-id": identifiantSiteAudience,
+            },
+          ] as [string, Record<string, string>],
+        ]
+      : []),
     [
       "link",
       {

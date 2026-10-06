@@ -30,6 +30,10 @@ export const metadata: Metadata = {
   },
 };
 
+// Mesure d'audience Umami, chargée uniquement si les deux variables sont définies.
+const urlScriptAudience = process.env.NEXT_PUBLIC_UMAMI_SCRIPT_URL;
+const identifiantSiteAudience = process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID;
+
 export function generateViewport() {
   return {
     themeColor: [
@@ -54,11 +58,13 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="Scoutréso" />
         <meta name="mobile-web-app-capable" content="yes" />
         <link rel="manifest" href="/manifest.json" />
-        <script
-          defer
-          src="https://analytics.scoutreso.me/script.js"
-          data-website-id="4260f7db-3623-438a-95a4-9ba2631bcc79"
-        />
+        {urlScriptAudience && identifiantSiteAudience && (
+          <script
+            defer
+            src={urlScriptAudience}
+            data-website-id={identifiantSiteAudience}
+          />
+        )}
       </head>
       <body className="font-sans">
         <RegisterServiceWorker />
