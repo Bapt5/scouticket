@@ -95,7 +95,7 @@ function formaterDateIsoCourte(dateIso: string): string {
 }
 
 function celluleMontant(valeur: number): string {
-  return valeur > 0 ? formaterMontant(valeur) : "";
+  return valeur !== 0 ? formaterMontant(valeur) : "";
 }
 
 function construireLigne(piece: PieceJustificativePourPdf | null): string {

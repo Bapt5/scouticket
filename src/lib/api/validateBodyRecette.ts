@@ -6,6 +6,7 @@ import {
 } from "@/constants/piecesJointes";
 import {
   MAX_LIGNES_PAR_JUSTIFICATIF,
+  MONTANT_ABSOLU_MAX,
   MAX_ATTACHMENT_SIZE_BYTES,
   MAX_TOTAL_ATTACHMENTS_SIZE_BYTES,
 } from "@/constants/piecesJointes";
@@ -100,7 +101,8 @@ export function validerCorpsRequeteRecette(body: unknown): {
     if (
       !estCategorieValide(ligne.category) ||
       !Number.isFinite(montantLigne) ||
-      montantLigne <= 0
+      montantLigne === 0 ||
+      Math.abs(montantLigne) > MONTANT_ABSOLU_MAX
     ) {
       return { error: jsonError("Recette invalide", 400) };
     }

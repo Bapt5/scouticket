@@ -135,7 +135,7 @@ describe("FormulaireDepense", () => {
       screen.queryByText("Sélectionnez un moyen de paiement."),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByText("Saisissez un montant supérieur à 0 €."),
+      screen.getByText("Saisissez un montant non nul (négatif accepté)."),
     ).toBeInTheDocument();
     expect(screen.getByText("Sélectionnez une catégorie.")).toBeInTheDocument();
   });

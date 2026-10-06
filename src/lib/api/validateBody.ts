@@ -11,6 +11,7 @@ import {
 import {
   MAX_ATTACHMENT_COUNT,
   MAX_LIGNES_PAR_JUSTIFICATIF,
+  MONTANT_ABSOLU_MAX,
   MAX_ATTACHMENT_SIZE_BYTES,
   MAX_TOTAL_ATTACHMENTS_SIZE_BYTES,
 } from "@/constants/piecesJointes";
@@ -311,7 +312,8 @@ export function validerCorpsRequete(
       if (
         !estCategorieValide(ligne.category) ||
         !Number.isFinite(montantLigne) ||
-        montantLigne <= 0
+        montantLigne === 0 ||
+        Math.abs(montantLigne) > MONTANT_ABSOLU_MAX
       ) {
         return { error: jsonError(`Dépense invalide (#${i + 1})`, 400) };
       }
@@ -349,16 +351,26 @@ export function validerCorpsRequete(
     ...(kilometrage?.lignes.map((ligne) => ligne.date) ?? []),
   ].reduce((plusAncienne, date) => (date < plusAncienne ? date : plusAncienne));
 
+  const montantTotal =
+    Math.round(
+      (totalDetails(detailsDepenses) + (kilometrage?.montant ?? 0)) * 100,
+    ) / 100;
+  if (estNoteDeFrais && montantTotal <= 0) {
+    return {
+      error: jsonError(
+        "Le total de la note de frais doit être supérieur à 0 €",
+        400,
+      ),
+    };
+  }
+
   return {
     donneesEmail: {
       typeEnvoi: b.envoiType,
       emailUtilisateur: b.userEmail,
       date: dateReference,
       branche: b.unitId,
-      montant:
-        Math.round(
-          (totalDetails(detailsDepenses) + (kilometrage?.montant ?? 0)) * 100,
-        ) / 100,
+      montant: montantTotal,
       piecesJointes: piecesJointesNormalisees,
       detailsDepenses,
       kilometrage,

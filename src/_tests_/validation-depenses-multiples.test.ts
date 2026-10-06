@@ -153,6 +153,43 @@ describe("validerCorpsRequete : note de frais", () => {
     expect(requete([]).error?.status).toBe(400);
   });
 
+  it("accepte une ligne négative si le total de la note de frais reste positif", () => {
+    const resultat = valider(
+      noteDeFrais({
+        expenses: [
+          {
+            date: "2026-08-16",
+            activity: "Camp",
+            lines: [
+              { category: "Formation", amount: 20 },
+              { category: "Formation", amount: -2.16 },
+            ],
+          },
+        ],
+      }),
+    );
+    expect(resultat.error).toBeUndefined();
+    expect(resultat.donneesEmail?.montant).toBe(17.84);
+  });
+
+  it("refuse une note de frais dont le total est négatif ou nul", () => {
+    const resultat = valider(
+      noteDeFrais({
+        expenses: [
+          {
+            date: "2026-08-16",
+            activity: "Camp",
+            lines: [
+              { category: "Formation", amount: 5 },
+              { category: "Formation", amount: -5 },
+            ],
+          },
+        ],
+      }),
+    );
+    expect(resultat.error?.status).toBe(400);
+  });
+
   it("refuse en note de frais une catégorie réservée au moyen de paiement du groupe", () => {
     const resultat = valider(
       noteDeFrais({

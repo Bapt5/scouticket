@@ -107,7 +107,7 @@ export function LignesCategories({
               <div className="col-span-3 space-y-1 text-sm text-rose-700">
                 {erreurMontant && (
                   <p id={`erreur-${idMontant}`}>
-                    Saisissez un montant supérieur à 0 €.
+                    Saisissez un montant non nul (négatif accepté).
                   </p>
                 )}
                 {erreurCategorie && (

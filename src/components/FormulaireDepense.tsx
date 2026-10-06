@@ -324,6 +324,9 @@ export function FormulaireDepense({
         : [`les informations du déplacement ${index + 1}`],
     ),
     ...(!formulaire.branche ? ["l’unité"] : []),
+    ...(estNoteDeFrais && totalDepenses <= 0
+      ? ["un total de note de frais supérieur à 0 €"]
+      : []),
     ...(posteGlobal && !posteGlobalId ? ["le poste budgétaire"] : []),
     ...Array.from({ length: nombreEmplacements }).flatMap((_, index) => {
       const detail = detailPourIndex(index);
@@ -584,6 +587,7 @@ export function FormulaireDepense({
     }
   };
 
+  const totalNoteDeFraisInvalide = estNoteDeFrais && totalDepenses <= 0;
   const formulaireEstValide = Boolean(
     (piecesJointes.length > 0 ||
       nombreKm > 0 ||
@@ -591,7 +595,8 @@ export function FormulaireDepense({
     formulaire.branche &&
     (!posteGlobal || posteGlobalId) &&
     detailsDepensesValides &&
-    kilometragesValides,
+    kilometragesValides &&
+    !totalNoteDeFraisInvalide,
   );
   const choisirRib = async (evenement: ChangeEvent<HTMLInputElement>) => {
     const fichier = evenement.target.files?.[0];

@@ -11,6 +11,9 @@ export const MAX_TOTAL_ATTACHMENTS_SIZE_BYTES = 20 * 1024 * 1024; // 20MB
 
 export const MAX_LIGNES_PAR_JUSTIFICATIF = 20;
 
+/** Valeur absolue maximale d'un montant de ligne (négatif accepté, nul refusé). */
+export const MONTANT_ABSOLU_MAX = 10_000_000;
+
 /** Nombre de lignes du tableau du modèle SGDF : pièces et lignes km confondues. */
 export const MAX_LIGNES_NOTE_DE_FRAIS = 12;
 /** Bornes de saisie d'une ligne kilométrique. */
