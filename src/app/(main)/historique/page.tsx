@@ -137,7 +137,8 @@ function versParametres(filtres: Filtres, page: number | null) {
 }
 
 export default function PageHistorique() {
-  const { data: organisation } = clientAuth.useActiveOrganization();
+  const { data: organisation, isPending: organisationEnChargement } =
+    clientAuth.useActiveOrganization();
   const [config, setConfig] = useState<Config | null>(null);
   const [configChargee, setConfigChargee] = useState(false);
   const [filtres, setFiltres] = useState<Filtres>(FILTRES_INITIAUX);
@@ -371,7 +372,18 @@ export default function PageHistorique() {
     if (derniereVisible >= entrees.length - 20) void chargerSuite();
   }, [derniereVisible, entrees.length, chargerSuite]);
 
-  if (!organisation) return <main className="p-6">Aucun groupe actif.</main>;
+  if (organisationEnChargement)
+    return (
+      <main className="min-h-screen bg-zinc-50 p-6 text-center text-zinc-600">
+        Chargement…
+      </main>
+    );
+  if (!organisation)
+    return (
+      <main className="min-h-screen bg-zinc-50 p-6 text-center text-zinc-600">
+        Aucun groupe actif.
+      </main>
+    );
 
   const espaceHaut = lignesVirtuelles[0]?.start ?? 0;
   const espaceBas = lignesVirtuelles.length

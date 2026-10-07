@@ -9,7 +9,8 @@ import type { UniteBrouillon } from "@/lib/group";
 type Groupe = { units: UniteBrouillon[]; isAdmin: boolean };
 
 export default function PageGestionUnites() {
-  const { data: organisation } = clientAuth.useActiveOrganization();
+  const { data: organisation, isPending: organisationEnChargement } =
+    clientAuth.useActiveOrganization();
   const [unites, setUnites] = useState<UniteBrouillon[]>([]);
   const [chargement, setChargement] = useState(true);
   const [estAdministrateur, setEstAdministrateur] = useState(false);
@@ -56,7 +57,18 @@ export default function PageGestionUnites() {
     );
   };
 
-  if (!organisation) return <main className="p-6">Aucun groupe actif.</main>;
+  if (organisationEnChargement)
+    return (
+      <main className="min-h-screen bg-zinc-50 p-6 text-center text-zinc-600">
+        Chargement…
+      </main>
+    );
+  if (!organisation)
+    return (
+      <main className="min-h-screen bg-zinc-50 p-6 text-center text-zinc-600">
+        Aucun groupe actif.
+      </main>
+    );
   return (
     <main className="min-h-screen bg-zinc-50 p-4">
       <section className="mx-auto max-w-lg rounded-xl border border-zinc-200 bg-white p-6">

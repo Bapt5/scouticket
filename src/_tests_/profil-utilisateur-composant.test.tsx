@@ -204,15 +204,32 @@ describe("ProfilUtilisateur", () => {
     expect(await screen.findByText("Mot de passe incorrect")).toBeTruthy();
   });
 
-  it("n'affiche pas le profil pour un compte Google sans mot de passe", async () => {
+  it("désactive le profil et le mot de passe pour un compte Google sans mot de passe", async () => {
     mocks.listerComptes.mockResolvedValue({
       data: [{ providerId: "google" }],
     });
     render(<ProfilUtilisateur />);
 
-    expect(await screen.findByText(/connecté avec Google/)).toBeTruthy();
-    expect(screen.queryByLabelText("Nom")).toBeNull();
+    expect(
+      await screen.findByText(/nom et votre adresse e-mail se gèrent/),
+    ).toBeTruthy();
+    expect((screen.getByLabelText("Nom") as HTMLInputElement).disabled).toBe(
+      true,
+    );
+    expect(screen.queryByRole("button", { name: "Enregistrer" })).toBeNull();
+    expect(screen.getByText(/votre mot de passe se gère/)).toBeTruthy();
     expect(screen.queryByLabelText("Ancien mot de passe")).toBeNull();
+  });
+
+  it("garde les champs désactivés tant que les comptes ne sont pas chargés", () => {
+    mocks.listerComptes.mockReturnValue(new Promise(() => {}));
+    render(<ProfilUtilisateur />);
+
+    expect((screen.getByLabelText("Nom") as HTMLInputElement).disabled).toBe(
+      true,
+    );
+    expect(screen.getByText("Modifier mon mot de passe")).toBeTruthy();
+    expect(screen.getByText("Chargement…")).toBeTruthy();
   });
 
   it("affiche le profil si le compte a Google et un mot de passe", async () => {

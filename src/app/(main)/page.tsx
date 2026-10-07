@@ -208,7 +208,7 @@ export default function Home() {
 
   const chargerGroupe = useCallback(
     async (silencieux = false) => {
-      if (!organisation) {
+      if (!organisation?.id) {
         setGroupe(null);
         setChargementGroupe(false);
         return;
@@ -223,7 +223,7 @@ export default function Home() {
         if (!silencieux) setChargementGroupe(false);
       }
     },
-    [organisation],
+    [organisation?.id],
   );
   useEffect(() => {
     chargerGroupe();
