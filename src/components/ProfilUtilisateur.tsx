@@ -26,6 +26,7 @@ export default function ProfilUtilisateur() {
   const [erreurMotDePasse, setErreurMotDePasse] = useState("");
   const [succesMotDePasse, setSuccesMotDePasse] = useState("");
 
+  const [motDePasseOuvert, setMotDePasseOuvert] = useState(false);
   const [aMotDePasse, setAMotDePasse] = useState<boolean | null>(null);
   useEffect(() => {
     let annule = false;
@@ -108,6 +109,7 @@ export default function ProfilUtilisateur() {
     evenement.preventDefault();
     setErreurMotDePasse("");
     setSuccesMotDePasse("");
+    setMotDePasseOuvert(true);
     if (nouveauMotDePasse !== confirmation) {
       setErreurMotDePasse("Les mots de passe ne correspondent pas.");
       return;
@@ -132,20 +134,14 @@ export default function ProfilUtilisateur() {
     setSuccesMotDePasse("Votre mot de passe a été modifié.");
   };
 
-  if (aMotDePasse === null) return null;
-
-  if (!aMotDePasse) {
-    return (
-      <section className="rounded-lg border border-zinc-200 bg-zinc-50 p-4">
-        <h2 className="text-lg font-semibold text-zinc-900">Mon profil</h2>
-        <p className="mt-1 text-sm text-zinc-700">
-          Vous êtes connecté avec Google. Votre nom, votre adresse e-mail et
-          votre mot de passe se gèrent depuis votre compte Google : ils ne
-          peuvent pas être modifiés ici.
-        </p>
-      </section>
-    );
-  }
+  const profilModifiable = aMotDePasse === true;
+  const profilEnChargement = aMotDePasse === null || !utilisateur;
+  const classeChampProfil = profilEnChargement
+    ? classeChamp.replace("bg-white", "animate-pulse bg-zinc-100")
+    : classeChamp;
+  const classeBoutonProfil = profilEnChargement
+    ? `${classeBouton} animate-pulse`
+    : classeBouton;
 
   return (
     <div className="space-y-6">
@@ -159,7 +155,8 @@ export default function ProfilUtilisateur() {
               onChange={(evenement) => setNom(evenement.target.value)}
               autoComplete="name"
               required
-              className={classeChamp}
+              disabled={!profilModifiable}
+              className={classeChampProfil}
             />
           </label>
           <label className="block text-sm font-medium text-zinc-700">
@@ -170,7 +167,8 @@ export default function ProfilUtilisateur() {
               onChange={(evenement) => setEmail(evenement.target.value)}
               autoComplete="email"
               required
-              className={classeChamp}
+              disabled={!profilModifiable}
+              className={classeChampProfil}
             />
           </label>
           {erreurProfil && (
@@ -183,79 +181,108 @@ export default function ProfilUtilisateur() {
               {succesProfil}
             </p>
           )}
-          <button
-            type="submit"
-            disabled={profilEnCours || !utilisateur}
-            className={classeBouton}
-          >
-            {profilEnCours ? "Enregistrement…" : "Enregistrer"}
-          </button>
+          {aMotDePasse === false ? (
+            <p className="text-sm text-zinc-700">
+              Vous êtes connecté avec Google. Votre nom et votre adresse e-mail
+              se gèrent depuis votre compte Google : ils ne peuvent pas être
+              modifiés ici.
+            </p>
+          ) : (
+            <button
+              type="submit"
+              disabled={profilEnCours || !utilisateur || !profilModifiable}
+              className={classeBoutonProfil}
+            >
+              {profilEnCours ? "Enregistrement…" : "Enregistrer"}
+            </button>
+          )}
         </form>
       </section>
 
-      <section>
-        <h2 className="text-lg font-semibold text-zinc-900">
+      <details
+        open={motDePasseOuvert}
+        onToggle={(evenement) =>
+          setMotDePasseOuvert(evenement.currentTarget.open)
+        }
+        className="rounded-lg border border-zinc-200 p-4"
+      >
+        <summary className="cursor-pointer text-lg font-semibold text-zinc-900">
           Modifier mon mot de passe
-        </h2>
-        <form onSubmit={modifierMotDePasse} className="mt-3 space-y-3">
-          <label className="block text-sm font-medium text-zinc-700">
-            Ancien mot de passe
-            <input
-              type="password"
-              value={ancienMotDePasse}
-              onChange={(evenement) =>
-                setAncienMotDePasse(evenement.target.value)
-              }
-              autoComplete="current-password"
-              required
-              className={classeChamp}
-            />
-          </label>
-          <label className="block text-sm font-medium text-zinc-700">
-            Nouveau mot de passe
-            <input
-              type="password"
-              value={nouveauMotDePasse}
-              onChange={(evenement) =>
-                setNouveauMotDePasse(evenement.target.value)
-              }
-              autoComplete="new-password"
-              minLength={8}
-              required
-              className={classeChamp}
-            />
-          </label>
-          <label className="block text-sm font-medium text-zinc-700">
-            Confirmer le nouveau mot de passe
-            <input
-              type="password"
-              value={confirmation}
-              onChange={(evenement) => setConfirmation(evenement.target.value)}
-              autoComplete="new-password"
-              minLength={8}
-              required
-              className={classeChamp}
-            />
-          </label>
-          {erreurMotDePasse && (
-            <p role="alert" className="text-sm text-rose-700">
-              {erreurMotDePasse}
-            </p>
-          )}
-          {succesMotDePasse && (
-            <p role="status" className="text-sm text-emerald-700">
-              {succesMotDePasse}
-            </p>
-          )}
-          <button
-            type="submit"
-            disabled={motDePasseEnCours}
-            className={classeBouton}
-          >
-            {motDePasseEnCours ? "Enregistrement…" : "Modifier le mot de passe"}
-          </button>
-        </form>
-      </section>
+        </summary>
+        {aMotDePasse === null && (
+          <p className="mt-3 text-sm text-zinc-700">Chargement…</p>
+        )}
+        {aMotDePasse === false && (
+          <p className="mt-3 text-sm text-zinc-700">
+            Vous êtes connecté avec Google : votre mot de passe se gère depuis
+            votre compte Google et ne peut pas être modifié ici.
+          </p>
+        )}
+        {aMotDePasse === true && (
+          <form onSubmit={modifierMotDePasse} className="mt-3 space-y-3">
+            <label className="block text-sm font-medium text-zinc-700">
+              Ancien mot de passe
+              <input
+                type="password"
+                value={ancienMotDePasse}
+                onChange={(evenement) =>
+                  setAncienMotDePasse(evenement.target.value)
+                }
+                autoComplete="current-password"
+                required
+                className={classeChamp}
+              />
+            </label>
+            <label className="block text-sm font-medium text-zinc-700">
+              Nouveau mot de passe
+              <input
+                type="password"
+                value={nouveauMotDePasse}
+                onChange={(evenement) =>
+                  setNouveauMotDePasse(evenement.target.value)
+                }
+                autoComplete="new-password"
+                minLength={8}
+                required
+                className={classeChamp}
+              />
+            </label>
+            <label className="block text-sm font-medium text-zinc-700">
+              Confirmer le nouveau mot de passe
+              <input
+                type="password"
+                value={confirmation}
+                onChange={(evenement) =>
+                  setConfirmation(evenement.target.value)
+                }
+                autoComplete="new-password"
+                minLength={8}
+                required
+                className={classeChamp}
+              />
+            </label>
+            {erreurMotDePasse && (
+              <p role="alert" className="text-sm text-rose-700">
+                {erreurMotDePasse}
+              </p>
+            )}
+            {succesMotDePasse && (
+              <p role="status" className="text-sm text-emerald-700">
+                {succesMotDePasse}
+              </p>
+            )}
+            <button
+              type="submit"
+              disabled={motDePasseEnCours}
+              className={classeBouton}
+            >
+              {motDePasseEnCours
+                ? "Enregistrement…"
+                : "Modifier le mot de passe"}
+            </button>
+          </form>
+        )}
+      </details>
     </div>
   );
 }
