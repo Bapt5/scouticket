@@ -62,7 +62,8 @@ const classeChamp =
   "rounded-lg border border-zinc-300 bg-white p-2 text-sm text-zinc-900 focus:border-zinc-400 focus:ring-2 focus:ring-zinc-400";
 
 export default function PageSuiviBudgetaire() {
-  const { data: organisation } = clientAuth.useActiveOrganization();
+  const { data: organisation, isPending: organisationEnChargement } =
+    clientAuth.useActiveOrganization();
   const [config, setConfig] = useState<Config | null>(null);
   const [configChargee, setConfigChargee] = useState(false);
   const [annee, setAnnee] = useState<number | null>(null);
@@ -258,7 +259,18 @@ export default function PageSuiviBudgetaire() {
     }
   };
 
-  if (!organisation) return <main className="p-6">Aucun groupe actif.</main>;
+  if (organisationEnChargement)
+    return (
+      <main className="min-h-screen bg-zinc-50 p-6 text-center text-zinc-600">
+        Chargement…
+      </main>
+    );
+  if (!organisation)
+    return (
+      <main className="min-h-screen bg-zinc-50 p-6 text-center text-zinc-600">
+        Aucun groupe actif.
+      </main>
+    );
   return (
     <main className="min-h-screen bg-zinc-50 p-4">
       {/* Mobile : les tableaux et graphiques ne sont pas adaptés aux petits écrans. */}

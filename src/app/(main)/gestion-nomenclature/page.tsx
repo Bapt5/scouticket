@@ -78,7 +78,8 @@ function brouillonDepuis(
 }
 
 export default function PageGestionNomenclature() {
-  const { data: organisation } = clientAuth.useActiveOrganization();
+  const { data: organisation, isPending: organisationEnChargement } =
+    clientAuth.useActiveOrganization();
   const [domaine, setDomaine] = useState<Domaine>("depense");
   const [brouillons, setBrouillons] = useState<
     Record<Domaine, BrouillonNomenclature>
@@ -170,7 +171,18 @@ export default function PageGestionNomenclature() {
     }
   };
 
-  if (!organisation) return <main className="p-6">Aucun groupe actif.</main>;
+  if (organisationEnChargement)
+    return (
+      <main className="min-h-screen bg-zinc-50 p-6 text-center text-zinc-600">
+        Chargement…
+      </main>
+    );
+  if (!organisation)
+    return (
+      <main className="min-h-screen bg-zinc-50 p-6 text-center text-zinc-600">
+        Aucun groupe actif.
+      </main>
+    );
   const formatInvalide =
     brouillon.personnalise &&
     (validerFormatNomenclature(brouillon.format) ||
