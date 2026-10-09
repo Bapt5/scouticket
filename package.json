@@ -32,9 +32,9 @@
     "format:check": "prettier --check . --ignore-path .prettierignore --ignore-unknown",
     "type": "next typegen && tsc --noEmit",
     "db:migrate": "node --env-file-if-exists=.env scripts/migrate-base-de-donnees.mjs",
-    "docs:dev": "vitepress dev docs",
-    "docs:build": "vitepress build docs",
-    "docs:preview": "vitepress preview docs",
+    "docs:dev": "node --env-file-if-exists=.env node_modules/vitepress/bin/vitepress.js dev docs",
+    "docs:build": "node --env-file-if-exists=.env node_modules/vitepress/bin/vitepress.js build docs",
+    "docs:preview": "node --env-file-if-exists=.env node_modules/vitepress/bin/vitepress.js preview docs",
     "ndf:certificat": "node scripts/generer-certificat-scellement.mjs",
     "auth:migrate": "pnpm dlx auth@1.7.3 migrate"
   },

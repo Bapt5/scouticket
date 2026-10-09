@@ -4,6 +4,8 @@ const urlDocumentation = "https://scoutreso.me";
 // Mesure d'audience Umami, activée uniquement si les deux variables sont définies au build.
 const urlScriptAudience = process.env.NEXT_PUBLIC_UMAMI_SCRIPT_URL;
 const identifiantSiteAudience = process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID;
+// Empreinte SHA-256 du certificat de scellement (non secrète), affichée sur /verifier-signature si définie au build.
+const empreinteCertificat = process.env.NDF_SCELLEMENT_EMPREINTE_SHA256?.trim();
 const imagePartage = `${urlDocumentation}/og-scoutreso.png`;
 
 const metadonneesPages: Record<string, { titre: string; description: string }> =
@@ -17,6 +19,11 @@ const metadonneesPages: Record<string, { titre: string; description: string }> =
       titre: "À propos",
       description:
         "Découvrez Scoutréso, l’outil gratuit et open source qui simplifie la gestion des justificatifs des groupes scouts.",
+    },
+    "verifier-signature.md": {
+      titre: "Vérifier une note de frais signée",
+      description:
+        "Vérifiez qu'une note de frais signée Scoutréso n'a pas été modifiée : empreinte SHA-256 du certificat, Adobe Reader et ligne de commande.",
     },
     "guide/usage.md": {
       titre: "Envoyer un justificatif",
@@ -128,6 +135,9 @@ export default defineConfig({
     ],
   ],
   transformPageData(pageData) {
+    if (pageData.relativePath === "verifier-signature.md") {
+      pageData.frontmatter.empreinteCertificat = empreinteCertificat;
+    }
     const metadonnees = metadonneesPages[pageData.relativePath];
     if (!metadonnees) return;
 
@@ -165,6 +175,7 @@ export default defineConfig({
   themeConfig: {
     nav: [
       { text: "Guide d’utilisation", link: "/guide/usage" },
+      { text: "Vérifier une note signée", link: "/verifier-signature" },
       { text: "À propos", link: "/about" },
     ],
     sidebar: [
@@ -175,6 +186,7 @@ export default defineConfig({
           { text: "Guide d'utilisation", link: "/guide/usage" },
           { text: "Configurer un groupe", link: "/guide/groupes" },
           { text: "Les e-mails de justificatifs", link: "/guide/e-mails" },
+          { text: "Vérifier une note signée", link: "/verifier-signature" },
           { text: "À propos", link: "/about" },
         ],
       },

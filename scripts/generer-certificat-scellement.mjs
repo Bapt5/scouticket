@@ -7,8 +7,9 @@
 //
 // La clé n'est jamais écrite sur disque : les valeurs à renseigner dans les
 // variables d'environnement sont affichées, ainsi que l'empreinte SHA-256 du
-// certificat, à publier pour que chacun puisse vérifier qu'une signature vient
-// bien de ce certificat.
+// certificat (sous forme de ligne NDF_SCELLEMENT_EMPREINTE_SHA256=... à copier
+// dans le .env), à publier pour que chacun puisse vérifier qu'une signature
+// vient bien de ce certificat.
 import { createHash, randomBytes } from "node:crypto";
 import forge from "node-forge";
 
@@ -67,8 +68,10 @@ console.log(
 console.log(`NDF_SCELLEMENT_P12_BASE64=${p12Base64}`);
 console.log(`NDF_SCELLEMENT_P12_MOT_DE_PASSE=${motDePasse}`);
 console.log("");
-console.log("# Empreinte SHA-256 du certificat, à publier (non secrète) :");
-console.log(empreinte);
+console.log(
+  "# Empreinte SHA-256 du certificat, à publier (non secrète), à renseigner au build du site de documentation :",
+);
+console.log(`NDF_SCELLEMENT_EMPREINTE_SHA256=${empreinte}`);
 console.log("");
 console.log(
   `# Valide jusqu'au ${certificat.validity.notAfter.toISOString().slice(0, 10)}.`,

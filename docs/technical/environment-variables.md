@@ -24,6 +24,14 @@ Requis pour signer une note de frais dès qu'un groupe active `ndf_signee_actif`
 
 En développement local, `@sparticuz/chromium` ne fournit qu'un binaire Linux : sans `PUPPETEER_EXECUTABLE_PATH` pointant vers un Chrome/Chromium local, la génération échoue avec `Failed to launch the browser process`.
 
+## Empreinte du certificat de scellement
+
+| Variable                          |  Requis   | Description                                                                                                                                                                              |
+| --------------------------------- | :-------: | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NDF_SCELLEMENT_EMPREINTE_SHA256` | Optionnel | Empreinte SHA-256 du certificat de scellement, affichée par `pnpm ndf:certificat`. Publiée (elle n'est pas secrète) sur la page [Vérifier une note de frais signée](/verifier-signature) |
+
+Cette variable concerne le **site de documentation** (VitePress) et non l'application : elle est lue au moment de `pnpm docs:build`, redéployez la documentation après l'avoir modifiée (par exemple après un renouvellement du certificat). Si elle est absente, la page indique que l'empreinte n'est pas publiée.
+
 ## Mesure d’audience (Umami)
 
 | Variable                       |  Requis   | Description                                                                                                  |
