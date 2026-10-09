@@ -1,4 +1,5 @@
 import { defineConfig } from "vitepress";
+import { donneesLegales } from "./donnees-legales";
 
 const urlDocumentation = "https://scoutreso.me";
 // Mesure d'audience Umami, activée uniquement si les deux variables sont définies au build.
@@ -24,6 +25,16 @@ const metadonneesPages: Record<string, { titre: string; description: string }> =
       titre: "Vérifier une note de frais signée",
       description:
         "Vérifiez qu'une note de frais signée Scoutréso n'a pas été modifiée : empreinte SHA-256 du certificat, Adobe Reader et ligne de commande.",
+    },
+    "mentions-legales.md": {
+      titre: "Mentions légales",
+      description:
+        "Mentions légales de Scoutréso : éditeur, contact, hébergeurs, nom de domaine et propriété intellectuelle.",
+    },
+    "confidentialite.md": {
+      titre: "Politique de confidentialité",
+      description:
+        "Politique de confidentialité de Scoutréso : données traitées, finalités, durées de conservation, sous-traitants, droits RGPD et cookies.",
     },
     "guide/usage.md": {
       titre: "Envoyer un justificatif",
@@ -138,6 +149,12 @@ export default defineConfig({
     if (pageData.relativePath === "verifier-signature.md") {
       pageData.frontmatter.empreinteCertificat = empreinteCertificat;
     }
+    if (
+      pageData.relativePath === "mentions-legales.md" ||
+      pageData.relativePath === "confidentialite.md"
+    ) {
+      pageData.frontmatter.donneesLegales = donneesLegales;
+    }
     const metadonnees = metadonneesPages[pageData.relativePath];
     if (!metadonnees) return;
 
@@ -173,6 +190,11 @@ export default defineConfig({
     ];
   },
   themeConfig: {
+    // Affiché sur l'accueil (sans sidebar) ; les autres pages ont les liens dans la sidebar.
+    footer: {
+      message:
+        '<a href="/mentions-legales">Mentions légales</a> · <a href="/confidentialite">Confidentialité</a>',
+    },
     nav: [
       { text: "Guide d’utilisation", link: "/guide/usage" },
       { text: "Vérifier une note signée", link: "/verifier-signature" },
@@ -188,6 +210,13 @@ export default defineConfig({
           { text: "Les e-mails de justificatifs", link: "/guide/e-mails" },
           { text: "Vérifier une note signée", link: "/verifier-signature" },
           { text: "À propos", link: "/about" },
+        ],
+      },
+      {
+        text: "Informations légales",
+        items: [
+          { text: "Mentions légales", link: "/mentions-legales" },
+          { text: "Politique de confidentialité", link: "/confidentialite" },
         ],
       },
       {
